@@ -1,4 +1,5 @@
 # SISPOS — Sistem Informasi Posyandu
+
 > Spec file untuk Claude Code + GSD Framework
 > Dibaca otomatis setiap sesi oleh Claude Code dan GSD subagent.
 > Jangan hapus atau edit manual.
@@ -90,6 +91,7 @@ backend/src/
 ## Aturan Wajib — TIDAK BOLEH DILANGGAR
 
 ### Kode
+
 - TypeScript strict mode — tidak boleh `any` tanpa alasan eksplisit
 - Jangan hardcode API key, URL, secret — selalu `process.env.VAR`
 - Selalu parameterized query — tidak boleh string concatenation SQL
@@ -97,6 +99,7 @@ backend/src/
 - Zustand hanya UI state, TanStack Query untuk semua server state
 
 ### Antrian (KRITIS)
+
 - Selalu gunakan Prisma transaction + `$queryRaw SELECT FOR UPDATE` saat ambil slot
 - Formula estimasi: `jamMulai + (nomorUrut - 1) × durasiRata`
 - Cold start: pakai `estimasiDurasiMenit` dari Jadwal (diisi Puskesmas)
@@ -104,17 +107,20 @@ backend/src/
 - Broadcast Socket.IO ke room `sesi:{slotId}` setiap ada perubahan
 
 ### Keamanan (UU PDP No. 27/2022)
+
 - Kolom `catatanKonsultasi` dan `rekomendasiAi` WAJIB dienkripsi sebelum simpan
 - Setiap INSERT/UPDATE di Pemeriksaan dan Imunisasi WAJIB tulis AuditLog
 - Kader gagal PIN 10x → terkunci 30 menit, reset via master overrule Puskesmas
 
 ### AI Chatbot Citizen (Gizi)
+
 - Temperature: 0.6, max_tokens: 300
 - Hanya jawab: gizi balita, tumbuh kembang, imunisasi, posyandu
 - Topik lain → tolak dengan pesan sopan Bahasa Indonesia
 - Rate limit: 20 pesan/hari per citizen
 
 ### AI Chatbot Citizen (Pendaftaran Antrian — Function Calling)
+
 - Temperature: 0.4 (lebih deterministik untuk aksi nyata)
 - Tools: get_jadwal_tersedia, get_profil_balita, daftar_antrian
 - `daftar_antrian` HANYA dipanggil setelah citizen konfirmasi eksplisit
@@ -122,23 +128,34 @@ backend/src/
 - `daftar_antrian` memanggil POST /api/antrian/ambil (SELECT FOR UPDATE tetap aktif)
 
 ### Z-Score WHO
+
 - JANGAN generate formula dari ingatan
 - Gunakan tabel LMS dari: `backend/src/shared/data/who-growth-tables.json`
 - Formula: `Z = ((nilai/M)^L - 1) / (L × S)`
 
 ### WhatsApp
+
 - SELALU enqueue ke BullMQ dulu, jangan kirim langsung ke Fonnte
 - Retry 3x dengan exponential backoff (1s, 5s, 30s)
 
 ### Export
+
 - Excel via ExcelJS, PDF via pdfkit (bukan puppeteer)
 - Format e-PPGBM harus 100% sesuai standar Kemenkes
 - Berlaku untuk kader (rekap harian) dan puskesmas (laporan bulanan)
 
 ### Figma MCP
-- Dipakai mulai Phase 3 ke atas — jangan di Phase 0-2
-- Setup: `claude plugin install figma@claude-plugins-official`
+
+- Dipakai mulai Phase 0 untuk SEMUA screen UI (keputusan 2026-06-30)
+- File key: `4DIazKntakgAGXBDYefjbD` — design sudah lengkap semua 3 role
+- Pull design context sebelum implement setiap screen; AI boleh adjust warna/posisi untuk konsistensi
 - Saat prompt: selalu sebutkan komponen shadcn/ui, hook, dan store yang sudah ada
+
+### AI Chatbot Pendaftaran Antrian (Update 2026-06-30)
+
+- Function calls: `get_jadwal_tersedia`, `get_profil_balita`, `daftar_antrian`, `batalkan_antrian`, `reschedule_antrian`
+- `daftar_antrian` HANYA dipanggil setelah citizen konfirmasi eksplisit
+- `batalkan_antrian` dan `reschedule_antrian` WAJIB minta konfirmasi eksplisit sebelum dieksekusi
 
 ---
 
@@ -154,6 +171,7 @@ ENV:             UPPER_SNAKE_CASE  → OPENAI_API_KEY
 ```
 
 ### API Response
+
 ```typescript
 { success: true, data: {...}, message: "..." }
 { success: false, error: "KODE_ERROR", message: "Pesan Bahasa Indonesia" }
@@ -202,9 +220,11 @@ prisma/seed.ts          → data massal: >100 balita, >10 posyandu, 12 bln riway
 prisma/seed.demo.ts     → TERAKHIR: akun presentasi yang nyambung ke seed massal
 
 Akun demo:
+
 - Citizen: NIK 3471012345670001, password Demo1234!
 - Kader:   HP 081234560001, PIN 123456
 - Puskesmas: demo@puskesmas-mergangsan.go.id, Demo1234!
+
 ```
 
 ---
@@ -212,8 +232,82 @@ Akun demo:
 ## Protokol Debugging
 
 Saat ada error, JANGAN loop fix-test sendiri. Lakukan:
+
 1. Baca error + identifikasi file relevan (max 3 file)
 2. Propose fix dengan penjelasan singkat
 3. Tunjukkan diff sebelum apply
 4. Tunggu konfirmasi sebelum apply
 5. JANGAN ubah file di luar yang relevan dengan error
+
+<!-- GSD:project-start source:PROJECT.md -->
+
+## Project
+
+**SISPOS — Sistem Informasi Posyandu**
+
+SISPOS adalah Progressive Web App (PWA) untuk digitalisasi layanan Posyandu di Indonesia. Sistem ini mengelola antrian online dengan countdown queue adaptif berbasis kecepatan pelayanan riil, pencatatan kesehatan balita (BB/TB/Z-Score WHO 2006), Decision Support System deteksi risiko stunting dini, dan AI Chatbot yang bisa menjawab pertanyaan gizi sekaligus mendaftarkan antrian via percakapan. Target pengguna: Citizen (orang tua balita), Kader/Staff Posyandu, dan Puskesmas.
+
+**Core Value:** Antrian countdown adaptif yang bergerak realtime + alur 5 Meja kader yang berjalan end-to-end — ini yang harus bekerja sempurna di atas segalanya.
+
+### Constraints
+
+- **Tech Stack**: Fixed sesuai CLAUDE.md — tidak ada negosiasi
+- **Timeline**: 6-8 hari total; Phase 0-3 KRITIS untuk laporan besok
+- **Database**: PostgreSQL 16, schema sudah ada — jangan redesign model yang sudah ada
+- **Security**: UU PDP No. 27/2022 — kolom `catatanKonsultasi` dan `rekomendasiAi` WAJIB dienkripsi
+- **AI Scope**: Chatbot gizi hanya jawab 4 topik; chatbot pendaftaran hanya 3 function calls dengan konfirmasi eksplisit untuk batalkan/reschedule
+- **Queue**: Countdown adalah estimasi, bukan janji — UI harus jelas menyatakan ini
+- **Figma**: Design sudah ada, implement as-is; AI boleh adjust untuk konsistensi
+
+<!-- GSD:project-end -->
+
+<!-- GSD:stack-start source:STACK.md -->
+
+## Technology Stack
+
+Technology stack not yet documented. Will populate after codebase mapping or first phase.
+<!-- GSD:stack-end -->
+
+<!-- GSD:conventions-start source:CONVENTIONS.md -->
+
+## Conventions
+
+Conventions not yet established. Will populate as patterns emerge during development.
+<!-- GSD:conventions-end -->
+
+<!-- GSD:architecture-start source:ARCHITECTURE.md -->
+
+## Architecture
+
+Architecture not yet mapped. Follow existing patterns found in the codebase.
+<!-- GSD:architecture-end -->
+
+<!-- GSD:skills-start source:skills/ -->
+
+## Project Skills
+
+No project skills found. Add skills to any of: `.claude/skills/`, `.agents/skills/`, `.cursor/skills/`, `.github/skills/`, or `.codex/skills/` with a `SKILL.md` index file.
+<!-- GSD:skills-end -->
+
+<!-- GSD:workflow-start source:GSD defaults -->
+
+## GSD Workflow Enforcement
+
+Before using Edit, Write, or other file-changing tools, start work through a GSD command so planning artifacts and execution context stay in sync.
+
+Use these entry points:
+
+- `/gsd-quick` for small fixes, doc updates, and ad-hoc tasks
+- `/gsd-debug` for investigation and bug fixing
+- `/gsd-execute-phase` for planned phase work
+
+Do not make direct repo edits outside a GSD workflow unless the user explicitly asks to bypass it.
+<!-- GSD:workflow-end -->
+
+<!-- GSD:profile-start -->
+
+## Developer Profile
+
+> Profile not yet configured. Run `/gsd-profile-user` to generate your developer profile.
+> This section is managed by `generate-claude-profile` -- do not edit manually.
+<!-- GSD:profile-end -->
