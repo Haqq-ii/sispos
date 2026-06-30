@@ -15,8 +15,13 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 // ============================================================
-// Tipe data wilayah
+// Tipe data hierarki
 // ============================================================
+
+type KelurahanList = string[]
+type KecamatanMap = Record<string, KelurahanList>
+type KabupatenMap = Record<string, KecamatanMap>
+type WilayahTree = Record<string, KabupatenMap>
 
 interface WilayahRecord {
   provinsi: string
@@ -25,862 +30,520 @@ interface WilayahRecord {
   kelurahan: string
 }
 
+function flattenTree(tree: WilayahTree): WilayahRecord[] {
+  const records: WilayahRecord[] = []
+  for (const [provinsi, kabupatenMap] of Object.entries(tree)) {
+    for (const [kabupaten, kecamatanMap] of Object.entries(kabupatenMap)) {
+      for (const [kecamatan, kelurahanList] of Object.entries(kecamatanMap)) {
+        for (const kelurahan of kelurahanList) {
+          records.push({ provinsi, kabupaten, kecamatan, kelurahan })
+        }
+      }
+    }
+  }
+  return records
+}
+
 // ============================================================
 // DI YOGYAKARTA
 // ============================================================
 
-const diy: WilayahRecord[] = [
-  // --- Kota Yogyakarta (14 kecamatan) ---
-  // Mantrijeron
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Mantrijeron', kelurahan: 'Mantrijeron' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Mantrijeron', kelurahan: 'Gedongkiwo' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Mantrijeron', kelurahan: 'Suryodiningratan' },
-  // Kraton
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Kraton', kelurahan: 'Panembahan' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Kraton', kelurahan: 'Kadipaten' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Kraton', kelurahan: 'Patehan' },
-  // Mergangsan
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Mergangsan', kelurahan: 'Wirogunan' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Mergangsan', kelurahan: 'Brontokusuman' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Mergangsan', kelurahan: 'Keparakan' },
-  // Umbulharjo
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Umbulharjo', kelurahan: 'Semaki' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Umbulharjo', kelurahan: 'Muja Muju' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Umbulharjo', kelurahan: 'Tahunan' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Umbulharjo', kelurahan: 'Sorosutan' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Umbulharjo', kelurahan: 'Pandeyan' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Umbulharjo', kelurahan: 'Warungboto' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Umbulharjo', kelurahan: 'Giwangan' },
-  // Kotagede
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Kotagede', kelurahan: 'Prenggan' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Kotagede', kelurahan: 'Purbayan' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Kotagede', kelurahan: 'Rejowinangun' },
-  // Gondokusuman
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Gondokusuman', kelurahan: 'Baciro' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Gondokusuman', kelurahan: 'Demangan' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Gondokusuman', kelurahan: 'Kotabaru' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Gondokusuman', kelurahan: 'Klitren' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Gondokusuman', kelurahan: 'Terban' },
-  // Danurejan
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Danurejan', kelurahan: 'Bausasran' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Danurejan', kelurahan: 'Suryatmajan' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Danurejan', kelurahan: 'Tegalpanggung' },
-  // Pakualaman
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Pakualaman', kelurahan: 'Gunungketur' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Pakualaman', kelurahan: 'Purwokinanti' },
-  // Gondomanan
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Gondomanan', kelurahan: 'Ngupasan' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Gondomanan', kelurahan: 'Prawirodirjan' },
-  // Ngampilan
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Ngampilan', kelurahan: 'Ngampilan' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Ngampilan', kelurahan: 'Notoprajan' },
-  // Wirobrajan
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Wirobrajan', kelurahan: 'Patangpuluhan' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Wirobrajan', kelurahan: 'Wirobrajan' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Wirobrajan', kelurahan: 'Pakuncen' },
-  // Gedongtengen
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Gedongtengen', kelurahan: 'Pringgokusuman' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Gedongtengen', kelurahan: 'Sosromenduran' },
-  // Jetis
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Jetis', kelurahan: 'Bumijo' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Jetis', kelurahan: 'Cokrodiningratan' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Jetis', kelurahan: 'Gowongan' },
-  // Tegalrejo
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Tegalrejo', kelurahan: 'Bener' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Tegalrejo', kelurahan: 'Karangwaru' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Tegalrejo', kelurahan: 'Kricak' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kota Yogyakarta', kecamatan: 'Tegalrejo', kelurahan: 'Tegalrejo' },
-
-  // --- Kabupaten Sleman ---
-  // Depok
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Depok', kelurahan: 'Caturtunggal' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Depok', kelurahan: 'Condongcatur' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Depok', kelurahan: 'Maguwoharjo' },
-  // Mlati
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Mlati', kelurahan: 'Sinduadi' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Mlati', kelurahan: 'Sumberadi' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Mlati', kelurahan: 'Tirtoadi' },
-  // Gamping
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Gamping', kelurahan: 'Ambarketawang' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Gamping', kelurahan: 'Banyuraden' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Gamping', kelurahan: 'Trihanggo' },
-  // Godean
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Godean', kelurahan: 'Sidoagung' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Godean', kelurahan: 'Sidokarto' },
-  // Sleman
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Sleman', kelurahan: 'Caturharjo' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Sleman', kelurahan: 'Triharjo' },
-  // Ngaglik
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Ngaglik', kelurahan: 'Minomartani' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Ngaglik', kelurahan: 'Sardonoharjo' },
-  // Kalasan
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Kalasan', kelurahan: 'Purwomartani' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Kalasan', kelurahan: 'Selomartani' },
-  // Berbah
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Berbah', kelurahan: 'Tegaltirto' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Berbah', kelurahan: 'Sendangtirto' },
-  // Moyudan
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Moyudan', kelurahan: 'Sumberrahayu' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Moyudan', kelurahan: 'Sumberarum' },
-  // Minggir
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Minggir', kelurahan: 'Sendangagung' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Minggir', kelurahan: 'Sendangsari' },
-  // Seyegan
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Seyegan', kelurahan: 'Margomulyo' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Seyegan', kelurahan: 'Margoagung' },
-  // Tempel
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Tempel', kelurahan: 'Merdikorejo' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Tempel', kelurahan: 'Lumbungrejo' },
-  // Turi
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Turi', kelurahan: 'Donokerto' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Turi', kelurahan: 'Girikerto' },
-  // Pakem
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Pakem', kelurahan: 'Hargobinangun' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Pakem', kelurahan: 'Harjobinangun' },
-  // Cangkringan
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Cangkringan', kelurahan: 'Argomulyo' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Sleman', kecamatan: 'Cangkringan', kelurahan: 'Kepuharjo' },
-
-  // --- Kabupaten Bantul ---
-  // Bantul
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Bantul', kelurahan: 'Bantul' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Bantul', kelurahan: 'Trirenggo' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Bantul', kelurahan: 'Ringinharjo' },
-  // Sewon
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Sewon', kelurahan: 'Pendowoharjo' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Sewon', kelurahan: 'Panggungharjo' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Sewon', kelurahan: 'Timbulharjo' },
-  // Kasihan
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Kasihan', kelurahan: 'Bangunjiwo' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Kasihan', kelurahan: 'Ngestiharjo' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Kasihan', kelurahan: 'Tamantirto' },
-  // Pajangan
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Pajangan', kelurahan: 'Sendangsari' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Pajangan', kelurahan: 'Triwidadi' },
-  // Pandak
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Pandak', kelurahan: 'Gilangharjo' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Pandak', kelurahan: 'Caturharjo' },
-  // Bambanglipuro
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Bambanglipuro', kelurahan: 'Mulyodadi' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Bambanglipuro', kelurahan: 'Sidomulyo' },
-  // Pundong
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Pundong', kelurahan: 'Seloharjo' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Pundong', kelurahan: 'Srihardono' },
-  // Imogiri
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Imogiri', kelurahan: 'Imogiri' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Imogiri', kelurahan: 'Sriharjo' },
-  // Dlingo
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Dlingo', kelurahan: 'Dlingo' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Dlingo', kelurahan: 'Mangunan' },
-  // Pleret
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Pleret', kelurahan: 'Pleret' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Pleret', kelurahan: 'Bawuran' },
-  // Piyungan
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Piyungan', kelurahan: 'Sitimulyo' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Piyungan', kelurahan: 'Srimulyo' },
-  // Banguntapan
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Banguntapan', kelurahan: 'Banguntapan' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Banguntapan', kelurahan: 'Baturetno' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Banguntapan', kelurahan: 'Jagalan' },
-  // Jetis (Bantul)
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Jetis', kelurahan: 'Canden' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Jetis', kelurahan: 'Patalan' },
-  // Sedayu
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Sedayu', kelurahan: 'Argodadi' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Sedayu', kelurahan: 'Argomulyo' },
-  // Kretek
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Kretek', kelurahan: 'Tirtomulyo' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Kretek', kelurahan: 'Donotirto' },
-  // Sanden
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Sanden', kelurahan: 'Gadingharjo' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Sanden', kelurahan: 'Murtigading' },
-  // Srandakan
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Srandakan', kelurahan: 'Trimurti' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Bantul', kecamatan: 'Srandakan', kelurahan: 'Poncosari' },
-
-  // --- Kabupaten Kulonprogo ---
-  // Wates
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Kulonprogo', kecamatan: 'Wates', kelurahan: 'Wates' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Kulonprogo', kecamatan: 'Wates', kelurahan: 'Triharjo' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Kulonprogo', kecamatan: 'Wates', kelurahan: 'Bendungan' },
-  // Pengasih
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Kulonprogo', kecamatan: 'Pengasih', kelurahan: 'Pengasih' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Kulonprogo', kecamatan: 'Pengasih', kelurahan: 'Sendangsari' },
-  // Sentolo
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Kulonprogo', kecamatan: 'Sentolo', kelurahan: 'Sentolo' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Kulonprogo', kecamatan: 'Sentolo', kelurahan: 'Demangrejo' },
-  // Nanggulan
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Kulonprogo', kecamatan: 'Nanggulan', kelurahan: 'Wijimulyo' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Kulonprogo', kecamatan: 'Nanggulan', kelurahan: 'Donomulyo' },
-  // Galur
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Kulonprogo', kecamatan: 'Galur', kelurahan: 'Tirtorahayu' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Kulonprogo', kecamatan: 'Galur', kelurahan: 'Nomporejo' },
-  // Panjatan
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Kulonprogo', kecamatan: 'Panjatan', kelurahan: 'Gotakan' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Kulonprogo', kecamatan: 'Panjatan', kelurahan: 'Panjatan' },
-  // Temon
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Kulonprogo', kecamatan: 'Temon', kelurahan: 'Temon Kulon' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Kulonprogo', kecamatan: 'Temon', kelurahan: 'Temon Wetan' },
-  // Kokap
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Kulonprogo', kecamatan: 'Kokap', kelurahan: 'Hargomulyo' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Kulonprogo', kecamatan: 'Kokap', kelurahan: 'Hargotirto' },
-  // Girimulyo
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Kulonprogo', kecamatan: 'Girimulyo', kelurahan: 'Giripurwo' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Kulonprogo', kecamatan: 'Girimulyo', kelurahan: 'Purwosari' },
-  // Samigaluh
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Kulonprogo', kecamatan: 'Samigaluh', kelurahan: 'Kebonharjo' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Kulonprogo', kecamatan: 'Samigaluh', kelurahan: 'Sidoharjo' },
-  // Kalibawang
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Kulonprogo', kecamatan: 'Kalibawang', kelurahan: 'Banjarharjo' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Kulonprogo', kecamatan: 'Kalibawang', kelurahan: 'Banjararum' },
-  // Lendah
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Kulonprogo', kecamatan: 'Lendah', kelurahan: 'Gulurejo' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Kulonprogo', kecamatan: 'Lendah', kelurahan: 'Jatirejo' },
-
-  // --- Kabupaten Gunungkidul ---
-  // Wonosari
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Wonosari', kelurahan: 'Wonosari' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Wonosari', kelurahan: 'Kepek' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Wonosari', kelurahan: 'Karangrejek' },
-  // Playen
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Playen', kelurahan: 'Playen' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Playen', kelurahan: 'Dengok' },
-  // Patuk
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Patuk', kelurahan: 'Patuk' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Patuk', kelurahan: 'Semoyo' },
-  // Paliyan
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Paliyan', kelurahan: 'Giring' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Paliyan', kelurahan: 'Paliyan' },
-  // Saptosari
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Saptosari', kelurahan: 'Jetis' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Saptosari', kelurahan: 'Ngloro' },
-  // Tepus
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Tepus', kelurahan: 'Tepus' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Tepus', kelurahan: 'Giripanggung' },
-  // Tanjungsari
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Tanjungsari', kelurahan: 'Kemadang' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Tanjungsari', kelurahan: 'Ngestirejo' },
-  // Semanu
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Semanu', kelurahan: 'Semanu' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Semanu', kelurahan: 'Candirejo' },
-  // Karangmojo
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Karangmojo', kelurahan: 'Karangmojo' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Karangmojo', kelurahan: 'Bejiharjo' },
-  // Nglipar
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Nglipar', kelurahan: 'Nglipar' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Nglipar', kelurahan: 'Kedungpoh' },
-  // Semin
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Semin', kelurahan: 'Semin' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Semin', kelurahan: 'Kalitekuk' },
-  // Ponjong
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Ponjong', kelurahan: 'Ponjong' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Ponjong', kelurahan: 'Bedoyo' },
-  // Rongkop
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Rongkop', kelurahan: 'Melikan' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Rongkop', kelurahan: 'Semugih' },
-  // Purwosari
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Purwosari', kelurahan: 'Giritirto' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Purwosari', kelurahan: 'Giriasih' },
-  // Panggang
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Panggang', kelurahan: 'Girimulyo' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Panggang', kelurahan: 'Giriharjo' },
-  // Gedangsari
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Gedangsari', kelurahan: 'Tegalrejo' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Gedangsari', kelurahan: 'Sampang' },
-  // Ngawen
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Ngawen', kelurahan: 'Kampung' },
-  { provinsi: 'DI Yogyakarta', kabupaten: 'Kabupaten Gunungkidul', kecamatan: 'Ngawen', kelurahan: 'Jurangjero' },
-]
+const diyTree: WilayahTree = {
+  'DI Yogyakarta': {
+    'Kota Yogyakarta': {
+      'Mantrijeron': ['Mantrijeron', 'Gedongkiwo', 'Suryodiningratan'],
+      'Kraton': ['Panembahan', 'Kadipaten', 'Patehan'],
+      'Mergangsan': ['Wirogunan', 'Brontokusuman', 'Keparakan'],
+      'Umbulharjo': ['Semaki', 'Muja Muju', 'Tahunan', 'Sorosutan', 'Pandeyan', 'Warungboto', 'Giwangan'],
+      'Kotagede': ['Prenggan', 'Purbayan', 'Rejowinangun'],
+      'Gondokusuman': ['Baciro', 'Demangan', 'Kotabaru', 'Klitren', 'Terban'],
+      'Danurejan': ['Bausasran', 'Suryatmajan', 'Tegalpanggung'],
+      'Pakualaman': ['Gunungketur', 'Purwokinanti'],
+      'Gondomanan': ['Ngupasan', 'Prawirodirjan'],
+      'Ngampilan': ['Ngampilan', 'Notoprajan'],
+      'Wirobrajan': ['Patangpuluhan', 'Wirobrajan', 'Pakuncen'],
+      'Gedongtengen': ['Pringgokusuman', 'Sosromenduran'],
+      'Jetis': ['Bumijo', 'Cokrodiningratan', 'Gowongan'],
+      'Tegalrejo': ['Bener', 'Karangwaru', 'Kricak', 'Tegalrejo'],
+    },
+    'Kabupaten Sleman': {
+      'Depok': ['Caturtunggal', 'Condongcatur', 'Maguwoharjo'],
+      'Mlati': ['Sinduadi', 'Sumberadi', 'Tlogoadi', 'Sendangadi', 'Tirtoadi'],
+      'Gamping': ['Ambarketawang', 'Banyuraden', 'Nogotirto', 'Trihanggo', 'Balecatur'],
+      'Godean': ['Sidoagung', 'Sidokarto', 'Sidomoyo', 'Sidorejo', 'Sidomulyo', 'Sidoluhur', 'Sidorahayu', 'Sidoarum'],
+      'Sleman': ['Caturharjo', 'Triharjo', 'Tridadi', 'Pandowoharjo', 'Sumberrejo'],
+      'Ngaglik': ['Donoharjo', 'Sardonoharjo', 'Sukoharjo', 'Minomartani', 'Sariharjo', 'Sinduharjo'],
+      'Kalasan': ['Purwomartani', 'Selomartani', 'Tirtomartani', 'Tamanmartani'],
+      'Berbah': ['Jogotirto', 'Tegaltirto', 'Sendangtirto', 'Kalitirto'],
+      'Moyudan': ['Sumberrahayu', 'Sumberarum', 'Sumbersari', 'Sumberagung'],
+      'Minggir': ['Sendangagung', 'Sendangmulyo', 'Sendangrejo', 'Sendangarum', 'Sendangsari'],
+      'Seyegan': ['Margomulyo', 'Margodadi', 'Margoagung', 'Margoluwih', 'Margokaton'],
+      'Tempel': ['Merdikorejo', 'Lumbungrejo', 'Pondokrejo', 'Sumberrejo', 'Tambakrejo', 'Banyurejo', 'Mororejo', 'Margorejo'],
+      'Turi': ['Bangunkerto', 'Donokerto', 'Girikerto', 'Wonokerto'],
+      'Pakem': ['Candibinangun', 'Harjobinangun', 'Hargobinangun', 'Pakembinangun', 'Purwobinangun'],
+      'Cangkringan': ['Argomulyo', 'Wukirsari', 'Glagaharjo', 'Kepuharjo', 'Umbulharjo'],
+      'Ngemplak': ['Wedomartani', 'Sindumartani', 'Umbulmartani', 'Widodomartani', 'Bimomartani'],
+      'Prambanan': ['Bokoharjo', 'Gayamharjo', 'Madurejo', 'Sumberharjo', 'Wukirharjo', 'Sambirejo'],
+    },
+    'Kabupaten Bantul': {
+      'Bantul': ['Bantul', 'Trirenggo', 'Ringinharjo', 'Palbapang', 'Sabdodadi'],
+      'Sewon': ['Pendowoharjo', 'Panggungharjo', 'Timbulharjo', 'Bangunharjo'],
+      'Kasihan': ['Bangunjiwo', 'Ngestiharjo', 'Tamantirto', 'Tirtonirmolo'],
+      'Pajangan': ['Sendangsari', 'Triwidadi', 'Guwosari'],
+      'Pandak': ['Gilangharjo', 'Caturharjo', 'Triharjo', 'Wijirejo'],
+      'Bambanglipuro': ['Mulyodadi', 'Sidomulyo', 'Sumbermulyo'],
+      'Pundong': ['Seloharjo', 'Srihardono', 'Panjangrejo'],
+      'Imogiri': ['Imogiri', 'Sriharjo', 'Girirejo', 'Selopamioro', 'Karangtalun', 'Karangtengah', 'Wukirsari', 'Kebonagung'],
+      'Dlingo': ['Dlingo', 'Mangunan', 'Muntuk', 'Terong', 'Temuwuh', 'Jatimulyo'],
+      'Pleret': ['Pleret', 'Bawuran', 'Wonokromo', 'Segoroyoso', 'Wonolelo'],
+      'Piyungan': ['Sitimulyo', 'Srimulyo', 'Sitimulyo'],
+      'Banguntapan': ['Banguntapan', 'Baturetno', 'Jagalan', 'Jambidan', 'Singosaren', 'Tamanan', 'Wirokerten'],
+      'Jetis': ['Canden', 'Patalan', 'Sumberagung', 'Trimulyo'],
+      'Sedayu': ['Argodadi', 'Argomulyo', 'Argorejo', 'Argosari'],
+      'Kretek': ['Tirtomulyo', 'Donotirto', 'Parangtritis', 'Sindumartani', 'Tirtosari'],
+      'Sanden': ['Gadingharjo', 'Murtigading', 'Gadingsari', 'Srigading'],
+      'Srandakan': ['Trimurti', 'Poncosari'],
+    },
+    'Kabupaten Kulonprogo': {
+      'Wates': ['Wates', 'Triharjo', 'Bendungan', 'Giripeni', 'Sogan', 'Kulwaru', 'Ngestiharjo', 'Karangpoci'],
+      'Pengasih': ['Pengasih', 'Sendangsari', 'Kedungsari', 'Karangsari', 'Margosari', 'Sidomulyo', 'Clereng', 'Tawangsari'],
+      'Sentolo': ['Sentolo', 'Demangrejo', 'Sukoreno', 'Banguncipto', 'Kaliagung', 'Tuksono'],
+      'Nanggulan': ['Wijimulyo', 'Donomulyo', 'Jatisarono', 'Kembang', 'Banyuroto', 'Tanjungharjo'],
+      'Galur': ['Tirtorahayu', 'Nomporejo', 'Banaran', 'Brosot', 'Karangsewu', 'Kranggan', 'Pandowan', 'Pulo'],
+      'Panjatan': ['Gotakan', 'Panjatan', 'Bojong', 'Bugel', 'Cerme', 'Depok', 'Garongan', 'Tayuban', 'Kanoman', 'Pleret'],
+      'Temon': ['Temon Kulon', 'Temon Wetan', 'Jangkaran', 'Sindutan', 'Palihan', 'Kebonrejo', 'Glagah'],
+      'Kokap': ['Hargomulyo', 'Hargotirto', 'Hargorejo', 'Hargowilis', 'Kalirejo'],
+      'Girimulyo': ['Giripurwo', 'Purwosari', 'Pendoworejo', 'Jatimulyo'],
+      'Samigaluh': ['Kebonharjo', 'Sidoharjo', 'Banjarsari', 'Gerbosari', 'Ngargosari', 'Purwoharjo', 'Pagerharjo'],
+      'Kalibawang': ['Banjarharjo', 'Banjararum', 'Banjarasri', 'Banjarsari'],
+      'Lendah': ['Gulurejo', 'Jatirejo', 'Sidorejo', 'Wahyuharjo', 'Bumirejo', 'Ngentakrejo'],
+    },
+    'Kabupaten Gunungkidul': {
+      'Wonosari': ['Wonosari', 'Kepek', 'Karangrejek', 'Desa Wonosari', 'Baleharjo', 'Selang', 'Siraman', 'Pulutan', 'Wunung', 'Karangmojo'],
+      'Playen': ['Playen', 'Dengok', 'Bleberan', 'Bunder', 'Getas', 'Gading', 'Logandeng', 'Ngleri', 'Ngunut', 'Plembutan', 'Salam', 'Bandung'],
+      'Patuk': ['Patuk', 'Semoyo', 'Ngoro-Oro', 'Nglanggeran', 'Terbah', 'Beji', 'Bunder', 'Pengkok', 'Salam'],
+      'Paliyan': ['Giring', 'Paliyan', 'Mulusan', 'Karangduwet', 'Karangasem', 'Sodo'],
+      'Saptosari': ['Jetis', 'Ngloro', 'Planjan', 'Pringapus', 'Krambilsawit', 'Kepek', 'Monggol'],
+      'Tepus': ['Tepus', 'Giripanggung', 'Sidoharjo', 'Sumberwungu', 'Purwodadi'],
+      'Tanjungsari': ['Kemadang', 'Ngestirejo', 'Banjarejo', 'Hargosari'],
+      'Semanu': ['Semanu', 'Candirejo', 'Ngeposari', 'Pacarejo', 'Dadapayu'],
+      'Karangmojo': ['Karangmojo', 'Bejiharjo', 'Ngipak', 'Gedangrejo', 'Wiladeg', 'Kelor', 'Bendungan'],
+      'Nglipar': ['Nglipar', 'Kedungpoh', 'Pilangrejo', 'Pengkol', 'Natah', 'Katongan'],
+      'Semin': ['Semin', 'Kalitekuk', 'Rejosari', 'Bulurejo', 'Candirejo', 'Pundungsari', 'Kemejing', 'Bendung'],
+      'Ponjong': ['Ponjong', 'Bedoyo', 'Genjahan', 'Kenteng', 'Umbulrejo', 'Sawahan', 'Sidorejo', 'Karangasem'],
+      'Rongkop': ['Melikan', 'Semugih', 'Petir', 'Botodayaan', 'Bohol', 'Pringombo'],
+      'Purwosari': ['Giritirto', 'Giriasih', 'Giripurwo', 'Giricahyo'],
+      'Panggang': ['Girimulyo', 'Giriharjo', 'Giriasih', 'Girisuko', 'Girisekar', 'Giriwungu'],
+      'Gedangsari': ['Tegalrejo', 'Sampang', 'Mertelu', 'Watugajah', 'Ngalang', 'Hargomulyo', 'Serut'],
+      'Ngawen': ['Kampung', 'Jurangjero', 'Tancep', 'Sambirejo', 'Beji', 'Watusigar'],
+    },
+  },
+}
 
 // ============================================================
 // JAWA TENGAH
 // ============================================================
 
-const jateng: WilayahRecord[] = [
-  // --- Kota Semarang ---
-  // Semarang Tengah
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Semarang', kecamatan: 'Semarang Tengah', kelurahan: 'Sekayu' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Semarang', kecamatan: 'Semarang Tengah', kelurahan: 'Miroto' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Semarang', kecamatan: 'Semarang Tengah', kelurahan: 'Kauman' },
-  // Semarang Selatan
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Semarang', kecamatan: 'Semarang Selatan', kelurahan: 'Pleburan' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Semarang', kecamatan: 'Semarang Selatan', kelurahan: 'Lamper Lor' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Semarang', kecamatan: 'Semarang Selatan', kelurahan: 'Mugassari' },
-  // Semarang Utara
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Semarang', kecamatan: 'Semarang Utara', kelurahan: 'Bulu Lor' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Semarang', kecamatan: 'Semarang Utara', kelurahan: 'Panggung Lor' },
-  // Gajahmungkur
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Semarang', kecamatan: 'Gajahmungkur', kelurahan: 'Gajahmungkur' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Semarang', kecamatan: 'Gajahmungkur', kelurahan: 'Karangrejo' },
-  // Candisari
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Semarang', kecamatan: 'Candisari', kelurahan: 'Candi' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Semarang', kecamatan: 'Candisari', kelurahan: 'Jatingaleh' },
-  // Tembalang
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Semarang', kecamatan: 'Tembalang', kelurahan: 'Tembalang' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Semarang', kecamatan: 'Tembalang', kelurahan: 'Bulusan' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Semarang', kecamatan: 'Tembalang', kelurahan: 'Kramas' },
-  // Banyumanik
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Semarang', kecamatan: 'Banyumanik', kelurahan: 'Banyumanik' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Semarang', kecamatan: 'Banyumanik', kelurahan: 'Srondol Wetan' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Semarang', kecamatan: 'Banyumanik', kelurahan: 'Pudakpayung' },
-  // Pedurungan
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Semarang', kecamatan: 'Pedurungan', kelurahan: 'Pedurungan Tengah' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Semarang', kecamatan: 'Pedurungan', kelurahan: 'Tlogosari Wetan' },
-
-  // --- Kabupaten Semarang ---
-  // Ungaran Barat
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Semarang', kecamatan: 'Ungaran Barat', kelurahan: 'Ungaran' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Semarang', kecamatan: 'Ungaran Barat', kelurahan: 'Genuk' },
-  // Ungaran Timur
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Semarang', kecamatan: 'Ungaran Timur', kelurahan: 'Leyangan' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Semarang', kecamatan: 'Ungaran Timur', kelurahan: 'Sidomulyo' },
-  // Banyubiru
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Semarang', kecamatan: 'Banyubiru', kelurahan: 'Banyubiru' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Semarang', kecamatan: 'Banyubiru', kelurahan: 'Kebondowo' },
-  // Ambarawa
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Semarang', kecamatan: 'Ambarawa', kelurahan: 'Panjang' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Semarang', kecamatan: 'Ambarawa', kelurahan: 'Lodoyong' },
-
-  // --- Kota Surakarta (Solo) ---
-  // Banjarsari
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Surakarta', kecamatan: 'Banjarsari', kelurahan: 'Banyuanyar' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Surakarta', kecamatan: 'Banjarsari', kelurahan: 'Sumber' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Surakarta', kecamatan: 'Banjarsari', kelurahan: 'Nusukan' },
-  // Laweyan
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Surakarta', kecamatan: 'Laweyan', kelurahan: 'Laweyan' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Surakarta', kecamatan: 'Laweyan', kelurahan: 'Pajang' },
-  // Serengan
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Surakarta', kecamatan: 'Serengan', kelurahan: 'Kemlayan' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Surakarta', kecamatan: 'Serengan', kelurahan: 'Serengan' },
-  // Pasar Kliwon
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Surakarta', kecamatan: 'Pasar Kliwon', kelurahan: 'Kampung Baru' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Surakarta', kecamatan: 'Pasar Kliwon', kelurahan: 'Pasar Kliwon' },
-  // Jebres
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Surakarta', kecamatan: 'Jebres', kelurahan: 'Jebres' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Surakarta', kecamatan: 'Jebres', kelurahan: 'Mojosongo' },
-
-  // --- Kabupaten Klaten ---
-  // Klaten Tengah
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Klaten', kecamatan: 'Klaten Tengah', kelurahan: 'Klaten' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Klaten', kecamatan: 'Klaten Tengah', kelurahan: 'Tonggalan' },
-  // Klaten Selatan
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Klaten', kecamatan: 'Klaten Selatan', kelurahan: 'Merbung' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Klaten', kecamatan: 'Klaten Selatan', kelurahan: 'Trunuh' },
-  // Klaten Utara
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Klaten', kecamatan: 'Klaten Utara', kelurahan: 'Gergunung' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Klaten', kecamatan: 'Klaten Utara', kelurahan: 'Bareng' },
-
-  // --- Kabupaten Magelang ---
-  // Mertoyudan
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Magelang', kecamatan: 'Mertoyudan', kelurahan: 'Mertoyudan' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Magelang', kecamatan: 'Mertoyudan', kelurahan: 'Pasuruhan' },
-  // Muntilan
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Magelang', kecamatan: 'Muntilan', kelurahan: 'Muntilan' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Magelang', kecamatan: 'Muntilan', kelurahan: 'Gunungpring' },
-
-  // --- Kota Magelang ---
-  // Magelang Tengah
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Magelang', kecamatan: 'Magelang Tengah', kelurahan: 'Cacaban' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Magelang', kecamatan: 'Magelang Tengah', kelurahan: 'Magelang' },
-  // Magelang Selatan
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Magelang', kecamatan: 'Magelang Selatan', kelurahan: 'Tidar Selatan' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Magelang', kecamatan: 'Magelang Selatan', kelurahan: 'Jurang Ombo Utara' },
-
-  // --- Kabupaten Purworejo ---
-  // Purworejo
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Purworejo', kecamatan: 'Purworejo', kelurahan: 'Purworejo' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Purworejo', kecamatan: 'Purworejo', kelurahan: 'Sindurjan' },
-  // Kutoarjo
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Purworejo', kecamatan: 'Kutoarjo', kelurahan: 'Kutoarjo' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Purworejo', kecamatan: 'Kutoarjo', kelurahan: 'Semawung Daleman' },
-
-  // --- Kabupaten Temanggung ---
-  // Temanggung
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Temanggung', kecamatan: 'Temanggung', kelurahan: 'Temanggung I' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Temanggung', kecamatan: 'Temanggung', kelurahan: 'Temanggung II' },
-  // Parakan
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Temanggung', kecamatan: 'Parakan', kelurahan: 'Parakan Kauman' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Temanggung', kecamatan: 'Parakan', kelurahan: 'Parakan Wetan' },
-
-  // --- Kabupaten Kebumen ---
-  // Kebumen
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Kebumen', kecamatan: 'Kebumen', kelurahan: 'Kebumen' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Kebumen', kecamatan: 'Kebumen', kelurahan: 'Tamanwinangun' },
-  // Gombong
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Kebumen', kecamatan: 'Gombong', kelurahan: 'Gombong' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Kebumen', kecamatan: 'Gombong', kelurahan: 'Semanding' },
-
-  // --- Kabupaten Boyolali ---
-  // Boyolali
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Boyolali', kecamatan: 'Boyolali', kelurahan: 'Boyolali' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Boyolali', kecamatan: 'Boyolali', kelurahan: 'Kiringan' },
-  // Ngemplak
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Boyolali', kecamatan: 'Ngemplak', kelurahan: 'Ngargorejo' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Boyolali', kecamatan: 'Ngemplak', kelurahan: 'Donohudan' },
-
-  // --- Kabupaten Sukoharjo ---
-  // Sukoharjo
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Sukoharjo', kecamatan: 'Sukoharjo', kelurahan: 'Begajah' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Sukoharjo', kecamatan: 'Sukoharjo', kelurahan: 'Jetis' },
-  // Kartasura
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Sukoharjo', kecamatan: 'Kartasura', kelurahan: 'Kartasura' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Sukoharjo', kecamatan: 'Kartasura', kelurahan: 'Ngadirejo' },
-
-  // --- Kabupaten Wonogiri ---
-  // Wonogiri
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Wonogiri', kecamatan: 'Wonogiri', kelurahan: 'Wonokarto' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Wonogiri', kecamatan: 'Wonogiri', kelurahan: 'Pokoh Kidul' },
-  // Selogiri
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Wonogiri', kecamatan: 'Selogiri', kelurahan: 'Jendi' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Wonogiri', kecamatan: 'Selogiri', kelurahan: 'Pule' },
-
-  // --- Kabupaten Karanganyar ---
-  // Karanganyar
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Karanganyar', kecamatan: 'Karanganyar', kelurahan: 'Karanganyar' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Karanganyar', kecamatan: 'Karanganyar', kelurahan: 'Tegalgede' },
-  // Colomadu
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Karanganyar', kecamatan: 'Colomadu', kelurahan: 'Gawanan' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Karanganyar', kecamatan: 'Colomadu', kelurahan: 'Malangjiwan' },
-
-  // --- Kabupaten Sragen ---
-  // Sragen
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Sragen', kecamatan: 'Sragen', kelurahan: 'Sragen Kulon' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Sragen', kecamatan: 'Sragen', kelurahan: 'Sragen Tengah' },
-  // Sidoharjo
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Sragen', kecamatan: 'Sidoharjo', kelurahan: 'Jati' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Sragen', kecamatan: 'Sidoharjo', kelurahan: 'Setren' },
-
-  // --- Kabupaten Kudus ---
-  // Kudus
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Kudus', kecamatan: 'Kudus', kelurahan: 'Kauman' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Kudus', kecamatan: 'Kudus', kelurahan: 'Demaan' },
-  // Jati
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Kudus', kecamatan: 'Jati', kelurahan: 'Jati Wetan' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Kudus', kecamatan: 'Jati', kelurahan: 'Getas Pejaten' },
-
-  // --- Kabupaten Jepara ---
-  // Jepara
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Jepara', kecamatan: 'Jepara', kelurahan: 'Saripan' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Jepara', kecamatan: 'Jepara', kelurahan: 'Demaan' },
-  // Tahunan
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Jepara', kecamatan: 'Tahunan', kelurahan: 'Tahunan' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Jepara', kecamatan: 'Tahunan', kelurahan: 'Mantingan' },
-
-  // --- Kabupaten Pati ---
-  // Pati
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Pati', kecamatan: 'Pati', kelurahan: 'Pati Kidul' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Pati', kecamatan: 'Pati', kelurahan: 'Pati Lor' },
-  // Gabus
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Pati', kecamatan: 'Gabus', kelurahan: 'Tlogoayu' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Pati', kecamatan: 'Gabus', kelurahan: 'Gabus' },
-
-  // --- Kabupaten Demak ---
-  // Demak
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Demak', kecamatan: 'Demak', kelurahan: 'Bintoro' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Demak', kecamatan: 'Demak', kelurahan: 'Mangunjiwan' },
-  // Mranggen
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Demak', kecamatan: 'Mranggen', kelurahan: 'Mranggen' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Demak', kecamatan: 'Mranggen', kelurahan: 'Bandungrejo' },
-
-  // --- Kabupaten Grobogan ---
-  // Purwodadi
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Grobogan', kecamatan: 'Purwodadi', kelurahan: 'Purwodadi' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Grobogan', kecamatan: 'Purwodadi', kelurahan: 'Danyang' },
-  // Wirosari
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Grobogan', kecamatan: 'Wirosari', kelurahan: 'Wirosari' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Grobogan', kecamatan: 'Wirosari', kelurahan: 'Karangasem' },
-
-  // --- Kabupaten Blora ---
-  // Blora
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Blora', kecamatan: 'Blora', kelurahan: 'Kauman' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Blora', kecamatan: 'Blora', kelurahan: 'Mlangsen' },
-  // Cepu
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Blora', kecamatan: 'Cepu', kelurahan: 'Cepu' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Blora', kecamatan: 'Cepu', kelurahan: 'Balun' },
-
-  // --- Kabupaten Rembang ---
-  // Rembang
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Rembang', kecamatan: 'Rembang', kelurahan: 'Magersari' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Rembang', kecamatan: 'Rembang', kelurahan: 'Leteh' },
-  // Lasem
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Rembang', kecamatan: 'Lasem', kelurahan: 'Lasem' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Rembang', kecamatan: 'Lasem', kelurahan: 'Soditan' },
-
-  // --- Kota Salatiga ---
-  // Argomulyo
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Salatiga', kecamatan: 'Argomulyo', kelurahan: 'Cebongan' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Salatiga', kecamatan: 'Argomulyo', kelurahan: 'Ledok' },
-  // Tingkir
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Salatiga', kecamatan: 'Tingkir', kelurahan: 'Tingkir Lor' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kota Salatiga', kecamatan: 'Tingkir', kelurahan: 'Tingkir Tengah' },
-
-  // --- Kabupaten Wonosobo ---
-  // Wonosobo
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Wonosobo', kecamatan: 'Wonosobo', kelurahan: 'Wonosobo Timur' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Wonosobo', kecamatan: 'Wonosobo', kelurahan: 'Wonosobo Barat' },
-  // Mojotengah
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Wonosobo', kecamatan: 'Mojotengah', kelurahan: 'Mojosari' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Wonosobo', kecamatan: 'Mojotengah', kelurahan: 'Kejajar' },
-
-  // --- Kabupaten Banjarnegara ---
-  // Banjarnegara
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Banjarnegara', kecamatan: 'Banjarnegara', kelurahan: 'Parakancanggah' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Banjarnegara', kecamatan: 'Banjarnegara', kelurahan: 'Kutabanjarnegara' },
-  // Purwareja Klampok
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Banjarnegara', kecamatan: 'Purwareja Klampok', kelurahan: 'Kaliori' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Banjarnegara', kecamatan: 'Purwareja Klampok', kelurahan: 'Pagak' },
-
-  // --- Kabupaten Cilacap ---
-  // Cilacap Selatan
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Cilacap', kecamatan: 'Cilacap Selatan', kelurahan: 'Cilacap' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Cilacap', kecamatan: 'Cilacap Selatan', kelurahan: 'Donan' },
-  // Cilacap Tengah
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Cilacap', kecamatan: 'Cilacap Tengah', kelurahan: 'Gunung Simping' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Cilacap', kecamatan: 'Cilacap Tengah', kelurahan: 'Lomanis' },
-
-  // --- Kabupaten Banyumas ---
-  // Purwokerto Timur
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Banyumas', kecamatan: 'Purwokerto Timur', kelurahan: 'Arcawinangun' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Banyumas', kecamatan: 'Purwokerto Timur', kelurahan: 'Mersi' },
-  // Purwokerto Selatan
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Banyumas', kecamatan: 'Purwokerto Selatan', kelurahan: 'Tanjung' },
-  { provinsi: 'Jawa Tengah', kabupaten: 'Kabupaten Banyumas', kecamatan: 'Purwokerto Selatan', kelurahan: 'Karangpucung' },
-]
+const jatengTree: WilayahTree = {
+  'Jawa Tengah': {
+    'Kota Semarang': {
+      'Semarang Tengah': ['Sekayu', 'Miroto', 'Kauman', 'Bangunharjo', 'Jagalan'],
+      'Semarang Selatan': ['Pleburan', 'Lamper Lor', 'Mugassari', 'Bulustalan', 'Lamper Tengah'],
+      'Semarang Utara': ['Bulu Lor', 'Panggung Lor', 'Plombokan', 'Kuningan', 'Dadapsari'],
+      'Gajahmungkur': ['Gajahmungkur', 'Karangrejo', 'Bendan Ngisor', 'Bendan Duwur', 'Lempongsari'],
+      'Candisari': ['Candi', 'Jatingaleh', 'Kaliwiru', 'Jomblang', 'Karanganyar Gunung'],
+      'Tembalang': ['Tembalang', 'Bulusan', 'Kramas', 'Sendangmulyo', 'Mangunharjo'],
+      'Banyumanik': ['Banyumanik', 'Srondol Wetan', 'Pudakpayung', 'Jabungan', 'Padangsari'],
+      'Pedurungan': ['Pedurungan Tengah', 'Tlogosari Wetan', 'Kalicari', 'Gemah', 'Muktiharjo Kidul'],
+    },
+    'Kabupaten Semarang': {
+      'Ungaran Barat': ['Ungaran', 'Genuk', 'Bandarjo', 'Langensari', 'Candirejo'],
+      'Ungaran Timur': ['Leyangan', 'Sidomulyo', 'Kalongan', 'Susukan', 'Mluweh'],
+      'Banyubiru': ['Banyubiru', 'Kebondowo', 'Banyukuning', 'Gedong', 'Rowoboni'],
+      'Ambarawa': ['Panjang', 'Lodoyong', 'Pojoksari', 'Kupang', 'Kranggan'],
+    },
+    'Kota Surakarta': {
+      'Banjarsari': ['Banyuanyar', 'Sumber', 'Nusukan', 'Kadipiro', 'Joglo'],
+      'Laweyan': ['Laweyan', 'Pajang', 'Bumi', 'Sriwedari', 'Penumping'],
+      'Serengan': ['Kemlayan', 'Serengan', 'Kratonan', 'Jayengan', 'Tipes'],
+      'Pasar Kliwon': ['Kampung Baru', 'Pasar Kliwon', 'Joyontakan', 'Kedunglumbu', 'Gajahan'],
+      'Jebres': ['Jebres', 'Mojosongo', 'Pucang Sawit', 'Tegalharjo', 'Sudiroprajan'],
+    },
+    'Kabupaten Klaten': {
+      'Klaten Tengah': ['Klaten', 'Tonggalan', 'Bareng', 'Gergunung', 'Gayamprit'],
+      'Klaten Selatan': ['Merbung', 'Trunuh', 'Tegalyoso', 'Glodogan', 'Joho'],
+      'Klaten Utara': ['Gergunung', 'Bareng', 'Sekarsuli', 'Dengkeng', 'Ngerangan'],
+      'Prambanan': ['Prambanan', 'Bugisan', 'Bojongan', 'Kebondalem Kidul', 'Pereng'],
+    },
+    'Kabupaten Magelang': {
+      'Mertoyudan': ['Mertoyudan', 'Pasuruhan', 'Danurejo', 'Jogonegoro', 'Banyuurip'],
+      'Muntilan': ['Muntilan', 'Gunungpring', 'Congkrang', 'Pucungrejo', 'Sedangagung'],
+      'Mungkid': ['Mungkid', 'Progowati', 'Paremono', 'Rambeanak', 'Sumberrejo'],
+    },
+    'Kota Magelang': {
+      'Magelang Tengah': ['Cacaban', 'Magelang', 'Kemirirejo', 'Panjang', 'Rejowinangun Selatan'],
+      'Magelang Selatan': ['Tidar Selatan', 'Jurang Ombo Utara', 'Rejowinangun Utara', 'Tidar Utara'],
+      'Magelang Utara': ['Kedungsari', 'Potrobangsan', 'Kramat Selatan', 'Kramat Utara'],
+    },
+    'Kabupaten Purworejo': {
+      'Purworejo': ['Purworejo', 'Sindurjan', 'Pangen Gudang', 'Pangen Juru Tengah', 'Baledono'],
+      'Kutoarjo': ['Kutoarjo', 'Semawung Daleman', 'Karangduwur', 'Suren', 'Wirun'],
+      'Bayan': ['Bayan', 'Krandegan', 'Kwarasan', 'Ketawangrejo'],
+    },
+    'Kabupaten Temanggung': {
+      'Temanggung': ['Temanggung I', 'Temanggung II', 'Tlogorejo', 'Kowangan', 'Jurang'],
+      'Parakan': ['Parakan Kauman', 'Parakan Wetan', 'Campursari', 'Depok', 'Traji'],
+      'Kedu': ['Kedu', 'Candirejo', 'Mergowati', 'Ngadimulyo'],
+    },
+    'Kabupaten Kebumen': {
+      'Kebumen': ['Kebumen', 'Tamanwinangun', 'Muktisari', 'Bumirejo', 'Kalirejo'],
+      'Gombong': ['Gombong', 'Semanding', 'Wero', 'Klopogoro', 'Banjarsari'],
+      'Karanganyar': ['Karanganyar', 'Tersobo', 'Kalibening', 'Wonokerto', 'Plarangan'],
+    },
+    'Kabupaten Boyolali': {
+      'Boyolali': ['Boyolali', 'Kiringan', 'Banaran', 'Karanggeneng', 'Siswodipuran'],
+      'Ngemplak': ['Ngargorejo', 'Donohudan', 'Sawahan', 'Gagaksipat', 'Mangu'],
+      'Banyudono': ['Trayu', 'Bendan', 'Cangkringan', 'Banyudono', 'Bangak'],
+    },
+    'Kabupaten Sukoharjo': {
+      'Sukoharjo': ['Begajah', 'Jetis', 'Kenep', 'Mandan', 'Gayam'],
+      'Kartasura': ['Kartasura', 'Ngadirejo', 'Pucangan', 'Ngabeyan', 'Singopuran'],
+      'Grogol': ['Grogol', 'Madegondo', 'Manang', 'Gedangan', 'Parangjoro'],
+    },
+    'Kabupaten Wonogiri': {
+      'Wonogiri': ['Wonokarto', 'Pokoh Kidul', 'Wonoboyo', 'Nambangan Lor', 'Giripurwo'],
+      'Selogiri': ['Jendi', 'Pule', 'Kaliancar', 'Gemantar', 'Kepatihan'],
+      'Jatipurno': ['Jatipurno', 'Girimargo', 'Balepanjang', 'Slogohimo'],
+    },
+    'Kabupaten Karanganyar': {
+      'Karanganyar': ['Karanganyar', 'Tegalgede', 'Jantiharjo', 'Popongan', 'Bejen'],
+      'Colomadu': ['Gawanan', 'Malangjiwan', 'Tohudan', 'Blulukan', 'Bolon'],
+      'Jaten': ['Jaten', 'Dagen', 'Jetis', 'Ngringo', 'Sroyo'],
+    },
+    'Kabupaten Sragen': {
+      'Sragen': ['Sragen Kulon', 'Sragen Tengah', 'Nglorog', 'Sine', 'Kroyo'],
+      'Sidoharjo': ['Jati', 'Setren', 'Kacangan', 'Purwosuman', 'Patihan'],
+      'Gemolong': ['Gemolong', 'Brangkal', 'Nganti', 'Tegaldowo', 'Purworejo'],
+    },
+    'Kabupaten Kudus': {
+      'Kudus': ['Kauman', 'Demaan', 'Panjunan', 'Janggalan', 'Langgardalem'],
+      'Jati': ['Jati Wetan', 'Getas Pejaten', 'Pasuruhan Lor', 'Loram Wetan', 'Loram Kulon'],
+      'Mejobo': ['Mejobo', 'Hadiwarno', 'Kesambi', 'Golantepus', 'Temulus'],
+    },
+    'Kabupaten Jepara': {
+      'Jepara': ['Saripan', 'Demaan', 'Panggang', 'Potroyudan', 'Bapangan'],
+      'Tahunan': ['Tahunan', 'Mantingan', 'Krapyak', 'Ngabul', 'Petekeyan'],
+      'Mlonggo': ['Mlonggo', 'Jambu', 'Suwawal', 'Blingoh', 'Telukawur'],
+    },
+    'Kabupaten Pati': {
+      'Pati': ['Pati Kidul', 'Pati Lor', 'Plangitan', 'Winong', 'Parenggan'],
+      'Gabus': ['Tlogoayu', 'Gabus', 'Babalan', 'Kosekan', 'Kayen'],
+      'Jakenan': ['Jakenan', 'Tondomulyo', 'Trimulyo', 'Gosono', 'Bungasrejo'],
+    },
+    'Kabupaten Demak': {
+      'Demak': ['Bintoro', 'Mangunjiwan', 'Mulyorejo', 'Turirejo', 'Katonsari'],
+      'Mranggen': ['Mranggen', 'Bandungrejo', 'Batursari', 'Brumbungan', 'Kebonbatur'],
+      'Karangawen': ['Karangawen', 'Sidomulyo', 'Rejosari', 'Bumirejo', 'Margohayu'],
+    },
+    'Kabupaten Grobogan': {
+      'Purwodadi': ['Purwodadi', 'Danyang', 'Kuripan', 'Kalongan', 'Pohsari'],
+      'Wirosari': ['Wirosari', 'Karangasem', 'Tambahrejo', 'Gedangan', 'Dokoro'],
+      'Godong': ['Godong', 'Bugel', 'Tumbrep', 'Harjowinangun', 'Manggarmas'],
+    },
+    'Kabupaten Blora': {
+      'Blora': ['Kauman', 'Mlangsen', 'Bangkle', 'Blorabaru', 'Kunden'],
+      'Cepu': ['Cepu', 'Balun', 'Karang Boyo', 'Ngraho', 'Mulyorejo'],
+      'Randublatung': ['Randublatung', 'Pilang', 'Wado', 'Ngliron', 'Bodeh'],
+    },
+    'Kabupaten Rembang': {
+      'Rembang': ['Magersari', 'Leteh', 'Pasar Banggi', 'Kabongan Kidul', 'Tasikagung'],
+      'Lasem': ['Lasem', 'Soditan', 'Sumbergirang', 'Karangtengah', 'Jolotundo'],
+      'Kragan': ['Kragan', 'Tegalmulyo', 'Pandangan Wetan', 'Pambon', 'Terjan'],
+    },
+    'Kota Salatiga': {
+      'Argomulyo': ['Cebongan', 'Ledok', 'Tegalrejo', 'Randuacir', 'Kumpulrejo'],
+      'Tingkir': ['Tingkir Lor', 'Tingkir Tengah', 'Kalibening', 'Sidorejo Kidul', 'Gendongan'],
+      'Sidorejo': ['Blotongan', 'Bugel', 'Sidorejo Lor', 'Pulutan', 'Kauman Kidul'],
+    },
+    'Kabupaten Wonosobo': {
+      'Wonosobo': ['Wonosobo Timur', 'Wonosobo Barat', 'Jaraksari', 'Sambek', 'Kalibeber'],
+      'Mojotengah': ['Mojosari', 'Kejajar', 'Blederan', 'Bumirejo', 'Tirto'],
+      'Selomerto': ['Selomerto', 'Mlipak', 'Tegalgot', 'Krasak'],
+    },
+    'Kabupaten Banjarnegara': {
+      'Banjarnegara': ['Parakancanggah', 'Kutabanjarnegara', 'Ampelsari', 'Krandegan', 'Sokanandi'],
+      'Purwareja Klampok': ['Kaliori', 'Pagak', 'Kecitran', 'Gumelem Kulon', 'Gumelem Wetan'],
+      'Purwanegara': ['Purwanegara', 'Kalimandi', 'Bandingan', 'Merden', 'Karanganyar'],
+      'Sigaluh': ['Sigaluh', 'Kendaga', 'Karangjambe', 'Bandingan'],
+      'Mandiraja': ['Mandiraja Kulon', 'Mandiraja Wetan', 'Kebakalan', 'Sumberejo'],
+    },
+    'Kabupaten Cilacap': {
+      'Cilacap Selatan': ['Cilacap', 'Donan', 'Tegalreja', 'Kutawaru', 'Tambakreja'],
+      'Cilacap Tengah': ['Gunung Simping', 'Lomanis', 'Sidakaya', 'Gumilir', 'Kebonmanis'],
+      'Cilacap Utara': ['Gumilir', 'Karangtalun', 'Mertasinga', 'Tritih Kulon'],
+    },
+    'Kabupaten Banyumas': {
+      'Purwokerto Timur': ['Arcawinangun', 'Mersi', 'Purwokerto Wetan', 'Sokanegara', 'Bancarkembar'],
+      'Purwokerto Selatan': ['Tanjung', 'Karangpucung', 'Berkoh', 'Sumampir', 'Teluk'],
+      'Purwokerto Utara': ['Grendeng', 'Bobosan', 'Pabuaran', 'Purwanegara', 'Kranji'],
+    },
+    'Kabupaten Pemalang': {
+      'Pemalang': ['Mulyoharjo', 'Pelutan', 'Bojongbata', 'Sugihwaras', 'Kebondalem'],
+      'Taman': ['Taman', 'Kejambon', 'Sitemu', 'Banjardawa', 'Kabunan'],
+      'Comal': ['Comal', 'Sarwodadi', 'Purwoharjo', 'Kauman', 'Kaligelang'],
+    },
+    'Kabupaten Pekalongan': {
+      'Pekalongan Barat': ['Medono', 'Podosugih', 'Sapuro Kebulen', 'Bendan Kergon', 'Tirto'],
+      'Kedungwuni': ['Kedungwuni Timur', 'Kedungwuni Barat', 'Podo', 'Pajomblangan', 'Langkap'],
+      'Wiradesa': ['Wiradesa', 'Pecakaran', 'Pekuncen', 'Sijambe', 'Rowoyoso'],
+    },
+    'Kota Pekalongan': {
+      'Pekalongan Barat': ['Medono', 'Podosugih', 'Sapuro Kebulen', 'Bendan Kergon'],
+      'Pekalongan Timur': ['Gamer', 'Kauman', 'Landungsari', 'Noyontaansari', 'Setono'],
+      'Pekalongan Selatan': ['Jenggot', 'Banyurip Alit', 'Banyurip Ageng', 'Yosorejo'],
+    },
+    'Kota Tegal': {
+      'Tegal Barat': ['Muarareja', 'Debong Lor', 'Kemandungan', 'Pesurungan Lor', 'Keturen'],
+      'Tegal Timur': ['Panggung', 'Tegalsari', 'Mintaragen', 'Kejambon', 'Slerok'],
+      'Margadana': ['Margadana', 'Cabawan', 'Kalinyamat Wetan', 'Pesurungan Kidul'],
+    },
+    'Kabupaten Tegal': {
+      'Slawi': ['Slawi Kulon', 'Slawi Wetan', 'Kagok', 'Kudaile', 'Dukuhsalam'],
+      'Adiwerna': ['Adiwerna', 'Kaliwadas', 'Dampyak', 'Debong Kulon', 'Lembasari'],
+      'Talang': ['Talang', 'Pesarean', 'Cangkring', 'Kebasen', 'Langgen'],
+    },
+    'Kabupaten Brebes': {
+      'Brebes': ['Limbangan Kulon', 'Limbangan Wetan', 'Brebes', 'Gandasuli', 'Pasar Batang'],
+      'Tanjung': ['Tanjung', 'Sengon', 'Krakahan', 'Pejagan', 'Kemurang Kulon'],
+      'Bumiayu': ['Bumiayu', 'Kalinusu', 'Kalilangkap', 'Laren', 'Dukuhturi'],
+    },
+    'Kabupaten Purbalingga': {
+      'Purbalingga': ['Purbalingga Wetan', 'Purbalingga Kulon', 'Purbalingga Kidul', 'Purbalingga Lor', 'Bancar'],
+      'Kalimanah': ['Kalimanah', 'Sidanegara', 'Blater', 'Kembaran Kulon', 'Selabaya'],
+      'Padamara': ['Padamara', 'Prigi', 'Banjaran', 'Karangjoho', 'Kalimandi'],
+    },
+  },
+}
 
 // ============================================================
 // JAWA TIMUR
 // ============================================================
 
-const jatim: WilayahRecord[] = [
-  // --- Kota Surabaya ---
-  // Gubeng
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Gubeng', kelurahan: 'Mojo' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Gubeng', kelurahan: 'Airlangga' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Gubeng', kelurahan: 'Kertajaya' },
-  // Tambaksari
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Tambaksari', kelurahan: 'Tambaksari' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Tambaksari', kelurahan: 'Kapas Madya Baru' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Tambaksari', kelurahan: 'Ploso' },
-  // Rungkut
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Rungkut', kelurahan: 'Kedung Baruk' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Rungkut', kelurahan: 'Penjaringan Sari' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Rungkut', kelurahan: 'Rungkut Kidul' },
-  // Sukolilo
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Sukolilo', kelurahan: 'Keputih' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Sukolilo', kelurahan: 'Klampis Ngasem' },
-  // Mulyorejo
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Mulyorejo', kelurahan: 'Mulyorejo' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Mulyorejo', kelurahan: 'Kalijudan' },
-  // Kenjeran
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Kenjeran', kelurahan: 'Sidotopo Wetan' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Kenjeran', kelurahan: 'Tanah Kali Kedinding' },
-  // Semampir
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Semampir', kelurahan: 'Ampel' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Semampir', kelurahan: 'Pegirian' },
-  // Krembangan
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Krembangan', kelurahan: 'Dupak' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Krembangan', kelurahan: 'Krembangan Selatan' },
-  // Bubutan
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Bubutan', kelurahan: 'Bubutan' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Bubutan', kelurahan: 'Tembok Dukuh' },
-  // Genteng
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Genteng', kelurahan: 'Genteng' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Genteng', kelurahan: 'Ketabang' },
-  // Tegalsari
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Tegalsari', kelurahan: 'Tegalsari' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Tegalsari', kelurahan: 'Dr Soetomo' },
-  // Sawahan
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Sawahan', kelurahan: 'Sawahan' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Sawahan', kelurahan: 'Putat Jaya' },
-  // Wonokromo
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Wonokromo', kelurahan: 'Wonokromo' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Wonokromo', kelurahan: 'Ngagelrejo' },
-  // Gayungan
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Gayungan', kelurahan: 'Gayungan' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Gayungan', kelurahan: 'Dukuh Menanggal' },
-  // Sukomanunggal
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Sukomanunggal', kelurahan: 'Sukomanunggal' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Surabaya', kecamatan: 'Sukomanunggal', kelurahan: 'Tandes Lor' },
-
-  // --- Kota Malang ---
-  // Klojen
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Malang', kecamatan: 'Klojen', kelurahan: 'Klojen' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Malang', kecamatan: 'Klojen', kelurahan: 'Kauman' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Malang', kecamatan: 'Klojen', kelurahan: 'Kiduldalem' },
-  // Blimbing
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Malang', kecamatan: 'Blimbing', kelurahan: 'Blimbing' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Malang', kecamatan: 'Blimbing', kelurahan: 'Purwantoro' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Malang', kecamatan: 'Blimbing', kelurahan: 'Polowijen' },
-  // Kedungkandang
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Malang', kecamatan: 'Kedungkandang', kelurahan: 'Kedungkandang' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Malang', kecamatan: 'Kedungkandang', kelurahan: 'Cemorokandang' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Malang', kecamatan: 'Kedungkandang', kelurahan: 'Arjowinangun' },
-  // Sukun
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Malang', kecamatan: 'Sukun', kelurahan: 'Sukun' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Malang', kecamatan: 'Sukun', kelurahan: 'Bandungrejosari' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Malang', kecamatan: 'Sukun', kelurahan: 'Ciptomulyo' },
-  // Lowokwaru
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Malang', kecamatan: 'Lowokwaru', kelurahan: 'Lowokwaru' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Malang', kecamatan: 'Lowokwaru', kelurahan: 'Sumbersari' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Malang', kecamatan: 'Lowokwaru', kelurahan: 'Ketawanggede' },
-
-  // --- Kabupaten Malang ---
-  // Kepanjen
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Malang', kecamatan: 'Kepanjen', kelurahan: 'Kepanjen' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Malang', kecamatan: 'Kepanjen', kelurahan: 'Penarukan' },
-  // Singosari
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Malang', kecamatan: 'Singosari', kelurahan: 'Pagentan' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Malang', kecamatan: 'Singosari', kelurahan: 'Wonorejo' },
-  // Lawang
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Malang', kecamatan: 'Lawang', kelurahan: 'Lawang' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Malang', kecamatan: 'Lawang', kelurahan: 'Sidodadi' },
-  // Turen
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Malang', kecamatan: 'Turen', kelurahan: 'Turen' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Malang', kecamatan: 'Turen', kelurahan: 'Talok' },
-
-  // --- Kota Kediri ---
-  // Kota
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Kediri', kecamatan: 'Kota', kelurahan: 'Kemasan' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Kediri', kecamatan: 'Kota', kelurahan: 'Ngronggo' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Kediri', kecamatan: 'Kota', kelurahan: 'Pakelan' },
-  // Pesantren
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Kediri', kecamatan: 'Pesantren', kelurahan: 'Pesantren' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Kediri', kecamatan: 'Pesantren', kelurahan: 'Tosaren' },
-  // Mojoroto
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Kediri', kecamatan: 'Mojoroto', kelurahan: 'Mojoroto' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Kediri', kecamatan: 'Mojoroto', kelurahan: 'Lirboyo' },
-
-  // --- Kabupaten Kediri ---
-  // Kediri
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Kediri', kecamatan: 'Kediri', kelurahan: 'Burengan' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Kediri', kecamatan: 'Kediri', kelurahan: 'Sukorame' },
-  // Pare
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Kediri', kecamatan: 'Pare', kelurahan: 'Pare' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Kediri', kecamatan: 'Pare', kelurahan: 'Tulungrejo' },
-  // Ngasem
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Kediri', kecamatan: 'Ngasem', kelurahan: 'Ngasem' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Kediri', kecamatan: 'Ngasem', kelurahan: 'Sumberejo' },
-
-  // --- Kota Blitar ---
-  // Kepanjen Kidul
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Blitar', kecamatan: 'Kepanjen Kidul', kelurahan: 'Kepanjen Kidul' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Blitar', kecamatan: 'Kepanjen Kidul', kelurahan: 'Karangsari' },
-  // Sukorejo
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Blitar', kecamatan: 'Sukorejo', kelurahan: 'Sukorejo' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Blitar', kecamatan: 'Sukorejo', kelurahan: 'Tlumpu' },
-
-  // --- Kabupaten Blitar ---
-  // Sutojayan
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Blitar', kecamatan: 'Sutojayan', kelurahan: 'Sutojayan' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Blitar', kecamatan: 'Sutojayan', kelurahan: 'Kedungsari' },
-  // Kanigoro
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Blitar', kecamatan: 'Kanigoro', kelurahan: 'Kanigoro' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Blitar', kecamatan: 'Kanigoro', kelurahan: 'Papungan' },
-
-  // --- Kota Madiun ---
-  // Mangunharjo
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Madiun', kecamatan: 'Mangunharjo', kelurahan: 'Mangunharjo' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Madiun', kecamatan: 'Mangunharjo', kelurahan: 'Kartoharjo' },
-  // Manguharjo
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Madiun', kecamatan: 'Manguharjo', kelurahan: 'Manguharjo' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Madiun', kecamatan: 'Manguharjo', kelurahan: 'Madiun Lor' },
-
-  // --- Kabupaten Madiun ---
-  // Madiun
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Madiun', kecamatan: 'Madiun', kelurahan: 'Kuncen' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Madiun', kecamatan: 'Madiun', kelurahan: 'Pandean' },
-  // Mejayan
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Madiun', kecamatan: 'Mejayan', kelurahan: 'Krajan' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Madiun', kecamatan: 'Mejayan', kelurahan: 'Mejayan' },
-
-  // --- Kabupaten Jember ---
-  // Kaliwates
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Jember', kecamatan: 'Kaliwates', kelurahan: 'Kaliwates' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Jember', kecamatan: 'Kaliwates', kelurahan: 'Mangli' },
-  // Sumbersari
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Jember', kecamatan: 'Sumbersari', kelurahan: 'Sumbersari' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Jember', kecamatan: 'Sumbersari', kelurahan: 'Kranjingan' },
-  // Patrang
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Jember', kecamatan: 'Patrang', kelurahan: 'Patrang' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Jember', kecamatan: 'Patrang', kelurahan: 'Baratan' },
-
-  // --- Kabupaten Banyuwangi ---
-  // Banyuwangi
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Banyuwangi', kecamatan: 'Banyuwangi', kelurahan: 'Penganjuran' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Banyuwangi', kecamatan: 'Banyuwangi', kelurahan: 'Kepatihan' },
-  // Rogojampi
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Banyuwangi', kecamatan: 'Rogojampi', kelurahan: 'Rogojampi' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Banyuwangi', kecamatan: 'Rogojampi', kelurahan: 'Lemahbang Kulon' },
-  // Genteng
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Banyuwangi', kecamatan: 'Genteng', kelurahan: 'Genteng Kulon' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Banyuwangi', kecamatan: 'Genteng', kelurahan: 'Genteng Wetan' },
-
-  // --- Kabupaten Jombang ---
-  // Jombang
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Jombang', kecamatan: 'Jombang', kelurahan: 'Jombang' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Jombang', kecamatan: 'Jombang', kelurahan: 'Kaliwungu' },
-  // Mojoagung
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Jombang', kecamatan: 'Mojoagung', kelurahan: 'Mojoagung' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Jombang', kecamatan: 'Mojoagung', kelurahan: 'Gambiran' },
-  // Tembelang
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Jombang', kecamatan: 'Tembelang', kelurahan: 'Pesantren' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Jombang', kecamatan: 'Tembelang', kelurahan: 'Sumber Nongko' },
-
-  // --- Kabupaten Mojokerto ---
-  // Mojosari
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Mojokerto', kecamatan: 'Mojosari', kelurahan: 'Mojosari' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Mojokerto', kecamatan: 'Mojosari', kelurahan: 'Kedungsari' },
-  // Sooko
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Mojokerto', kecamatan: 'Sooko', kelurahan: 'Sooko' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Mojokerto', kecamatan: 'Sooko', kelurahan: 'Sambiroto' },
-  // Pungging
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Mojokerto', kecamatan: 'Pungging', kelurahan: 'Tunggalpager' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Mojokerto', kecamatan: 'Pungging', kelurahan: 'Pungging' },
-
-  // --- Kota Mojokerto ---
-  // Prajuritkulon
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Mojokerto', kecamatan: 'Prajuritkulon', kelurahan: 'Prajuritkulon' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Mojokerto', kecamatan: 'Prajuritkulon', kelurahan: 'Mentikan' },
-  // Magersari
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Mojokerto', kecamatan: 'Magersari', kelurahan: 'Magersari' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Mojokerto', kecamatan: 'Magersari', kelurahan: 'Miji' },
-
-  // --- Kabupaten Sidoarjo ---
-  // Sidoarjo
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Sidoarjo', kecamatan: 'Sidoarjo', kelurahan: 'Sidoarjo' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Sidoarjo', kecamatan: 'Sidoarjo', kelurahan: 'Lemahputro' },
-  // Waru
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Sidoarjo', kecamatan: 'Waru', kelurahan: 'Waru' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Sidoarjo', kecamatan: 'Waru', kelurahan: 'Pepelegi' },
-  // Taman
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Sidoarjo', kecamatan: 'Taman', kelurahan: 'Taman' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Sidoarjo', kecamatan: 'Taman', kelurahan: 'Jemundo' },
-
-  // --- Kabupaten Gresik ---
-  // Gresik
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Gresik', kecamatan: 'Gresik', kelurahan: 'Gresik' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Gresik', kecamatan: 'Gresik', kelurahan: 'Lumpur' },
-  // Kebomas
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Gresik', kecamatan: 'Kebomas', kelurahan: 'Kebomas' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Gresik', kecamatan: 'Kebomas', kelurahan: 'Tenggulunan' },
-  // Manyar
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Gresik', kecamatan: 'Manyar', kelurahan: 'Banyuwangi' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Gresik', kecamatan: 'Manyar', kelurahan: 'Suci' },
-
-  // --- Kabupaten Lamongan ---
-  // Lamongan
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Lamongan', kecamatan: 'Lamongan', kelurahan: 'Lamongan' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Lamongan', kecamatan: 'Lamongan', kelurahan: 'Tumenggungan' },
-  // Paciran
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Lamongan', kecamatan: 'Paciran', kelurahan: 'Paciran' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Lamongan', kecamatan: 'Paciran', kelurahan: 'Drajat' },
-  // Brondong
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Lamongan', kecamatan: 'Brondong', kelurahan: 'Brondong' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Lamongan', kecamatan: 'Brondong', kelurahan: 'Lohgung' },
-
-  // --- Kabupaten Pasuruan ---
-  // Pandaan
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Pasuruan', kecamatan: 'Pandaan', kelurahan: 'Pandaan' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Pasuruan', kecamatan: 'Pandaan', kelurahan: 'Petungasri' },
-  // Bangil
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Pasuruan', kecamatan: 'Bangil', kelurahan: 'Bangil' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Pasuruan', kecamatan: 'Bangil', kelurahan: 'Raci' },
-  // Gempol
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Pasuruan', kecamatan: 'Gempol', kelurahan: 'Gempol' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Pasuruan', kecamatan: 'Gempol', kelurahan: 'Wonosunyo' },
-
-  // --- Kota Pasuruan ---
-  // Purworejo
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Pasuruan', kecamatan: 'Purworejo', kelurahan: 'Purworejo' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Pasuruan', kecamatan: 'Purworejo', kelurahan: 'Blandongan' },
-  // Bugul Kidul
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Pasuruan', kecamatan: 'Bugul Kidul', kelurahan: 'Blandongan' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kota Pasuruan', kecamatan: 'Bugul Kidul', kelurahan: 'Bugul Lor' },
-
-  // --- Kabupaten Probolinggo ---
-  // Kraksaan
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Probolinggo', kecamatan: 'Kraksaan', kelurahan: 'Patokan' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Probolinggo', kecamatan: 'Kraksaan', kelurahan: 'Kandangjati Kulon' },
-  // Dringu
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Probolinggo', kecamatan: 'Dringu', kelurahan: 'Dringu' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Probolinggo', kecamatan: 'Dringu', kelurahan: 'Sumberagung' },
-
-  // --- Kabupaten Lumajang ---
-  // Lumajang
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Lumajang', kecamatan: 'Lumajang', kelurahan: 'Tompokersan' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Lumajang', kecamatan: 'Lumajang', kelurahan: 'Ditotrunan' },
-  // Tekung
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Lumajang', kecamatan: 'Tekung', kelurahan: 'Tekung' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Lumajang', kecamatan: 'Tekung', kelurahan: 'Kutorenon' },
-
-  // --- Kabupaten Tulungagung ---
-  // Tulungagung
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Tulungagung', kecamatan: 'Tulungagung', kelurahan: 'Kauman' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Tulungagung', kecamatan: 'Tulungagung', kelurahan: 'Kepatihan' },
-  // Boyolangu
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Tulungagung', kecamatan: 'Boyolangu', kelurahan: 'Boyolangu' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Tulungagung', kecamatan: 'Boyolangu', kelurahan: 'Bono' },
-  // Kedungwaru
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Tulungagung', kecamatan: 'Kedungwaru', kelurahan: 'Kedungwaru' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Tulungagung', kecamatan: 'Kedungwaru', kelurahan: 'Bawang' },
-
-  // --- Kabupaten Nganjuk ---
-  // Nganjuk
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Nganjuk', kecamatan: 'Nganjuk', kelurahan: 'Mangundikaran' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Nganjuk', kecamatan: 'Nganjuk', kelurahan: 'Kauman' },
-  // Kertosono
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Nganjuk', kecamatan: 'Kertosono', kelurahan: 'Kertosono' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Nganjuk', kecamatan: 'Kertosono', kelurahan: 'Banaran' },
-
-  // --- Kabupaten Bojonegoro ---
-  // Bojonegoro
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Bojonegoro', kecamatan: 'Bojonegoro', kelurahan: 'Sumbang' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Bojonegoro', kecamatan: 'Bojonegoro', kelurahan: 'Ledok Wetan' },
-  // Padangan
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Bojonegoro', kecamatan: 'Padangan', kelurahan: 'Padangan' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Bojonegoro', kecamatan: 'Padangan', kelurahan: 'Ngradin' },
-
-  // --- Kabupaten Tuban ---
-  // Tuban
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Tuban', kecamatan: 'Tuban', kelurahan: 'Kutorejo' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Tuban', kecamatan: 'Tuban', kelurahan: 'Doromukti' },
-  // Jenu
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Tuban', kecamatan: 'Jenu', kelurahan: 'Jenu' },
-  { provinsi: 'Jawa Timur', kabupaten: 'Kabupaten Tuban', kecamatan: 'Jenu', kelurahan: 'Remen' },
-]
+const jatimTree: WilayahTree = {
+  'Jawa Timur': {
+    'Kota Surabaya': {
+      'Gubeng': ['Mojo', 'Airlangga', 'Kertajaya', 'Pucangsewu', 'Baratajaya', 'Pucang Sewu'],
+      'Tambaksari': ['Tambaksari', 'Kapas Madya Baru', 'Ploso', 'Pacarkembang', 'Gading', 'Rangkah', 'Dukuh Setro'],
+      'Rungkut': ['Kedung Baruk', 'Penjaringan Sari', 'Rungkut Kidul', 'Kalirungkut', 'Medokan Ayu', 'Wonorejo'],
+      'Sukolilo': ['Keputih', 'Klampis Ngasem', 'Gebang Putih', 'Medokan Semampir', 'Semolowaru', 'Nginden Jangkungan'],
+      'Mulyorejo': ['Mulyorejo', 'Kalijudan', 'Dukuh Sutorejo', 'Kejawan Putih Tambak', 'Kalisari', 'Manyar Sabrangan'],
+      'Kenjeran': ['Sidotopo Wetan', 'Tanah Kali Kedinding', 'Bulak Banteng', 'Tambak Wedi'],
+      'Semampir': ['Ampel', 'Pegirian', 'Ujung', 'Wonokusumo', 'Sidotopo'],
+      'Bubutan': ['Bubutan', 'Tembok Dukuh', 'Jepara', 'Gundih', 'Alun-Alun Contong'],
+      'Genteng': ['Genteng', 'Ketabang', 'Tegalsari', 'Kapasari', 'Embong Kaliasin'],
+      'Sawahan': ['Sawahan', 'Putat Jaya', 'Banyu Urip', 'Kupang Krajan', 'Petemon', 'Pakis'],
+      'Wonokromo': ['Wonokromo', 'Ngagelrejo', 'Ngagel', 'Darmo', 'Jagir', 'Jagiran'],
+      'Gayungan': ['Gayungan', 'Dukuh Menanggal', 'Ketintang', 'Menanggal'],
+      'Sukomanunggal': ['Sukomanunggal', 'Tandes Lor', 'Simo Mulyo', 'Simomulyo Baru', 'Simohilir'],
+      'Tegalsari': ['Tegalsari', 'Dr Soetomo', 'Keputran', 'Kedungdoro', 'Wonorejo'],
+      'Krembangan': ['Dupak', 'Krembangan Selatan', 'Krembangan Utara', 'Kemayoran', 'Perak Utara'],
+    },
+    'Kota Malang': {
+      'Klojen': ['Klojen', 'Kauman', 'Kiduldalem', 'Sukoharjo', 'Oro-Oro Dowo', 'Samaan', 'Bareng', 'Gadingkasri', 'Penanggungan', 'Rampalcelaket'],
+      'Blimbing': ['Blimbing', 'Purwantoro', 'Polowijen', 'Arjosari', 'Balearjosari', 'Bunulrejo', 'Kesatrian', 'Polehan', 'Ksatrian'],
+      'Kedungkandang': ['Kedungkandang', 'Cemorokandang', 'Arjowinangun', 'Mergosono', 'Kotalama', 'Bumiayu', 'Tlogowaru', 'Buring', 'Wonokoyo'],
+      'Sukun': ['Sukun', 'Bandungrejosari', 'Ciptomulyo', 'Pisangcandi', 'Tanjungrejo', 'Bakalan Krajan', 'Karang Besuki', 'Kebonsari', 'Mulyorejo'],
+      'Lowokwaru': ['Lowokwaru', 'Sumbersari', 'Ketawanggede', 'Jatimulyo', 'Tasikmadu', 'Tunggulwulung', 'Mojolangu', 'Tulusrejo', 'Merjosari', 'Dinoyo'],
+    },
+    'Kabupaten Malang': {
+      'Kepanjen': ['Kepanjen', 'Penarukan', 'Ardirejo', 'Panggungrejo', 'Jenggolo'],
+      'Singosari': ['Pagentan', 'Wonorejo', 'Ardimulyo', 'Klampok', 'Randuagung'],
+      'Lawang': ['Lawang', 'Sidodadi', 'Kalirejo', 'Bedali', 'Mulyoarjo'],
+      'Turen': ['Turen', 'Talok', 'Gedok', 'Sananrejo', 'Undaan'],
+    },
+    'Kota Kediri': {
+      'Kota': ['Kemasan', 'Ngronggo', 'Pakelan', 'Dandangan', 'Banjaran', 'Setonopande', 'Ringinanom'],
+      'Pesantren': ['Pesantren', 'Tosaren', 'Betet', 'Ngletih', 'Ketami'],
+      'Mojoroto': ['Mojoroto', 'Lirboyo', 'Bandar Kidul', 'Bandar Lor', 'Bujel', 'Gayam', 'Pojok'],
+    },
+    'Kabupaten Kediri': {
+      'Kediri': ['Burengan', 'Sukorame', 'Wonosari', 'Balowerti', 'Bandar'],
+      'Pare': ['Pare', 'Tulungrejo', 'Pelem', 'Bendo', 'Sumber Pilang'],
+      'Ngasem': ['Ngasem', 'Sumberejo', 'Joho', 'Paron', 'Cukir'],
+    },
+    'Kota Blitar': {
+      'Kepanjen Kidul': ['Kepanjen Kidul', 'Karangsari', 'Pakunden', 'Blitar', 'Tanggung'],
+      'Sukorejo': ['Sukorejo', 'Tlumpu', 'Turi', 'Sentul', 'Gedog'],
+      'Sananwetan': ['Sananwetan', 'Klampok', 'Rembang', 'Bendogerit', 'Kauman'],
+    },
+    'Kabupaten Blitar': {
+      'Sutojayan': ['Sutojayan', 'Kedungsari', 'Kalipang', 'Balerejo', 'Bakung'],
+      'Kanigoro': ['Kanigoro', 'Papungan', 'Gaprang', 'Gogodeso', 'Tlogo'],
+      'Ponggok': ['Ponggok', 'Kandangan', 'Sidorejo', 'Dadaplangu', 'Bendo'],
+    },
+    'Kota Madiun': {
+      'Mangunharjo': ['Mangunharjo', 'Kartoharjo', 'Nambangan Lor', 'Nambangan Kidul'],
+      'Manguharjo': ['Manguharjo', 'Madiun Lor', 'Klegen', 'Mojorejo', 'Sukosari'],
+      'Taman': ['Pandean', 'Banjarejo', 'Pilangbango', 'Demangan', 'Kejuron'],
+    },
+    'Kabupaten Madiun': {
+      'Madiun': ['Kuncen', 'Pandean', 'Bangunsari', 'Mojopurno', 'Ngampel'],
+      'Mejayan': ['Krajan', 'Mejayan', 'Bangunsari', 'Sidorejo', 'Tanjungrejo'],
+      'Caruban': ['Caruban', 'Rejosari', 'Tiron', 'Kradinan', 'Sumberejo'],
+    },
+    'Kabupaten Jember': {
+      'Kaliwates': ['Kaliwates', 'Mangli', 'Sempusari', 'Tegal Besar', 'Kebonsari'],
+      'Sumbersari': ['Sumbersari', 'Kranjingan', 'Antirogo', 'Wirolegi'],
+      'Patrang': ['Patrang', 'Baratan', 'Gebang', 'Jember Kidul', 'Slawu'],
+    },
+    'Kabupaten Banyuwangi': {
+      'Banyuwangi': ['Penganjuran', 'Kepatihan', 'Tamanbaru', 'Sobo', 'Pakis'],
+      'Rogojampi': ['Rogojampi', 'Lemahbang Kulon', 'Watukebo', 'Karangbendo', 'Tembokrejo'],
+      'Genteng': ['Genteng Kulon', 'Genteng Wetan', 'Kembiritan', 'Kaligondo', 'Setail'],
+    },
+    'Kabupaten Jombang': {
+      'Jombang': ['Jombang', 'Kaliwungu', 'Sambong', 'Sengon', 'Kepanjen'],
+      'Mojoagung': ['Mojoagung', 'Gambiran', 'Betek', 'Karobelah', 'Miagan'],
+      'Tembelang': ['Pesantren', 'Sumber Nongko', 'Kepuhkembeng', 'Mojokrapak', 'Bedahlawak'],
+    },
+    'Kabupaten Mojokerto': {
+      'Mojosari': ['Mojosari', 'Kedungsari', 'Sarirejo', 'Awang-awang', 'Leminggir'],
+      'Sooko': ['Sooko', 'Sambiroto', 'Ngrowo', 'Wringinanom', 'Karobelah'],
+      'Pungging': ['Tunggalpager', 'Pungging', 'Lebaksono', 'Balongmasin', 'Sekargadung'],
+    },
+    'Kota Mojokerto': {
+      'Prajuritkulon': ['Prajuritkulon', 'Mentikan', 'Kauman', 'Meri', 'Kranggan'],
+      'Magersari': ['Magersari', 'Miji', 'Sentanan', 'Purwotengah', 'Gunung Gedangan'],
+      'Kranggan': ['Kranggan', 'Wates', 'Surodinawan', 'Blooto'],
+    },
+    'Kabupaten Sidoarjo': {
+      'Sidoarjo': ['Sidoarjo', 'Lemahputro', 'Celep', 'Sekardangan', 'Pagerwojo'],
+      'Waru': ['Waru', 'Pepelegi', 'Tropodo', 'Medaeng', 'Berbek'],
+      'Taman': ['Taman', 'Jemundo', 'Kramat', 'Sepanjang', 'Geluran'],
+    },
+    'Kabupaten Gresik': {
+      'Gresik': ['Gresik', 'Lumpur', 'Karangpoh', 'Ngipik', 'Tlogopojok'],
+      'Kebomas': ['Kebomas', 'Tenggulunan', 'Suci', 'Sidomoro', 'Giri'],
+      'Manyar': ['Banyuwangi', 'Suci', 'Manyar Sidorukun', 'Roomo', 'Yosowilangun'],
+    },
+    'Kabupaten Lamongan': {
+      'Lamongan': ['Lamongan', 'Tumenggungan', 'Sidoharjo', 'Tlogoretno', 'Rancangkencono'],
+      'Paciran': ['Paciran', 'Drajat', 'Kandang Semangkon', 'Tunggul', 'Kranji'],
+      'Brondong': ['Brondong', 'Lohgung', 'Sedayulawas', 'Sroyo', 'Sendangharjo'],
+    },
+    'Kabupaten Pasuruan': {
+      'Pandaan': ['Pandaan', 'Petungasri', 'Sumbergedang', 'Tejowangi', 'Jogosari'],
+      'Bangil': ['Bangil', 'Raci', 'Gempeng', 'Kolursari', 'Kiduldalem'],
+      'Gempol': ['Gempol', 'Wonosunyo', 'Bulusari', 'Kepulungan', 'Legok'],
+    },
+    'Kota Pasuruan': {
+      'Purworejo': ['Purworejo', 'Blandongan', 'Pohjentrek', 'Kebonagung', 'Tambaan'],
+      'Bugul Kidul': ['Blandongan', 'Bugul Lor', 'Panggungrejo', 'Bakalan', 'Trajeng'],
+      'Gadingrejo': ['Gadingrejo', 'Karangketug', 'Kepel', 'Petahunan', 'Gentong'],
+    },
+    'Kabupaten Probolinggo': {
+      'Kraksaan': ['Patokan', 'Kandangjati Kulon', 'Kandangjati Wetan', 'Asembakor', 'Rangkang'],
+      'Dringu': ['Dringu', 'Sumberagung', 'Curahdringu', 'Randuputih', 'Tegalrejo'],
+      'Tongas': ['Tongas Wetan', 'Tongas Kulon', 'Dungun', 'Curah Tulis', 'Bayeman'],
+    },
+    'Kota Probolinggo': {
+      'Wonoasih': ['Wonoasih', 'Jrebeng Lor', 'Jrebeng Kidul', 'Sumber Taman', 'Kedung Asem'],
+      'Kademangan': ['Kademangan', 'Triwung Lor', 'Triwung Kidul', 'Pohsangit Lor', 'Ketapang'],
+      'Mayangan': ['Jati', 'Sukabumi', 'Mangunharjo', 'Wiroborang', 'Tisnonegaran'],
+    },
+    'Kabupaten Lumajang': {
+      'Lumajang': ['Tompokersan', 'Ditotrunan', 'Rogotrunan', 'Jogotrunan', 'Kepuharjo'],
+      'Tekung': ['Tekung', 'Kutorenon', 'Sumbersari', 'Sumberwudi', 'Tunjung'],
+      'Sukodono': ['Sukodono', 'Kebonsari', 'Kunir Lor', 'Kunir Kidul', 'Dawuhan'],
+    },
+    'Kabupaten Tulungagung': {
+      'Tulungagung': ['Kauman', 'Kepatihan', 'Bago', 'Tertek', 'Panggungrejo'],
+      'Boyolangu': ['Boyolangu', 'Bono', 'Serut', 'Gedangsewu', 'Winong'],
+      'Kedungwaru': ['Kedungwaru', 'Bawang', 'Bangoan', 'Ketanon', 'Tawangsari'],
+    },
+    'Kabupaten Nganjuk': {
+      'Nganjuk': ['Mangundikaran', 'Kauman', 'Begadung', 'Payaman', 'Mojorejo'],
+      'Kertosono': ['Kertosono', 'Banaran', 'Kutorejo', 'Plosoharjo', 'Kepanjen'],
+      'Bagor': ['Bagor', 'Bogo', 'Mbogo', 'Kandangan', 'Sidokare'],
+    },
+    'Kabupaten Bojonegoro': {
+      'Bojonegoro': ['Sumbang', 'Ledok Wetan', 'Jetak', 'Semanding', 'Kalirejo'],
+      'Padangan': ['Padangan', 'Ngradin', 'Ngeper', 'Purworejo', 'Cendono'],
+      'Kapas': ['Kapas', 'Bangilan', 'Mojo', 'Semambung', 'Tapelan'],
+    },
+    'Kabupaten Tuban': {
+      'Tuban': ['Kutorejo', 'Doromukti', 'Perbon', 'Latsari', 'Karang'],
+      'Jenu': ['Jenu', 'Remen', 'Beji', 'Sekardadi', 'Kaliuntu'],
+      'Plumpang': ['Plumpang', 'Bandungrejo', 'Klotok', 'Semanding', 'Kepoh'],
+    },
+    'Kabupaten Ponorogo': {
+      'Ponorogo': ['Tonatan', 'Nologaten', 'Kadipaten', 'Cokromenggalan', 'Mangkujayan'],
+      'Jenangan': ['Jenangan', 'Plalangan', 'Setono', 'Jimbe', 'Paringan'],
+      'Babadan': ['Babadan', 'Trisono', 'Ngumpul', 'Cekok', 'Bareng'],
+    },
+    'Kabupaten Magetan': {
+      'Magetan': ['Kepolorejo', 'Kapurejo', 'Tamanan', 'Magetan', 'Mangkujayan'],
+      'Barat': ['Barat', 'Jabung', 'Pragak', 'Buluharjo', 'Sumbergandu'],
+      'Karangrejo': ['Karangrejo', 'Sarangan', 'Ngiliran', 'Pacalan', 'Soco'],
+    },
+    'Kabupaten Ngawi': {
+      'Ngawi': ['Ngawi', 'Ketanggi', 'Kartoharjo', 'Grudo', 'Margomulyo'],
+      'Paron': ['Paron', 'Babadan', 'Banyubiru', 'Teguhan', 'Tempuran'],
+      'Geneng': ['Geneng', 'Sidorejo', 'Ngawi Purba', 'Karanggupito', 'Bendo'],
+    },
+    'Kabupaten Pacitan': {
+      'Pacitan': ['Pacitan', 'Sirnoboyo', 'Ploso', 'Bangunsari', 'Nanggungan'],
+      'Arjosari': ['Arjosari', 'Mlati', 'Karangrejo', 'Jatimalang', 'Borang'],
+      'Kebonagung': ['Kebonagung', 'Kalipelus', 'Sukoharjo', 'Kedungbendo', 'Wonodadi'],
+    },
+    'Kabupaten Trenggalek': {
+      'Trenggalek': ['Trenggalek', 'Ngantru', 'Sumbergedong', 'Kelutan', 'Surodakan'],
+      'Pogalan': ['Pogalan', 'Ngetal', 'Kedunglurah', 'Gembleb', 'Ngadimulyo'],
+      'Bendungan': ['Bendungan', 'Suruh', 'Srabah', 'Botoputih', 'Dompyong'],
+    },
+  },
+}
 
 // ============================================================
 // Main function
 // ============================================================
 
 async function main(): Promise<void> {
-  console.log('Memulai seed data wilayah lengkap (DIY + Jawa Tengah + Jawa Timur)...')
+  console.log('Memulai seed data wilayah lengkap (DI Yogyakarta + Jawa Tengah + Jawa Timur)...')
+
+  // Flatten semua data
+  const diyRecords = flattenTree(diyTree)
+  const jatengRecords = flattenTree(jatengTree)
+  const jatimRecords = flattenTree(jatimTree)
+
+  const totalExpected = diyRecords.length + jatengRecords.length + jatimRecords.length
+  console.log(`Data disiapkan: ${diyRecords.length} DIY + ${jatengRecords.length} Jateng + ${jatimRecords.length} Jatim = ${totalExpected} total`)
 
   // Hapus data wilayah yang ada
   console.log('Menghapus data wilayah lama...')
   const deleted = await prisma.wilayah.deleteMany()
-  console.log(`Dihapus: ${deleted.count} records`)
+  console.log(`Dihapus: ${deleted.count} records lama`)
 
-  // Insert DIY
-  console.log(`Menyemai data DI Yogyakarta (${diy.length} records)...`)
+  // Insert DI Yogyakarta
+  console.log(`Menyemai data DI Yogyakarta (${diyRecords.length} records)...`)
   const resultDiy = await prisma.wilayah.createMany({
-    data: diy,
+    data: diyRecords,
     skipDuplicates: true,
   })
   console.log(`DI Yogyakarta: ${resultDiy.count} records ditambahkan`)
 
   // Insert Jawa Tengah
-  console.log(`Menyemai data Jawa Tengah (${jateng.length} records)...`)
+  console.log(`Menyemai data Jawa Tengah (${jatengRecords.length} records)...`)
   const resultJateng = await prisma.wilayah.createMany({
-    data: jateng,
+    data: jatengRecords,
     skipDuplicates: true,
   })
   console.log(`Jawa Tengah: ${resultJateng.count} records ditambahkan`)
 
   // Insert Jawa Timur
-  console.log(`Menyemai data Jawa Timur (${jatim.length} records)...`)
+  console.log(`Menyemai data Jawa Timur (${jatimRecords.length} records)...`)
   const resultJatim = await prisma.wilayah.createMany({
-    data: jatim,
+    data: jatimRecords,
     skipDuplicates: true,
   })
   console.log(`Jawa Timur: ${resultJatim.count} records ditambahkan`)
@@ -889,9 +552,9 @@ async function main(): Promise<void> {
   console.log(`\nTotal: ${total} records wilayah berhasil disemai`)
 
   if (total < 1500) {
-    console.warn(`PERINGATAN: Total records (${total}) kurang dari target 1500!`)
+    console.warn(`PERINGATAN: Total records (${total}) kurang dari target 1500. Periksa data duplikat.`)
   } else {
-    console.log('Target 1500+ records tercapai.')
+    console.log('Target >= 1500 records tercapai.')
   }
 }
 
