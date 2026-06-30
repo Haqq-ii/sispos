@@ -12,6 +12,8 @@ import {
   sendOtp,
   verifyOtpAndLogin,
   updateLokasi,
+  login,
+  refreshAccessToken,
 } from './auth.service'
 
 // ── POST /api/auth/register ───────────────────────────────────────
@@ -143,6 +145,113 @@ export async function otpVerifyHandler(req: Request, res: Response): Promise<voi
       message: 'Terjadi kesalahan internal. Coba lagi beberapa saat.',
     })
   }
+}
+
+// ── POST /api/auth/login ──────────────────────────────────────────
+export async function loginHandler(req: Request, res: Response): Promise<void> {
+  const { identifier, password } = req.body as { identifier?: unknown; password?: unknown }
+
+  if (typeof identifier !== 'string' || typeof password !== 'string') {
+    res.status(400).json({
+      success: false,
+      error: 'VALIDASI_GAGAL',
+      message: 'identifier dan password wajib diisi.',
+    })
+    return
+  }
+
+  try {
+    const { tokens, user } = await login(identifier, password)
+
+    const cookieOptions = {
+      httpOnly: true,
+      sameSite: 'lax' as const,
+      secure: env.NODE_ENV === 'production',
+    }
+
+    res.cookie('access_token', tokens.accessToken, {
+      ...cookieOptions,
+      maxAge: 15 * 60 * 1000, // 15 menit
+    })
+    res.cookie('refresh_token', tokens.refreshToken, {
+      ...cookieOptions,
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 hari
+    })
+
+    res.status(200).json({ success: true, data: { user }, message: 'Login berhasil' })
+  } catch (err) {
+    const e = err as { code?: string; terkunciSampai?: Date; gagalLogin?: number; maxGagal?: number }
+    if (e.code === 'FORMAT_IDENTIFIER_TIDAK_VALID') {
+      res.status(400).json({ success: false, error: 'FORMAT_IDENTIFIER_TIDAK_VALID', message: 'Format identifier tidak valid. Gunakan NIK 16 digit, nomor HP, atau email.' })
+      return
+    }
+    if (e.code === 'AKUN_TERKUNCI') {
+      const menitSisa = Math.ceil(((e.terkunciSampai?.getTime() ?? Date.now()) - Date.now()) / 60000)
+      res.status(403).json({
+        success: false,
+        error: 'AKUN_TERKUNCI',
+        message: `Akun terkunci. Silakan coba lagi dalam ${menitSisa} menit.`,
+        data: { terkunciSampai: e.terkunciSampai },
+      })
+      return
+    }
+    if (e.code === 'AKUN_BELUM_DIVERIFIKASI') {
+      res.status(403).json({ success: false, error: 'AKUN_BELUM_DIVERIFIKASI', message: 'Akun belum diverifikasi. Cek WhatsApp Anda untuk kode OTP.' })
+      return
+    }
+    if (e.code === 'AKUN_TIDAK_AKTIF') {
+      res.status(403).json({ success: false, error: 'AKUN_TIDAK_AKTIF', message: 'Akun Anda tidak aktif. Hubungi Puskesmas untuk informasi lebih lanjut.' })
+      return
+    }
+    if (e.code === 'KREDENSIAL_SALAH') {
+      res.status(401).json({
+        success: false,
+        error: 'KREDENSIAL_SALAH',
+        message: 'NIK, No HP, atau kata sandi salah. Silakan coba lagi.',
+        data: e.gagalLogin !== undefined ? { gagalLogin: e.gagalLogin, maxGagal: e.maxGagal } : null,
+      })
+      return
+    }
+    res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: 'Terjadi kesalahan internal. Coba lagi beberapa saat.' })
+  }
+}
+
+// ── POST /api/auth/refresh ────────────────────────────────────────
+export async function refreshHandler(req: Request, res: Response): Promise<void> {
+  const refreshToken = req.cookies?.refresh_token as string | undefined
+  if (!refreshToken) {
+    res.status(401).json({ success: false, error: 'UNAUTHENTICATED', message: 'Refresh token tidak ditemukan. Silakan login kembali.' })
+    return
+  }
+
+  try {
+    const { accessToken } = await refreshAccessToken(refreshToken)
+    res.cookie('access_token', accessToken, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: env.NODE_ENV === 'production',
+      maxAge: 15 * 60 * 1000,
+    })
+    res.status(200).json({ success: true, data: null, message: 'Token diperbarui.' })
+  } catch (err) {
+    if (err instanceof jwt.TokenExpiredError || err instanceof jwt.JsonWebTokenError) {
+      res.status(401).json({ success: false, error: 'TOKEN_TIDAK_VALID', message: 'Sesi telah kedaluwarsa. Silakan login kembali.' })
+      return
+    }
+    res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: 'Terjadi kesalahan internal. Coba lagi beberapa saat.' })
+  }
+}
+
+// ── POST /api/auth/logout ─────────────────────────────────────────
+export async function logoutHandler(_req: Request, res: Response): Promise<void> {
+  const cookieOptions = {
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    secure: env.NODE_ENV === 'production',
+  }
+  res.clearCookie('access_token', cookieOptions)
+  res.clearCookie('refresh_token', cookieOptions)
+  res.status(200).json({ success: true, data: null, message: 'Logout berhasil' })
 }
 
 // ── PATCH /api/auth/lokasi ────────────────────────────────────────

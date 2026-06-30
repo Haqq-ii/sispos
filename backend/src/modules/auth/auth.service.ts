@@ -2,10 +2,25 @@ import crypto from 'crypto'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import { z } from 'zod'
+import type { RolePengguna } from '@prisma/client'
 import { prisma } from '../../config/db'
 import { env } from '../../config/env'
 import { enqueueOtpJob } from '../notification/notification.queue'
 import type { RegisterSchema, OtpSendSchema, OtpVerifySchema, UpdateLokasiSchema } from '../../shared/schemas/auth.schema'
+
+// ── Auth types ────────────────────────────────────────────────
+export interface AuthUser {
+  id: string
+  namaLengkap: string
+  role: RolePengguna
+}
+
+interface AuthError extends Error {
+  code: string
+  terkunciSampai?: Date
+  gagalLogin?: number
+  maxGagal?: number
+}
 
 // ── Helper: masking nomor ponsel ─────────────────────────────────
 function maskPhoneNumber(nomorPonsel: string): string {
@@ -160,4 +175,128 @@ export async function updateLokasi(
       rt: data.rt ?? null,
     },
   })
+}
+
+// ── detectRole ────────────────────────────────────────────────────
+export function detectRole(identifier: string): 'citizen' | 'kader' | 'puskesmas' | null {
+  if (/^\d{16}$/.test(identifier)) return 'citizen'
+  if (/^(08|\+62)\d{7,12}$/.test(identifier)) return 'kader'
+  if (/@/.test(identifier)) return 'puskesmas'
+  return null
+}
+
+// ── login ─────────────────────────────────────────────────────────
+export async function login(
+  identifier: string,
+  password: string
+): Promise<{ tokens: ReturnType<typeof issueTokens>; user: AuthUser }> {
+  const role = detectRole(identifier)
+  if (!role) {
+    const err = Object.assign(new Error('Format identifier tidak valid'), {
+      code: 'FORMAT_IDENTIFIER_TIDAK_VALID',
+    }) as AuthError
+    throw err
+  }
+
+  if (role === 'citizen') {
+    const warga = await prisma.warga.findUnique({ where: { nikIbu: identifier } })
+    if (!warga) {
+      const err = Object.assign(new Error('Kredensial salah'), { code: 'KREDENSIAL_SALAH' }) as AuthError
+      throw err
+    }
+    if (warga.statusVerifikasi !== 'terverifikasi') {
+      const err = Object.assign(new Error('Akun belum diverifikasi'), {
+        code: 'AKUN_BELUM_DIVERIFIKASI',
+      }) as AuthError
+      throw err
+    }
+    const valid = await bcrypt.compare(password, warga.passwordHash)
+    if (!valid) {
+      const err = Object.assign(new Error('Kredensial salah'), { code: 'KREDENSIAL_SALAH' }) as AuthError
+      throw err
+    }
+    const tokens = issueTokens(warga.id, 'citizen')
+    return { tokens, user: { id: warga.id, namaLengkap: warga.namaLengkap, role: 'citizen' } }
+  }
+
+  if (role === 'kader') {
+    const kader = await prisma.kader.findUnique({ where: { nomorPonsel: identifier } })
+    if (!kader) {
+      const err = Object.assign(new Error('Kredensial salah'), { code: 'KREDENSIAL_SALAH' }) as AuthError
+      throw err
+    }
+    if (!kader.isAktif) {
+      const err = Object.assign(new Error('Akun tidak aktif'), { code: 'AKUN_TIDAK_AKTIF' }) as AuthError
+      throw err
+    }
+    // Cek lockout — T-02-05: cek sebelum bcrypt agar tidak buang CPU
+    if (kader.terkunciSampai && kader.terkunciSampai > new Date()) {
+      const err = Object.assign(new Error('Akun terkunci'), {
+        code: 'AKUN_TERKUNCI',
+        terkunciSampai: kader.terkunciSampai,
+      }) as AuthError
+      throw err
+    }
+    const valid = await bcrypt.compare(password, kader.pinHash)
+    if (!valid) {
+      const gagalBaru = kader.gagalLogin + 1
+      if (gagalBaru >= 10) {
+        // T-02-01: 10 kali gagal → kunci 30 menit
+        await prisma.kader.update({
+          where: { id: kader.id },
+          data: { gagalLogin: gagalBaru, terkunciSampai: new Date(Date.now() + 30 * 60 * 1000) },
+        })
+      } else {
+        await prisma.kader.update({
+          where: { id: kader.id },
+          data: { gagalLogin: gagalBaru },
+        })
+      }
+      const err = Object.assign(new Error('Kredensial salah'), {
+        code: 'KREDENSIAL_SALAH',
+        gagalLogin: gagalBaru,
+        maxGagal: 10,
+      }) as AuthError
+      throw err
+    }
+    // Reset gagal login setelah sukses
+    await prisma.kader.update({
+      where: { id: kader.id },
+      data: { gagalLogin: 0, terkunciSampai: null },
+    })
+    const kaderRole: RolePengguna = kader.isKetua ? 'ketua_kader' : 'kader'
+    const tokens = issueTokens(kader.id, kaderRole)
+    return { tokens, user: { id: kader.id, namaLengkap: kader.namaLengkap, role: kaderRole } }
+  }
+
+  // puskesmas path
+  const puskesmas = await prisma.puskesmas.findUnique({ where: { email: identifier } })
+  if (!puskesmas) {
+    const err = Object.assign(new Error('Kredensial salah'), { code: 'KREDENSIAL_SALAH' }) as AuthError
+    throw err
+  }
+  const valid = await bcrypt.compare(password, puskesmas.passwordHash)
+  if (!valid) {
+    const err = Object.assign(new Error('Kredensial salah'), { code: 'KREDENSIAL_SALAH' }) as AuthError
+    throw err
+  }
+  const tokens = issueTokens(puskesmas.id, 'puskesmas')
+  return {
+    tokens,
+    user: { id: puskesmas.id, namaLengkap: puskesmas.namaPuskesmas, role: 'puskesmas' },
+  }
+}
+
+// ── refreshAccessToken ────────────────────────────────────────────
+export async function refreshAccessToken(refreshToken: string): Promise<{ accessToken: string }> {
+  const decoded = jwt.verify(refreshToken, env.JWT_REFRESH_SECRET) as { userId: string }
+  const accessToken = jwt.sign({ userId: decoded.userId }, env.JWT_SECRET, {
+    expiresIn: env.JWT_ACCESS_EXPIRY as jwt.SignOptions['expiresIn'],
+  })
+  return { accessToken }
+}
+
+// ── logout (no-op — cookie clearing done in controller) ───────────
+export function logout(): void {
+  // intentionally empty — clearCookie handled in logoutHandler
 }
