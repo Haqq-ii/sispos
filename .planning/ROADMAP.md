@@ -89,16 +89,17 @@ Plans:
 - `docs/ROADMAP.md` Wave 1.1–1.3
 - Figma frames: `5:5654`, `5:5731` (Login), `5:5809`, `5:5886` (Kader Login), `5:13077` (Puskesmas Login), `4:87`, `4:142` (Register), `5:1327` (OTP)
 
-**Plans:** 3 plans
+**Plans:** 4 plans
 
-**Wave 1** *(register + OTP backend + all register-flow frontend)*
+**Wave 1** *(register + OTP backend)*
 
-- [ ] 01-01-PLAN.md — Shared Zod schemas + BullMQ notification module + auth register/OTP/lokasi backend + frontend RegisterPage/VerifikasiOtpPage/OnboardingLokasiPage/LokasiSelesaiPage + WilayahSelect
+- [ ] 01-01-PLAN.md — Shared Zod schemas + BullMQ notification module + auth register/OTP/lokasi backend (9 files)
 
-**Wave 2** *(login + wilayah, run in parallel)*
+**Wave 2** *(login + wilayah seed + frontend register flow, all parallel after Wave 1)*
 
 - [ ] 01-02-PLAN.md — Login single gateway + authMiddleware + Kader PIN lock + refresh/logout + LoginPage + RoleBadge + KaderLockScreen + ProtectedRoute
-- [ ] 01-03-PLAN.md — seed.wilayah.ts DIY+Jateng+Jatim (1500+ records) + wilayah module 4 cascade GET endpoints
+- [ ] 01-03-PLAN.md — seed.wilayah.ts DIY+Jateng+Jatim (1500+ records) + wilayah module 4 cascade GET endpoints *(checkpoint: human verify)*
+- [ ] 01-04-PLAN.md — Frontend register flow: RegisterPage + VerifikasiOtpPage + OnboardingLokasiPage + LokasiDikonfirmasiPage + WilayahSelect + hooks *(depends_on: 01-01, 01-02)*
 
 ---
 
