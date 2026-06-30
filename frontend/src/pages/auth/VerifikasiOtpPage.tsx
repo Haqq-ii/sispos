@@ -12,7 +12,7 @@ import type { AuthUser } from '@/stores/useAuthStore'
 
 interface VerifyOtpResponse {
   success: boolean
-  data: AuthUser
+  data: { user: AuthUser }
   message: string
 }
 
@@ -57,7 +57,7 @@ export default function VerifikasiOtpPage() {
         kodeOtp,
       }),
     onSuccess: (response) => {
-      setUser(response.data.data)
+      setUser(response.data.data.user)
       sessionStorage.removeItem('reg_ponsel')
       sessionStorage.removeItem('reg_ponsel_masked')
       navigate('/register/lokasi')

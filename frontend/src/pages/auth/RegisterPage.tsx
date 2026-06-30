@@ -94,7 +94,7 @@ export default function RegisterPage() {
         password: values.password,
       }),
     onSuccess: (response, variables) => {
-      const maskedPhone = response.data.data?.maskedPhone ?? variables.nomorPonsel
+      const maskedPhone = response.data.data?.nomorPonselMasked ?? variables.nomorPonsel
       sessionStorage.setItem('reg_ponsel', variables.nomorPonsel)
       sessionStorage.setItem('reg_ponsel_masked', maskedPhone)
       navigate('/register/verifikasi')
