@@ -1,0 +1,60 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-06-30T18:55:16.865Z",
+  "phase": "01",
+  "phase_name": "auth-wilayah",
+  "phase_dir": ".planning/phases/01-auth-wilayah",
+  "plan": 4,
+  "task": "UAT",
+  "total_tasks": "all plans done, UAT pending",
+  "status": "paused",
+  "completed_tasks": [
+    {"id": "01-02-T1", "name": "Backend login/refresh/logout + authMiddleware + Kader PIN lock", "status": "done", "commit": "b91ebc6"},
+    {"id": "01-02-T2", "name": "Frontend LoginPage + RoleBadge + KaderLockScreen + ProtectedRoute + Axios upgrade", "status": "done", "commit": "c3f3d37"},
+    {"id": "01-03-T1", "name": "Wilayah seed (1508 records) + 4 cascade GET /api/wilayah/* endpoints", "status": "done", "commit": "1eb76a2"},
+    {"id": "01-04-T1", "name": "register.schema.ts + useOtpCountdown + useWilayah + OtpInput component", "status": "done", "commit": "8f7ede2"},
+    {"id": "01-04-T2", "name": "WilayahSelect + 4 register pages + router update", "status": "done", "commit": "47ffff0"},
+    {"id": "fix", "name": "VerifyOtpResponse type fix + nomorPonselMasked field fix", "status": "done", "commit": "e7722ec"}
+  ],
+  "remaining_tasks": [
+    {"id": "00-04", "name": "Create prisma/seed.demo.ts + prisma/seed.ts + run seeds", "status": "not_started", "note": "Plan 00-04 was accidentally skipped — seed.demo.ts DOES NOT EXIST in container"},
+    {"id": "01-UAT", "name": "Phase 01 UAT — login 3 roles, wilayah cascade, register flow, kader lockout", "status": "blocked_on_00-04"}
+  ],
+  "blockers": [
+    {
+      "description": "Backend container running Phase 0 code — Phase 1 routes (/api/auth/login, /api/wilayah/*) not active",
+      "type": "technical",
+      "workaround": "docker compose restart sispos-backend — do this IMMEDIATELY on resume"
+    },
+    {
+      "description": "Demo accounts do not exist (warga=0, kader=0, puskesmas=0) — seed.demo.ts never created",
+      "type": "human_action",
+      "workaround": "Execute Plan 00-04 to create seed.demo.ts, then run it"
+    }
+  ],
+  "human_actions_pending": [
+    {
+      "action": "docker compose restart sispos-backend",
+      "context": "Backend loaded Phase 0 code on startup 8h ago; nodemon did not hot-reload Phase 1 route changes from worktree merges",
+      "blocking": true
+    },
+    {
+      "action": "Create and run prisma/seed.demo.ts (Plan 00-04)",
+      "context": "Demo accounts needed for UAT. warga=0, kader=0, puskesmas=0. seed.demo.ts does not exist in repo.",
+      "blocking": true
+    },
+    {
+      "action": "Re-run Phase 01 UAT after backend restart + seed",
+      "context": "All 5 UAT items need human verification in browser",
+      "blocking": false
+    }
+  ],
+  "decisions": [
+    {"decision": "Continue 01-02 from partial (Task 1 backend already committed)", "rationale": "Task 1 was committed in b91ebc6 by prior session; spawned executor for Task 2 only", "phase": "01"},
+    {"decision": "01-03 Task 2 (human checkpoint) deferred until after merge", "rationale": "Wilayah endpoints only active after backend restart; merged first", "phase": "01"},
+    {"decision": "Phase 01 UAT status: human_needed, NOT approved", "rationale": "Backend routing broken at time of testing; bugs found and fixed but cannot confirm without restart", "phase": "01"}
+  ],
+  "uncommitted_files": [".planning/STATE.md"],
+  "next_action": "1) docker compose restart sispos-backend  2) /gsd-execute-phase 00 (to do Plan 00-04 — seed.demo.ts)  3) Re-run Phase 01 UAT",
+  "context_notes": "Phase 01 all 4 plans are coded and committed. The UAT failure is NOT a code bug (except the 2 minor fixes already applied) — it is an infrastructure gap: backend needs restart and demo seeds need to be created (Plan 00-04). Once those are done, UAT should pass. Wilayah data (1508 records) is already in DB."
+}
