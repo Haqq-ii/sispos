@@ -50,7 +50,7 @@
 Plans:
 **Wave 1**
 
-- [ ] 00-01-PLAN.md — Prisma schema fix (3 bugs) + Docker Compose 5 container + Nginx + .env.example + .gitignore
+- [x] 00-01-PLAN.md — Prisma schema fix (4 bugs) + Docker Compose 5 container + Nginx + .env.example + .gitignore ✓ (6a8ce11, d8561b5)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
