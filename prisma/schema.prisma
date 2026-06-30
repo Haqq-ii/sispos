@@ -83,7 +83,6 @@ model Puskesmas {
 
   posyandu       Posyandu[]
   jadwal         Jadwal[]
-  auditLog       AuditLog[]
 
   @@map("puskesmas")
 }
@@ -137,6 +136,7 @@ model Warga {
   posyanduUtama     Posyandu?        @relation(fields: [posyanduUtamaId], references: [id])
   balita            Balita[]
   antrian           Antrian[]
+  riwayatChat       RiwayatChat[]
 
   @@map("warga")
 }
@@ -183,7 +183,6 @@ model Kader {
   posyandu      Posyandu  @relation(fields: [posyanduId], references: [id])
   pemeriksaan   Pemeriksaan[]
   imunisasi     Imunisasi[]
-  auditLog      AuditLog[]
 
   @@map("kader")
 }
@@ -286,6 +285,9 @@ model Pemeriksaan {
   // Enkripsi di application layer sebelum simpan (UU PDP)
   catatanKonsultasi   String?     // encrypted
   rekomendasiAi       String?     // encrypted
+  catatanKlinis       String?     // catatan klinis oleh kader (plaintext, bukan PDP-sensitif)
+  tandaKlinis         Json?       // { rambutKemerahan: bool, perutBuncit: bool, edema: bool, pucat: bool, lainnya: string | null }
+  statusGiziOverride  StatusGizi? // override manual kader jika tidak setuju hasil otomatis
   tanggalPemeriksaan  DateTime    @db.Date @default(now())
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
@@ -351,10 +353,6 @@ model AuditLog {
   userAgent     String?
   createdAt     DateTime     @default(now())
 
-  // Relasi opsional untuk traceability
-  puskesmas     Puskesmas?   @relation(fields: [userId], references: [id])
-  kader         Kader?       @relation(fields: [userId], references: [id])
-
   @@index([userId, createdAt])
   @@index([tabelTerkait, recordId])
   @@map("audit_log")
@@ -391,10 +389,3 @@ model RiwayatChat {
   @@index([wargaId, createdAt])
   @@map("riwayat_chat")
 }
-
-// UPDATE: tambah kolom ke model Pemeriksaan yang sudah ada
-// Jalankan sebagai migration terpisah:
-// ALTER TABLE pemeriksaan ADD COLUMN catatan_klinis TEXT;
-// ALTER TABLE pemeriksaan ADD COLUMN tanda_klinis JSONB;
-// ALTER TABLE pemeriksaan ADD COLUMN status_gizi_override status_gizi;
-// (tanda_klinis berisi: { rambutKemerahan, perutBuncit, edema, pucat, lainnya })
