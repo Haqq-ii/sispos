@@ -1,0 +1,400 @@
+// ============================================================
+// SISPOS — Prisma Schema (PostgreSQL 16)
+// Versi: 2.0 Final
+// ============================================================
+// Jalankan: npx prisma migrate dev --name init
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum RolePengguna {
+  citizen
+  kader
+  ketua_kader
+  puskesmas
+}
+
+enum StatusVerifikasi {
+  belum_verifikasi
+  terverifikasi
+  ditolak
+}
+
+enum StatusJadwal {
+  draft
+  terkunci
+  selesai
+  dibatalkan
+}
+
+enum StatusAntrian {
+  menunggu
+  dipanggil
+  selesai
+  ditangguhkan
+  tidak_hadir
+}
+
+enum StatusGizi {
+  normal
+  kurang
+  buruk
+  lebih
+  obesitas
+  pendek
+  sangat_pendek
+}
+
+enum JenisKelamin {
+  laki_laki
+  perempuan
+}
+
+enum TujuanOtp {
+  registrasi
+  reset_password
+}
+
+// ============================================================
+// 1. PUSKESMAS
+// ============================================================
+
+model Puskesmas {
+  id             String    @id @default(uuid())
+  namaPuskesmas  String    @db.VarChar(200)
+  alamat         String
+  nomorTelepon   String?   @db.VarChar(20)
+  wilayahKerja   String?   @db.VarChar(200)
+  email          String    @unique @db.VarChar(150)
+  passwordHash   String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  posyandu       Posyandu[]
+  jadwal         Jadwal[]
+  auditLog       AuditLog[]
+
+  @@map("puskesmas")
+}
+
+// ============================================================
+// 2. POSYANDU
+// ============================================================
+
+model Posyandu {
+  id             String    @id @default(uuid())
+  puskesmasId    String
+  namaPosyandu   String    @db.VarChar(200)
+  provinsi       String    @db.VarChar(100)
+  kabupaten      String    @db.VarChar(100)
+  kecamatan      String    @db.VarChar(100)
+  kelurahan      String    @db.VarChar(100)
+  rw             String    @db.VarChar(10)
+  jamOperasional String?   @db.VarChar(50)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  puskesmas      Puskesmas @relation(fields: [puskesmasId], references: [id])
+  kader          Kader[]
+  jadwal         Jadwal[]
+  warga          Warga[]
+
+  @@map("posyandu")
+}
+
+// ============================================================
+// 3. WARGA (Citizen)
+// ============================================================
+
+model Warga {
+  id                String           @id @default(uuid())
+  nikIbu            String           @unique @db.VarChar(16)
+  namaLengkap       String           @db.VarChar(200)
+  nomorPonsel       String           @unique @db.VarChar(20)
+  passwordHash      String
+  statusVerifikasi  StatusVerifikasi @default(belum_verifikasi)
+  provinsi          String?          @db.VarChar(100)
+  kabupaten         String?          @db.VarChar(100)
+  kecamatan         String?          @db.VarChar(100)
+  kelurahan         String?          @db.VarChar(100)
+  rw                String?          @db.VarChar(10)
+  rt                String?          @db.VarChar(10)
+  posyanduUtamaId   String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  posyanduUtama     Posyandu?        @relation(fields: [posyanduUtamaId], references: [id])
+  balita            Balita[]
+  antrian           Antrian[]
+
+  @@map("warga")
+}
+
+// ============================================================
+// 4. BALITA
+// ============================================================
+
+model Balita {
+  id            String       @id @default(uuid())
+  wargaId       String
+  nikBalita     String?      @unique @db.VarChar(16)
+  namaBalita    String       @db.VarChar(200)
+  tanggalLahir  DateTime     @db.Date
+  jenisKelamin  JenisKelamin
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  warga         Warga        @relation(fields: [wargaId], references: [id], onDelete: Cascade)
+  antrian       Antrian[]
+  pemeriksaan   Pemeriksaan[]
+  imunisasi     Imunisasi[]
+
+  @@map("balita")
+}
+
+// ============================================================
+// 5. KADER (Staff Posyandu)
+// ============================================================
+
+model Kader {
+  id            String    @id @default(uuid())
+  posyanduId    String
+  namaLengkap   String    @db.VarChar(200)
+  nomorPonsel   String    @unique @db.VarChar(20)
+  pinHash       String
+  isKetua       Boolean   @default(false)
+  isAktif       Boolean   @default(true)
+  gagalLogin    Int       @default(0) @db.SmallInt
+  terkunciSampai DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  posyandu      Posyandu  @relation(fields: [posyanduId], references: [id])
+  pemeriksaan   Pemeriksaan[]
+  imunisasi     Imunisasi[]
+  auditLog      AuditLog[]
+
+  @@map("kader")
+}
+
+// ============================================================
+// 6. JADWAL PELAYANAN
+// ============================================================
+
+model Jadwal {
+  id                   String      @id @default(uuid())
+  posyanduId           String
+  puskesmasId          String
+  tanggalPelaksanaan   DateTime    @db.Date
+  // Estimasi durasi per orang diisi Puskesmas (cold start countdown)
+  estimasiDurasiMenit  Int         @default(7) @db.SmallInt
+  statusJadwal         StatusJadwal @default(draft)
+  dikunciPada          DateTime?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+
+  posyandu             Posyandu    @relation(fields: [posyanduId], references: [id])
+  puskesmas            Puskesmas   @relation(fields: [puskesmasId], references: [id])
+  slotSesi             SlotSesi[]
+
+  @@unique([posyanduId, tanggalPelaksanaan])
+  @@map("jadwal")
+}
+
+// ============================================================
+// 7. SLOT SESI
+// ============================================================
+
+model SlotSesi {
+  id              String    @id @default(uuid())
+  jadwalId        String
+  nomorSesi       Int       @db.SmallInt
+  labelSesi       String    @db.VarChar(50)   // "Sesi 1 (08:00 - 09:00)"
+  jamMulai        DateTime  @db.Time
+  jamSelesai      DateTime  @db.Time
+  kuota           Int       @db.SmallInt      // floor(60 / estimasiDurasiMenit)
+  terisi          Int       @default(0) @db.SmallInt
+  // Untuk countdown adaptif: durasi rata-rata aktual hari ini
+  durasiRataAktual Float?                     // null = belum ada data, pakai estimasiDurasiMenit
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  jadwal          Jadwal    @relation(fields: [jadwalId], references: [id], onDelete: Cascade)
+  antrian         Antrian[]
+
+  @@unique([jadwalId, nomorSesi])
+  @@map("slot_sesi")
+}
+
+// ============================================================
+// 8. ANTRIAN
+// ============================================================
+
+model Antrian {
+  id               String        @id @default(uuid())
+  slotId           String
+  balitaId         String
+  wargaId          String
+  nomorUrut        Int           @db.SmallInt
+  isDaftarManual   Boolean       @default(false)
+  statusAntrian    StatusAntrian @default(menunggu)
+  // Untuk kalkulasi durasiRataAktual
+  waktuMulaiLayanan DateTime?    // saat kader klik "Mulai" di Meja 1
+  waktuCheckin     DateTime?     // saat kader verifikasi hadir
+  waktuSelesai     DateTime?     // saat kader klik "Selesai" di Meja 5
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  slotSesi         SlotSesi      @relation(fields: [slotId], references: [id])
+  balita           Balita        @relation(fields: [balitaId], references: [id])
+  warga            Warga         @relation(fields: [wargaId], references: [id])
+  pemeriksaan      Pemeriksaan[]
+
+  @@unique([slotId, balitaId])
+  @@map("antrian")
+}
+
+// ============================================================
+// 9. PEMERIKSAAN
+// ============================================================
+
+model Pemeriksaan {
+  id                  String      @id @default(uuid())
+  antrianId           String?
+  balitaId            String
+  kaderId             String?
+  beratBadan          Float?      // kg, range valid: 0.5 - 30
+  tinggiBadan         Float?      // cm, range valid: 40 - 130
+  lingkarKepala       Float?
+  lingkarLengan       Float?      // LILA
+  // Z-Score dihitung otomatis backend (tabel WHO 2006)
+  zScoreBbU           Float?      // BB/Umur
+  zScoreTbU           Float?      // TB/Umur
+  zScoreBbTb          Float?      // BB/TB
+  statusGizi          StatusGizi?
+  // Enkripsi di application layer sebelum simpan (UU PDP)
+  catatanKonsultasi   String?     // encrypted
+  rekomendasiAi       String?     // encrypted
+  tanggalPemeriksaan  DateTime    @db.Date @default(now())
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  antrian             Antrian?    @relation(fields: [antrianId], references: [id])
+  balita              Balita      @relation(fields: [balitaId], references: [id])
+  kader               Kader?      @relation(fields: [kaderId], references: [id])
+
+  @@map("pemeriksaan")
+}
+
+// ============================================================
+// 10. IMUNISASI
+// ============================================================
+
+model Imunisasi {
+  id              String    @id @default(uuid())
+  balitaId        String
+  kaderId         String?
+  namaVaksin      String    @db.VarChar(100)
+  dosisKe         Int       @default(1) @db.SmallInt
+  tanggalInjeksi  DateTime  @db.Date
+  keterangan      String?
+  createdAt       DateTime  @default(now())
+
+  balita          Balita    @relation(fields: [balitaId], references: [id])
+  kader           Kader?    @relation(fields: [kaderId], references: [id])
+
+  @@map("imunisasi")
+}
+
+// ============================================================
+// 11. OTP
+// ============================================================
+
+model Otp {
+  id              String    @id @default(uuid())
+  nomorPonsel     String    @db.VarChar(20)
+  kodeOtp         String    @db.VarChar(6)
+  tujuan          TujuanOtp
+  sudahDipakai    Boolean   @default(false)
+  kedaluwarsaPada DateTime
+  createdAt       DateTime  @default(now())
+
+  @@index([nomorPonsel, tujuan])
+  @@map("otp")
+}
+
+// ============================================================
+// 12. AUDIT LOG
+// ============================================================
+
+model AuditLog {
+  id            String       @id @default(uuid())
+  userId        String
+  userRole      RolePengguna
+  aksi          String       @db.VarChar(100)
+  tabelTerkait  String?      @db.VarChar(100)
+  recordId      String?
+  dataSebelum   Json?
+  dataSesudah   Json?
+  ipAddress     String?      @db.VarChar(45)
+  userAgent     String?
+  createdAt     DateTime     @default(now())
+
+  // Relasi opsional untuk traceability
+  puskesmas     Puskesmas?   @relation(fields: [userId], references: [id])
+  kader         Kader?       @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([tabelTerkait, recordId])
+  @@map("audit_log")
+}
+
+// ============================================================
+// TAMBAHAN MODEL — Update Final
+// ============================================================
+
+// 13. WILAYAH (untuk dropdown lokasi statis)
+model Wilayah {
+  id          String    @id @default(uuid())
+  provinsi    String    @db.VarChar(100)
+  kabupaten   String    @db.VarChar(100)
+  kecamatan   String    @db.VarChar(100)
+  kelurahan   String    @db.VarChar(100)
+  kodePos     String?   @db.VarChar(10)
+
+  @@index([provinsi, kabupaten])
+  @@index([kecamatan, kelurahan])
+  @@map("wilayah")
+}
+
+// 14. RIWAYAT CHAT AI (Chatbot citizen)
+model RiwayatChat {
+  id        String   @id @default(uuid())
+  wargaId   String
+  role      String   @db.VarChar(10)  // 'user' | 'assistant'
+  pesan     String
+  createdAt DateTime @default(now())
+
+  warga     Warga    @relation(fields: [wargaId], references: [id], onDelete: Cascade)
+
+  @@index([wargaId, createdAt])
+  @@map("riwayat_chat")
+}
+
+// UPDATE: tambah kolom ke model Pemeriksaan yang sudah ada
+// Jalankan sebagai migration terpisah:
+// ALTER TABLE pemeriksaan ADD COLUMN catatan_klinis TEXT;
+// ALTER TABLE pemeriksaan ADD COLUMN tanda_klinis JSONB;
+// ALTER TABLE pemeriksaan ADD COLUMN status_gizi_override status_gizi;
+// (tanda_klinis berisi: { rambutKemerahan, perutBuncit, edema, pucat, lainnya })
