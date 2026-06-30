@@ -75,14 +75,15 @@ Declared values (all multiples of 4):
 | Role | Size | Weight | Line Height | Tailwind | Usage |
 |------|------|--------|-------------|----------|-------|
 | Display | 24px (text-2xl) | 700 (font-bold) | 1.2 | `text-2xl font-bold leading-tight` | Page/screen titles (e.g., "Masuk ke SISPOS") |
-| Heading | 20px (text-xl) | 600 (font-semibold) | 1.2 | `text-xl font-semibold leading-tight` | Section headings, card titles |
+| Heading | 20px (text-xl) | 700 (font-bold) | 1.2 | `text-xl font-bold leading-tight` | Section headings, card titles |
 | Body | 14px (text-sm) | 400 (font-normal) | 1.5 | `text-sm font-normal leading-relaxed` | Descriptions, instructions, body copy |
-| Label | 14px (text-sm) | 500 (font-medium) | 1.4 | `text-sm font-medium leading-snug` | Form labels, field captions, badges |
+| Label | 14px (text-sm) | 700 (font-bold) | 1.4 | `text-sm font-bold leading-snug` | Form labels, field captions, badges |
 | Caption | 12px (text-xs) | 400 (font-normal) | 1.4 | `text-xs font-normal leading-snug` | Helper text, countdown timers, secondary info |
 
 **Rules:**
-- Exactly 2 weights in use per screen: 400 (normal) and 600–700 (semibold/bold)
-- Labels use 500 (medium) as the only exception — used exclusively for form field labels
+- Exactly 2 weights declared: 400 (font-normal) and 700 (font-bold)
+- 400 for: body text, caption, placeholder text, helper text, secondary info
+- 700 for: display titles, section headings, form labels, field captions, badges
 - All UI text in Bahasa Indonesia
 - Numbers and dates: DD/MM/YYYY, jam HH:MM WIB, desimal dengan koma (e.g., 8,5 kg)
 
@@ -139,8 +140,11 @@ Declared values (all multiples of 4):
 1. Identifier input: `type="text"`, label "Nomor Identitas", placeholder "NIK, No HP, atau Email"
 2. Password/PIN input: `type="password"`, label "Kata Sandi / PIN", placeholder "••••••"
 3. Show/hide password toggle (EyeIcon / EyeOffIcon from Lucide) inside input trailing slot
+   - `aria-label="Tampilkan kata sandi"` when hidden; `aria-label="Sembunyikan kata sandi"` when visible
 4. Remember me: not included (JWT httpOnly cookie handles session)
-5. CTA: `<Button>` full-width, `bg-primary` (green-600), label "**Masuk**"
+5. CTA: `<Button>` full-width, `bg-primary` (green-600), label "**Masuk ke SISPOS**"
+
+**Primary focal point:** the green "Masuk ke SISPOS" CTA button at the bottom of the form card.
 
 **States:**
 - Loading: button shows `<Loader2 className="animate-spin" />` prefix, disabled
@@ -183,7 +187,7 @@ Declared values (all multiples of 4):
    - Zod: Indonesian phone regex `z.string().regex(/^(08|\+628)[0-9]{8,11}$/)`
 4. Kata Sandi: `type="password"`, label "Kata Sandi", placeholder "Min. 8 karakter"
    - Password strength indicator: 3-level bar (lemah/sedang/kuat), renders below input
-   - Show/hide toggle
+   - Show/hide toggle (`aria-label="Tampilkan kata sandi"` / `aria-label="Sembunyikan kata sandi"`)
    - Zod: `z.string().min(8)`
 5. Konfirmasi Kata Sandi: `type="password"`, label "Ulangi Kata Sandi"
    - Real-time match validation (onBlur)
@@ -196,7 +200,9 @@ Declared values (all multiples of 4):
 - Error (NIK exists): inline field error "NIK sudah terdaftar. Coba login."
 - Error (HP exists): inline field error "Nomor HP sudah terdaftar."
 - Error (server): alert destructive "Gagal mendaftar. Coba beberapa saat lagi."
-- All errors appear as `<p className="text-sm font-medium text-destructive">` below the relevant field
+- All errors appear as `<p className="text-sm font-bold text-destructive">` below the relevant field
+
+**Primary focal point:** the NIK field at top of the form card — it anchors role detection and is the first interaction.
 
 **Link:** "Sudah punya akun? **Masuk**" below card
 
@@ -229,7 +235,9 @@ Declared values (all multiples of 4):
 - Resend resets timer to 60s and shows loading state "Mengirim..." for 2s
 - Max resend: 3x per session (show "Batas pengiriman tercapai. Hubungi admin." after 3rd)
 
-**CTA:** "**Verifikasi**" — full-width primary button, enabled only when all 6 digits entered
+**CTA:** "**Verifikasi Kode OTP**" — full-width primary button, enabled only when all 6 digits entered
+
+**Primary focal point:** the 6-box OTP digit input — all visual weight directs the user here immediately on mount.
 
 **States:**
 - Loading: button disabled + spinner "Memverifikasi..."
@@ -273,6 +281,8 @@ Each dropdown:
 
 **CTA:** "**Simpan Lokasi**" — full-width primary button, enabled only when all 4 cascade levels selected
 
+**Primary focal point:** the Provinsi dropdown — it is the only enabled element on mount and drives the entire cascade sequence.
+
 **Skip option:** "Lewati untuk sekarang" — text button (variant="ghost"), text-gray-500, below CTA. Routes to `/citizen/dashboard` with lokasi null.
 
 **States:**
@@ -293,7 +303,9 @@ Each dropdown:
 - Body text: "Selamat datang di SISPOS. Akun Anda sudah aktif." text-center, text-gray-500
 - Location summary card (bg-green-50, rounded-lg, p-4):
   - Shows: "{Kelurahan}, {Kecamatan}, {Kabupaten}, {Provinsi}"
-  - text-sm font-medium text-foreground
+  - text-sm font-bold text-foreground
+
+**Primary focal point:** the CheckCircle icon + "Lokasi Tersimpan!" heading — confirms completion before the user proceeds.
 
 **CTA:** "**Mulai Gunakan SISPOS**" — full-width primary button, routes to `/citizen/dashboard`
 
@@ -321,6 +333,8 @@ Each dropdown:
 - When gagalLogin >= 7 (3 remaining): show inline warning below PIN field: "Peringatan: {10 - count} percobaan tersisa sebelum akun terkunci 30 menit." (text-xs, text-amber-600)
 - When gagalLogin = 9 (1 remaining): "Peringatan: 1 percobaan tersisa!" (text-xs font-semibold, text-red-600)
 
+**Primary focal point:** the MM:SS countdown timer — it is the largest text element on screen and tells the user exactly when they can act again.
+
 **Unlock contact:**
 - "Hubungi Ketua Kader atau Puskesmas untuk membuka kunci lebih awal." (text-xs, text-gray-400, text-center)
 
@@ -342,6 +356,8 @@ interface WilayahSelectProps {
   required?: boolean;
 }
 ```
+
+**Primary focal point:** the Provinsi select trigger — it is always the first enabled element and visually anchors the cascade.
 
 **Behavior contract:**
 - Fetches `/api/wilayah/provinsi` on mount (cached by TanStack Query, staleTime: 1 hour)
@@ -365,9 +381,9 @@ All copy in Bahasa Indonesia. No emoji in UI labels.
 
 | Element | Screen | Copy |
 |---------|--------|------|
-| Primary CTA — Login | Login | **Masuk** |
+| Primary CTA — Login | Login | **Masuk ke SISPOS** |
 | Primary CTA — Register | Register | **Daftar & Kirim OTP** |
-| Primary CTA — OTP | Verifikasi OTP | **Verifikasi** |
+| Primary CTA — OTP | Verifikasi OTP | **Verifikasi Kode OTP** |
 | Primary CTA — Lokasi | Onboarding Lokasi | **Simpan Lokasi** |
 | Primary CTA — Selesai | Lokasi Dikonfirmasi | **Mulai Gunakan SISPOS** |
 | Loading — Login | Login | Masuk... |
@@ -478,6 +494,10 @@ All copy in Bahasa Indonesia. No emoji in UI labels.
 - Minimum contrast: all text meets WCAG AA 4.5:1 against their background
 - OTP boxes: `aria-label="Digit ke-{N}"` on each input, `aria-live="polite"` region for error messages
 - Lock screen: `role="alert"` on lock notice container
+- Password eye icon toggle (Login + Register screens):
+  - When password hidden: `<button aria-label="Tampilkan kata sandi">`
+  - When password visible: `<button aria-label="Sembunyikan kata sandi">`
+  - Toggle must also set `aria-pressed` state accordingly
 
 ---
 
