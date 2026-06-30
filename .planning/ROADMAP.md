@@ -54,7 +54,7 @@
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 00-02-PLAN.md — Backend scaffold (Dockerfile, package.json, tsconfig) + config layer (env, db, redis, socket) + Express app + GET /api/health
+- [x] 00-02-PLAN.md — Backend scaffold (Dockerfile, package.json, tsconfig) + config layer (env, db, redis, socket) + Express app + GET /api/health ✓ (59a687a, 78ca7d4)
 - [ ] 00-03-PLAN.md — Frontend scaffold (Dockerfile, package.json, Vite) + Tailwind + shadcn/ui + PWA manifest + React Router v6 + Zustand + placeholder pages
 
 **Wave 3** *(blocked on Wave 2 completion)*

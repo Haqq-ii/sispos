@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Executing Phase 00
-last_updated: "2026-06-30T09:00:00.000Z"
+last_updated: "2026-06-30T08:32:00.000Z"
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
-  percent: 25
+  completed_plans: 2
+  percent: 50
 ---
 
 # SISPOS — GSD State
@@ -27,18 +27,18 @@ See: `.planning/PROJECT.md` (updated 2026-06-30)
 
 ```
 Phase aktif  : Phase 0 — Infrastructure & Setup
-Last update  : 2026-06-30 (00-01 complete)
-Plans done   : 1 / 4 (Phase 0)
+Last update  : 2026-06-30 (00-02 complete)
+Plans done   : 2 / 4 (Phase 0)
 Phases done  : 0 / 8
-Next command : /gsd-execute-phase 00 02
-Stopped at   : Completed 00-01-PLAN.md
+Next command : /gsd-execute-phase 00 03
+Stopped at   : Completed 00-02-PLAN.md
 ```
 
 ## Phase History
 
 | Phase | Status | Completed | Notes |
 |-------|--------|-----------|-------|
-| 0 | ○ Pending | — | — |
+| 0 | ○ Pending | — | Plans 1-2 done; 3-4 remaining |
 | 1 | ○ Pending | — | — |
 | 2 | ○ Pending | — | — |
 | 3 | ○ Pending | — | — |
@@ -55,6 +55,8 @@ Stopped at   : Completed 00-01-PLAN.md
 - **Timeline**: Phase 0-3 harus selesai sesegera mungkin (laporan PSI)
 - **AI chatbot scope**: 3 function calls (daftar/batalkan/reschedule) — batalkan + reschedule butuh konfirmasi eksplisit
 - **Countdown**: estimasi bukan janji — UI label harus jelas
+- **Backend scaffold**: `backend/` sepenuhnya terbuat; siap untuk `docker compose build sispos-backend`
+- **Health endpoint**: GET /api/health tersedia; akan dikonfirmasi live di Plan 00-04
 
 ## Decisions Log
 
@@ -66,9 +68,12 @@ Stopped at   : Completed 00-01-PLAN.md
 | 2026-06-30 | Horizontal Layers (bukan Vertical MVP) | Sesuai struktur 8 phase di docs/ROADMAP.md |
 | 2026-06-30 | AuditLog polymorphic relations removed | Prisma tidak bisa map single userId ke 2 model; userId+userRole cukup untuk lookup |
 | 2026-06-30 | APP_ENCRYPTION_KEY ditambah ke .env.example | Wajib untuk enkripsi kolom UU PDP (catatanKonsultasi, rekomendasiAi) |
+| 2026-06-30 | io: Server | undefined (bukan Server) di socket.ts | Type-safe; health route falsy check valid; no @ts-expect-error needed |
+| 2026-06-30 | pino logger lokal di setiap config file | Mencegah circular dependency antara app.ts dan config layer |
 
 ## Performance Metrics
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
 | 00 | 01 | ~12 min | 2/2 | 5 |
+| 00 | 02 | ~6 min | 2/2 | 26 |
