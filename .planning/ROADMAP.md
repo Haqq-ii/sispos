@@ -12,7 +12,7 @@
 | # | Phase | Goal | Requirements | Status |
 |---|-------|------|-------------|--------|
 | 0 | Infrastructure & Setup | 4/4 | Complete   | 2026-06-30 |
-| 1 | Auth & Wilayah | 4/4 | Complete   | 2026-06-30 |
+| 1 | Auth & Wilayah | 4/4 | Complete   | 2026-07-01 |
 | 2 | Queue System | Ambil antrian SELECT FOR UPDATE, countdown realtime Socket.IO | QUEUE-01..06 | ○ Pending |
 | 3 | Kader — 5 Meja | Dashboard kader, lock-screen, 5 meja pelayanan, rekap + export | KADER-01..07 | ○ Pending |
 | 4 | Dashboard & DSS + AI | Peta stunting Leaflet, manajemen kader, AI chatbot gizi + pendaftaran | DSS-01..02, AI-01..03 | ○ Pending |

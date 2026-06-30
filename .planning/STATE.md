@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Executing Phase 01
-last_updated: "2026-06-30T18:49:10.193Z"
+status: Executing Phase 02
+last_updated: "2026-07-01T02:20:00.000Z"
 progress:
   total_phases: 8
   completed_phases: 2
@@ -21,26 +21,26 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-30)
 
 **Core value:** Countdown antrian adaptif + alur 5 Meja kader end-to-end
-**Current focus:** Phase 01 — auth-wilayah
+**Current focus:** Phase 02 — Queue System
 
 ## Current Status
 
 ```
-Phase aktif  : Phase 0 — Infrastructure & Setup
-Last update  : 2026-06-30 (00-03 complete)
-Plans done   : 3 / 4 (Phase 0)
-Phases done  : 0 / 8
-Next command : /gsd-execute-phase 00 04
-Stopped at   : Completed 00-03-PLAN.md
+Phase aktif  : Phase 02 — Queue System
+Last update  : 2026-07-01 (Phase 01 UAT approved)
+Plans done   : 8 / 8 (Phase 00 + 01 complete)
+Phases done  : 2 / 8
+Next command : /gsd-plan-phase 02
+Stopped at   : Phase 01 UAT approved — ready to plan Phase 02
 ```
 
 ## Phase History
 
 | Phase | Status | Completed | Notes |
 |-------|--------|-----------|-------|
-| 0 | ○ Pending | — | Plans 1-3 done; 4 remaining |
-| 1 | ○ Pending | — | — |
-| 2 | ○ Pending | — | — |
+| 0 | ✓ Complete | 2026-06-30 | Docker stack, Prisma migrate, seed minimal |
+| 1 | ✓ Complete | 2026-07-01 | Auth 3 role, OTP, wilayah 1508, register flow |
+| 2 | ○ Pending | — | Queue: Jadwal + SlotSesi + SELECT FOR UPDATE + countdown |
 | 3 | ○ Pending | — | — |
 | 4 | ○ Pending | — | — |
 | 5 | ○ Pending | — | — |
@@ -55,10 +55,25 @@ Stopped at   : Completed 00-03-PLAN.md
 - **Timeline**: Phase 0-3 harus selesai sesegera mungkin (laporan PSI)
 - **AI chatbot scope**: 3 function calls (daftar/batalkan/reschedule) — batalkan + reschedule butuh konfirmasi eksplisit
 - **Countdown**: estimasi bukan janji — UI label harus jelas
-- **Backend scaffold**: `backend/` sepenuhnya terbuat; siap untuk `docker compose build sispos-backend`
-- **Health endpoint**: GET /api/health tersedia; akan dikonfirmasi live di Plan 00-04
-- **Frontend scaffold**: `frontend/` sepenuhnya terbuat; siap untuk `docker compose build sispos-frontend`
-- **PWA manifest**: `frontend/public/manifest.json` valid; NetworkOnly untuk /api/* sudah aktif di VitePWA
+- **Backend**: UP, healthy — POST /api/auth/login active for all 3 roles
+- **Frontend**: UP — React app running at http://localhost
+- **DB seed**: warga=1, kader=1, puskesmas=1, balita=1, posyandu=1, wilayah=1508
+- **Demo accounts**: Citizen NIK 3471012345670001/Demo1234!, Kader 081234560001/123456, Puskesmas demo@puskesmas-mergangsan.go.id/Demo1234!
+- **docker-compose.yml**: FONNTE_API_KEY, APP_ENCRYPTION_KEY, JWT_ACCESS_EXPIRY, JWT_REFRESH_EXPIRY, BCRYPT_ROUNDS now forwarded to backend container
+
+## Phase 02 Goal
+
+Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu adaptif; countdown bergerak realtime via Socket.IO.
+
+**Success Criteria:**
+1. Puskesmas buat jadwal 7 menit/orang → 3 SlotSesi kuota 8 ter-generate otomatis
+2. 2 tab bersamaan ambil slot sisa 1 → hanya 1 berhasil (test race condition)
+3. Nomor antrian + estimasi waktu tampil di screen citizen
+4. Kader tandai selesai → countdown citizen bergerak tanpa refresh
+5. WA notifikasi terkirim via BullMQ (log queue visible)
+
+**Figma screens**: Citizen antrian flow — Pilih tanggal, Pilih sesi jam, Konfirmasi, Cetak antrian; Puskesmas manajemen jadwal
+**Figma frames**: `5:2314` (Pilih tanggal), `5:2630` (Pilih sesi), `5:2902` (Konfirmasi), `5:3116` (Cetak), `5:15526` (Manajemen Jadwal)
 
 ## Decisions Log
 
@@ -74,6 +89,8 @@ Stopped at   : Completed 00-03-PLAN.md
 | 2026-06-30 | pino logger lokal di setiap config file | Mencegah circular dependency antara app.ts dan config layer |
 | 2026-06-30 | VitePWA manifest: false — gunakan public/manifest.json langsung | Hindari duplikasi manifest; satu sumber kebenaran untuk PWA config |
 | 2026-06-30 | Axios interceptor type-narrowing (bukan axios.isAxiosError) | TypeScript strict mode; error parameter bertipe unknown di interceptors |
+| 2026-07-01 | FONNTE_API_KEY forwarded via docker-compose.yml | Phase 01 env.ts added it as required; compose never passed it → crash on restart |
+| 2026-07-01 | seed.demo.ts uses BCRYPT_ROUNDS=10 | Faster seed execution; not production |
 
 ## Performance Metrics
 
@@ -82,3 +99,7 @@ Stopped at   : Completed 00-03-PLAN.md
 | 00 | 01 | ~12 min | 2/2 | 5 |
 | 00 | 02 | ~6 min | 2/2 | 26 |
 | 00 | 03 | ~15 min | 2/2 | 24 |
+| 01 | 01 | ~20 min | 2/2 | 9 |
+| 01 | 02 | ~25 min | 2/2 | 8 |
+| 01 | 03 | ~15 min | 2/2 | 3 |
+| 01 | 04 | ~20 min | 2/2 | 8 |

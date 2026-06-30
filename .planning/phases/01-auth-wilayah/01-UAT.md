@@ -1,5 +1,5 @@
 ---
-status: testing
+status: approved
 phase: 01-auth-wilayah
 source: [01-VERIFICATION.md]
 started: 2026-06-30T18:23:39.890Z
