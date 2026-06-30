@@ -1,5 +1,8 @@
 FROM node:20-alpine
 
+# Install OpenSSL required by Prisma schema engine on Alpine Linux (musl/OpenSSL 3.x)
+RUN apk add --no-cache openssl
+
 WORKDIR /app
 
 # Copy backend deps first for layer cache
