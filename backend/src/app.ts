@@ -6,6 +6,7 @@ import pino from 'pino'
 import { env } from './config/env'
 import { healthRouter } from './modules/health/health.routes'
 import { authRouter } from './modules/auth/auth.routes'
+import { wilayahRouter } from './modules/wilayah/wilayah.routes'
 
 export const logger = pino({
   level: env.NODE_ENV === 'production' ? 'info' : 'debug',
@@ -39,6 +40,7 @@ app.use(express.urlencoded({ extended: true }))
 // ── Routes ──────────────────────────────────────────────────
 app.use('/api/health', healthRouter)
 app.use('/api/auth', authRouter)
+app.use('/api/wilayah', wilayahRouter)
 // TODO Phase 1+: mount module routers here
 // app.use('/api/queue', queueRouter)
 // dst.
