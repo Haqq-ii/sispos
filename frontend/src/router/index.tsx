@@ -1,7 +1,11 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { ProtectedRoute } from './ProtectedRoute'
 
-// Lazy-load placeholder pages (akan diganti dengan halaman nyata di Phase 1+)
+// Auth pages
+const LoginPage = lazy(() => import('@/pages/auth/LoginPage'))
+
+// Lazy-load placeholder dashboard pages
 const CitizenDashboardPage = lazy(() => import('@/pages/CitizenDashboardPage'))
 const KaderDashboardPage = lazy(() => import('@/pages/KaderDashboardPage'))
 const PuskesmasDashboardPage = lazy(() => import('@/pages/PuskesmasDashboardPage'))
@@ -17,10 +21,38 @@ export function AppRouter() {
   return (
     <Suspense fallback={<LoadingSpinner />}>
       <Routes>
-        <Route path="/" element={<Navigate to="/citizen/dashboard" replace />} />
-        <Route path="/citizen/dashboard" element={<CitizenDashboardPage />} />
-        <Route path="/kader/dashboard" element={<KaderDashboardPage />} />
-        <Route path="/puskesmas/dashboard" element={<PuskesmasDashboardPage />} />
+        {/* Root redirects to login */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
+
+        {/* Public routes */}
+        <Route path="/login" element={<LoginPage />} />
+
+        {/* Protected dashboard routes */}
+        <Route
+          path="/citizen/dashboard"
+          element={
+            <ProtectedRoute>
+              <CitizenDashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/kader/dashboard"
+          element={
+            <ProtectedRoute>
+              <KaderDashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/puskesmas/dashboard"
+          element={
+            <ProtectedRoute>
+              <PuskesmasDashboardPage />
+            </ProtectedRoute>
+          }
+        />
+
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>
