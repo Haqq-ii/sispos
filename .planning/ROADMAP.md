@@ -11,7 +11,7 @@
 
 | # | Phase | Goal | Requirements | Status |
 |---|-------|------|-------------|--------|
-| 0 | Infrastructure & Setup | Docker 5 container jalan, boilerplate FE+BE, Prisma migrate | INFRA-01..04 | ○ Pending |
+| 0 | Infrastructure & Setup | 4/4 | Complete   | 2026-06-30 |
 | 1 | Auth & Wilayah | Login 3 role, OTP WA, JWT cookie, seed wilayah | AUTH-01..07 | ○ Pending |
 | 2 | Queue System | Ambil antrian SELECT FOR UPDATE, countdown realtime Socket.IO | QUEUE-01..06 | ○ Pending |
 | 3 | Kader — 5 Meja | Dashboard kader, lock-screen, 5 meja pelayanan, rekap + export | KADER-01..07 | ○ Pending |
@@ -46,7 +46,7 @@
 - `docs/ROADMAP.md` Wave 0.1–0.4
 - Figma file key: `4DIazKntakgAGXBDYefjbD` (gunakan untuk semua placeholder UI)
 
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 Plans:
 **Wave 1**
 
@@ -59,7 +59,7 @@
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 00-04-PLAN.md — docker compose up --build + prisma migrate dev --name init + seed.minimal.ts wilayah seed + human verify all 5 success criteria
+- [x] 00-04-PLAN.md — docker compose up --build + prisma migrate dev --name init + seed.minimal.ts wilayah seed + human verify all 5 success criteria
 
 ---
 
