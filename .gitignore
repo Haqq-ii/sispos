@@ -23,6 +23,7 @@ backend/dist/
 !components.json
 !nodemon.json
 !who-growth-tables.json
+!manifest.json
 
 # Prisma
 prisma/migrations/.gitkeep

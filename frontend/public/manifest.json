@@ -1,0 +1,19 @@
+{
+  "name": "SISPOS — Sistem Informasi Posyandu",
+  "short_name": "SISPOS",
+  "description": "Digitalisasi layanan Posyandu Indonesia",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#16a34a",
+  "orientation": "portrait",
+  "lang": "id",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
