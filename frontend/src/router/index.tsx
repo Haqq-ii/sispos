@@ -4,6 +4,10 @@ import { ProtectedRoute } from './ProtectedRoute'
 
 // Auth pages
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'))
+const RegisterPage = lazy(() => import('@/pages/auth/RegisterPage'))
+const VerifikasiOtpPage = lazy(() => import('@/pages/auth/VerifikasiOtpPage'))
+const OnboardingLokasiPage = lazy(() => import('@/pages/auth/OnboardingLokasiPage'))
+const LokasiSelesaiPage = lazy(() => import('@/pages/auth/LokasiSelesaiPage'))
 
 // Lazy-load placeholder dashboard pages
 const CitizenDashboardPage = lazy(() => import('@/pages/CitizenDashboardPage'))
@@ -26,6 +30,12 @@ export function AppRouter() {
 
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
+
+        {/* Citizen registration flow — public (no auth required) */}
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/register/verifikasi" element={<VerifikasiOtpPage />} />
+        <Route path="/register/lokasi" element={<OnboardingLokasiPage />} />
+        <Route path="/register/lokasi-selesai" element={<LokasiSelesaiPage />} />
 
         {/* Protected dashboard routes */}
         <Route
