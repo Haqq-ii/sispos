@@ -12,7 +12,7 @@
 | # | Phase | Goal | Requirements | Status |
 |---|-------|------|-------------|--------|
 | 0 | Infrastructure & Setup | 4/4 | Complete   | 2026-06-30 |
-| 1 | Auth & Wilayah | Login 3 role, OTP WA, JWT cookie, seed wilayah | AUTH-01..07 | ○ Pending |
+| 1 | Auth & Wilayah | 1/4 | In Progress|  |
 | 2 | Queue System | Ambil antrian SELECT FOR UPDATE, countdown realtime Socket.IO | QUEUE-01..06 | ○ Pending |
 | 3 | Kader — 5 Meja | Dashboard kader, lock-screen, 5 meja pelayanan, rekap + export | KADER-01..07 | ○ Pending |
 | 4 | Dashboard & DSS + AI | Peta stunting Leaflet, manajemen kader, AI chatbot gizi + pendaftaran | DSS-01..02, AI-01..03 | ○ Pending |
@@ -89,11 +89,11 @@ Plans:
 - `docs/ROADMAP.md` Wave 1.1–1.3
 - Figma frames: `5:5654`, `5:5731` (Login), `5:5809`, `5:5886` (Kader Login), `5:13077` (Puskesmas Login), `4:87`, `4:142` (Register), `5:1327` (OTP)
 
-**Plans:** 4 plans
+**Plans:** 1/4 plans executed
 
 **Wave 1** *(register + OTP backend)*
 
-- [ ] 01-01-PLAN.md — Shared Zod schemas + BullMQ notification module + auth register/OTP/lokasi backend (9 files)
+- [x] 01-01-PLAN.md — Shared Zod schemas + BullMQ notification module + auth register/OTP/lokasi backend (9 files)
 
 **Wave 2** *(login + wilayah seed + frontend register flow, all parallel after Wave 1)*
 
