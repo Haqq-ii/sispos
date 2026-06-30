@@ -47,7 +47,8 @@
 - Figma file key: `4DIazKntakgAGXBDYefjbD` (gunakan untuk semua placeholder UI)
 
 **Plans:** 4/4 plans complete
-Plans:
+
+Plans:
 **Wave 1**
 
 - [x] 00-01-PLAN.md — Prisma schema fix (4 bugs) + Docker Compose 5 container + Nginx + .env.example + .gitignore ✓ (6a8ce11, d8561b5)
@@ -87,6 +88,17 @@
 
 - `docs/ROADMAP.md` Wave 1.1–1.3
 - Figma frames: `5:5654`, `5:5731` (Login), `5:5809`, `5:5886` (Kader Login), `5:13077` (Puskesmas Login), `4:87`, `4:142` (Register), `5:1327` (OTP)
+
+**Plans:** 3 plans
+
+**Wave 1** *(register + OTP backend + all register-flow frontend)*
+
+- [ ] 01-01-PLAN.md — Shared Zod schemas + BullMQ notification module + auth register/OTP/lokasi backend + frontend RegisterPage/VerifikasiOtpPage/OnboardingLokasiPage/LokasiSelesaiPage + WilayahSelect
+
+**Wave 2** *(login + wilayah, run in parallel)*
+
+- [ ] 01-02-PLAN.md — Login single gateway + authMiddleware + Kader PIN lock + refresh/logout + LoginPage + RoleBadge + KaderLockScreen + ProtectedRoute
+- [ ] 01-03-PLAN.md — seed.wilayah.ts DIY+Jateng+Jatim (1500+ records) + wilayah module 4 cascade GET endpoints
 
 ---
 
