@@ -21,6 +21,8 @@ backend/dist/
 !package-lock.json
 !tsconfig*.json
 !components.json
+!nodemon.json
+!who-growth-tables.json
 
 # Prisma
 prisma/migrations/.gitkeep
