@@ -12,7 +12,7 @@
 | # | Phase | Goal | Requirements | Status |
 |---|-------|------|-------------|--------|
 | 0 | Infrastructure & Setup | 4/4 | Complete   | 2026-06-30 |
-| 1 | Auth & Wilayah | 1/4 | In Progress|  |
+| 1 | Auth & Wilayah | 3/4 | In Progress|  |
 | 2 | Queue System | Ambil antrian SELECT FOR UPDATE, countdown realtime Socket.IO | QUEUE-01..06 | ○ Pending |
 | 3 | Kader — 5 Meja | Dashboard kader, lock-screen, 5 meja pelayanan, rekap + export | KADER-01..07 | ○ Pending |
 | 4 | Dashboard & DSS + AI | Peta stunting Leaflet, manajemen kader, AI chatbot gizi + pendaftaran | DSS-01..02, AI-01..03 | ○ Pending |
@@ -89,7 +89,7 @@ Plans:
 - `docs/ROADMAP.md` Wave 1.1–1.3
 - Figma frames: `5:5654`, `5:5731` (Login), `5:5809`, `5:5886` (Kader Login), `5:13077` (Puskesmas Login), `4:87`, `4:142` (Register), `5:1327` (OTP)
 
-**Plans:** 1/4 plans executed
+**Plans:** 3/4 plans executed
 
 **Wave 1** *(register + OTP backend)*
 
@@ -97,8 +97,8 @@ Plans:
 
 **Wave 2** *(login + wilayah seed + frontend register flow, all parallel after Wave 1)*
 
-- [ ] 01-02-PLAN.md — Login single gateway + authMiddleware + Kader PIN lock + refresh/logout + LoginPage + RoleBadge + KaderLockScreen + ProtectedRoute
-- [ ] 01-03-PLAN.md — seed.wilayah.ts DIY+Jateng+Jatim (1500+ records) + wilayah module 4 cascade GET endpoints *(checkpoint: human verify)*
+- [x] 01-02-PLAN.md — Login single gateway + authMiddleware + Kader PIN lock + refresh/logout + LoginPage + RoleBadge + KaderLockScreen + ProtectedRoute
+- [x] 01-03-PLAN.md — seed.wilayah.ts DIY+Jateng+Jatim (1500+ records) + wilayah module 4 cascade GET endpoints *(checkpoint: human verify)*
 - [ ] 01-04-PLAN.md — Frontend register flow: RegisterPage + VerifikasiOtpPage + OnboardingLokasiPage + LokasiDikonfirmasiPage + WilayahSelect + hooks *(depends_on: 01-01, 01-02)*
 
 ---
