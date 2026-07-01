@@ -13,6 +13,7 @@ import pino from 'pino'
 import { prisma } from '../../config/db'
 import { io } from '../../config/socket'
 import { env } from '../../config/env'
+import { enqueueAntrianWaJob } from '../notification/notification.queue'
 
 const logger = pino({ level: env.NODE_ENV === 'production' ? 'info' : 'debug' })
 
@@ -159,6 +160,17 @@ export async function ambilAntrian(
 
   // Broadcast queue update ke room sesi:{slotId} — WAJIB di luar transaksi (T-02-14)
   void broadcastQueueUpdate(txResult.slotId)
+
+  // Enqueue WA notification via BullMQ — TIDAK PERNAH panggil Fonnte langsung (CLAUDE.md §WhatsApp)
+  // T-02-12: nomorPonsel berasal dari DB (txResult.wargaNomorPonsel), bukan request body
+  void enqueueAntrianWaJob({
+    nomorPonsel: txResult.wargaNomorPonsel,
+    nomorUrut: txResult.nomorUrut,
+    estimasiMenit,
+    namaPosyandu: txResult.jadwal.posyandu.namaPosyandu,
+    tanggalPelaksanaan,
+    labelSesi: txResult.labelSesi,
+  })
 
   logger.info(
     { antrianId: txResult.antrianId, nomorUrut: txResult.nomorUrut, slotId: txResult.slotId },
