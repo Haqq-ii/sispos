@@ -1,7 +1,11 @@
 import { Router } from 'express'
 import { authMiddleware } from '../../shared/middleware/auth.middleware'
 import { requireRole } from '../../shared/middleware/require-role.middleware'
-import { createPemeriksaanHandler, getPemeriksaanHistoryHandler } from './growth.controller'
+import {
+  createPemeriksaanHandler,
+  getPemeriksaanHistoryHandler,
+  updatePemeriksaanHandler,
+} from './growth.controller'
 
 export const growthRouter = Router()
 
@@ -19,4 +23,12 @@ growthRouter.get(
   authMiddleware,
   requireRole('kader', 'ketua_kader'),
   getPemeriksaanHistoryHandler
+)
+
+// PATCH /api/growth/pemeriksaan/:pemeriksaanId — Update tanda klinis, statusGiziOverride, rekomendasiAi (Meja 3 + Meja 4)
+growthRouter.patch(
+  '/pemeriksaan/:pemeriksaanId',
+  authMiddleware,
+  requireRole('kader', 'ketua_kader'),
+  updatePemeriksaanHandler
 )

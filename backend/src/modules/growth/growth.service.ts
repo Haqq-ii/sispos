@@ -13,6 +13,7 @@
  */
 import pino from 'pino'
 import type { IncomingHttpHeaders } from 'http'
+import type { Prisma } from '@prisma/client'
 import { prisma } from '../../config/db'
 import { env } from '../../config/env'
 import { encrypt } from '../../shared/utils/encrypt'
@@ -105,7 +106,7 @@ export async function createPemeriksaan(
   const catatanKonsultasiEnc = data.catatanKonsultasi ? encrypt(data.catatanKonsultasi) : null
 
   // 6. Transaction: pemeriksaan.create + auditLog.create (WAJIB bersamaan — CLAUDE.md §Keamanan)
-  const pemeriksaan = await prisma.$transaction(async (tx) => {
+  const pemeriksaan = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const record = await tx.pemeriksaan.create({
       data: {
         balitaId: data.balitaId,
@@ -169,6 +170,121 @@ function buildPemeriksaanResponse(
   return {
     ...pemeriksaan,
     catatanKonsultasi: catatanKonsultasiPlain ?? null,
+  }
+}
+
+// ── updatePemeriksaan ─────────────────────────────────────────────────────
+
+/**
+ * UpdatePemeriksaanInput — partial update untuk Meja 3 (tanda klinis) dan Meja 4 (rekomendasiAi)
+ *
+ * Security (T-03-05-01, T-03-05-04):
+ *   - IDOR guard: verifikasi pemeriksaan.antrian.slotSesi.jadwal.posyanduId === kader.posyanduId
+ *   - rekomendasiAi dan catatanKonsultasi WAJIB dienkripsi sebelum simpan
+ *   - AuditLog.dataSesudah TIDAK boleh menyertakan rekomendasiAi/catatanKonsultasi (enkripsi PDP)
+ */
+export interface UpdatePemeriksaanInput {
+  tandaKlinis?: {
+    rambutKemerahan: boolean
+    perutBuncit: boolean
+    edema: boolean
+    pucat: boolean
+    lainnya?: string | null
+  }
+  statusGiziOverride?: string | null
+  catatanKlinis?: string
+  rekomendasiAi?: string // akan dienkripsi
+  catatanKonsultasi?: string // akan dienkripsi
+}
+
+export async function updatePemeriksaan(
+  pemeriksaanId: string,
+  data: UpdatePemeriksaanInput,
+  kaderId: string
+): Promise<Record<string, unknown>> {
+  // 1. Fetch existing pemeriksaan untuk IDOR guard + dataSebelum AuditLog
+  const existing = await prisma.pemeriksaan.findUnique({
+    where: { id: pemeriksaanId },
+    include: {
+      antrian: {
+        include: {
+          slotSesi: {
+            include: {
+              jadwal: { select: { posyanduId: true } },
+            },
+          },
+        },
+      },
+    },
+  })
+
+  if (!existing) {
+    throw Object.assign(new Error('Pemeriksaan tidak ditemukan'), {
+      code: 'PEMERIKSAAN_TIDAK_DITEMUKAN',
+    })
+  }
+
+  // IDOR guard (T-03-05-01): pastikan pemeriksaan milik posyandu kader
+  if (existing.antrian) {
+    const kader = await prisma.kader.findUnique({
+      where: { id: kaderId },
+      select: { posyanduId: true },
+    })
+    const pemPosyanduId = existing.antrian.slotSesi?.jadwal?.posyanduId
+    if (kader && pemPosyanduId && kader.posyanduId !== pemPosyanduId) {
+      throw Object.assign(new Error('Akses ditolak — pemeriksaan bukan milik posyandu kader'), {
+        code: 'AKSES_DITOLAK',
+      })
+    }
+  }
+
+  // 2. Enkripsi field sensitif (WAJIB — UU PDP No. 27/2022)
+  const rekomendasiAiEnc = data.rekomendasiAi ? encrypt(data.rekomendasiAi) : undefined
+  const catatanKonsultasiEnc = data.catatanKonsultasi ? encrypt(data.catatanKonsultasi) : undefined
+
+  // 3. Transaction: update pemeriksaan + write AuditLog (WAJIB bersamaan — CLAUDE.md §Keamanan)
+  const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const record = await tx.pemeriksaan.update({
+      where: { id: pemeriksaanId },
+      data: {
+        ...(data.tandaKlinis !== undefined && { tandaKlinis: data.tandaKlinis }),
+        ...(data.statusGiziOverride !== undefined && { statusGiziOverride: (data.statusGiziOverride as unknown) as 'normal' | 'kurang' | 'buruk' | 'lebih' | 'obesitas' | 'pendek' | 'sangat_pendek' | null }),
+        ...(data.catatanKlinis !== undefined && { catatanKlinis: data.catatanKlinis }),
+        ...(rekomendasiAiEnc !== undefined && { rekomendasiAi: rekomendasiAiEnc }),
+        ...(catatanKonsultasiEnc !== undefined && { catatanKonsultasi: catatanKonsultasiEnc }),
+      },
+    })
+
+    // AuditLog — JANGAN masukkan rekomendasiAi/catatanKonsultasi ke dataSesudah (T-03-05-04)
+    await tx.auditLog.create({
+      data: {
+        userId: kaderId,
+        userRole: 'kader',
+        aksi: 'UPDATE_PEMERIKSAAN',
+        tabelTerkait: 'pemeriksaan',
+        recordId: pemeriksaanId,
+        dataSebelum: { statusGizi: existing.statusGizi },
+        dataSesudah: {
+          ...(data.tandaKlinis !== undefined && { tandaKlinis: data.tandaKlinis }),
+          ...(data.statusGiziOverride !== undefined && { statusGiziOverride: data.statusGiziOverride }),
+          ...(data.catatanKlinis !== undefined && { catatanKlinis: data.catatanKlinis }),
+          // TIDAK masukkan rekomendasiAi / catatanKonsultasi
+        },
+        ipAddress: null,
+        userAgent: null,
+      },
+    })
+
+    return record
+  })
+
+  logger.info({ pemeriksaanId, kaderId }, 'Pemeriksaan berhasil diperbarui')
+
+  // Return dengan dekripsi rekomendasiAi (jika diupdate) di response
+  return {
+    ...updated,
+    rekomendasiAi: data.rekomendasiAi ?? null,
+    catatanKonsultasi: data.catatanKonsultasi ?? null,
   }
 }
 
