@@ -10,6 +10,7 @@ import {
   hadirAntrian,
   tangguhkanAntrian,
   goShowAntrian,
+  getAntrianDetail,
 } from './queue-kader.service'
 
 const SetActiveMejaSchema = z.object({
@@ -100,6 +101,14 @@ export async function tangguhkanAntrianHandler(req: AuthRequest, res: Response):
   try {
     const result = await tangguhkanAntrian(id, req.user!.userId)
     res.status(200).json({ success: true, data: result, message: 'Antrian berhasil ditangguhkan.' })
+  } catch (err) { handleErr(err, res) }
+}
+
+export async function getAntrianDetailHandler(req: AuthRequest, res: Response): Promise<void> {
+  const { id } = req.params
+  try {
+    const data = await getAntrianDetail(id, req.user!.userId)
+    res.status(200).json({ success: true, data, message: 'Detail antrian berhasil diambil.' })
   } catch (err) { handleErr(err, res) }
 }
 

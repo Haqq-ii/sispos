@@ -238,6 +238,68 @@ export async function getTodaySlots(kaderId: string) {
   }
 }
 
+// ── getAntrianDetail (Meja 2: fetch balita info) ─────────────────────────
+
+/**
+ * getAntrianDetail — Return antrian dengan info balita untuk Meja 2.
+ *
+ * T-03-04-03 Mitigation: IDOR guard verifikasi kader.posyanduId === jadwal.posyanduId.
+ * Kader hanya bisa akses antrian milik posyandu-nya.
+ *
+ * @param antrianId  ID antrian
+ * @param kaderId    ID kader dari JWT (req.user.userId)
+ */
+export async function getAntrianDetail(antrianId: string, kaderId: string) {
+  const kader = await prisma.kader.findUnique({
+    where: { id: kaderId },
+    select: { posyanduId: true },
+  })
+  if (!kader) {
+    throw Object.assign(new Error('Kader tidak ditemukan'), { code: 'KADER_TIDAK_DITEMUKAN' })
+  }
+
+  const antrian = await prisma.antrian.findUnique({
+    where: { id: antrianId },
+    include: {
+      balita: {
+        select: {
+          id: true,
+          namaBalita: true,
+          jenisKelamin: true,
+          tanggalLahir: true,
+        },
+      },
+      slotSesi: {
+        include: {
+          jadwal: { select: { posyanduId: true } },
+        },
+      },
+    },
+  })
+
+  if (!antrian) {
+    throw Object.assign(new Error('Antrian tidak ditemukan'), { code: 'ANTRIAN_TIDAK_DITEMUKAN' })
+  }
+
+  // IDOR: kader hanya bisa lihat antrian posyanduId-nya (T-03-04-03)
+  if (antrian.slotSesi.jadwal.posyanduId !== kader.posyanduId) {
+    throw Object.assign(new Error('Akses ditolak — antrian bukan milik posyandu Anda'), {
+      code: 'FORBIDDEN_POSYANDU',
+    })
+  }
+
+  return {
+    id: antrian.id,
+    nomorUrut: antrian.nomorUrut,
+    statusAntrian: antrian.statusAntrian,
+    slotId: antrian.slotId,
+    balitaId: antrian.balitaId,
+    namaBalita: antrian.balita.namaBalita,
+    jenisKelamin: antrian.balita.jenisKelamin,
+    tanggalLahir: antrian.balita.tanggalLahir,
+  }
+}
+
 // ── go-show (daftar manual) ───────────────────────────────────────────────
 
 export async function goShowAntrian(

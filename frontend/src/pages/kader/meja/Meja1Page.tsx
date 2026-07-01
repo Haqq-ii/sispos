@@ -35,6 +35,7 @@ interface AntrianItem {
   id: string
   nomorUrut: number
   statusAntrian: StatusAntrianValue
+  balitaId: string
   balita: { namaBalita: string; jenisKelamin: string; tanggalLahir: string }
   warga: { rt: string | null }
 }
@@ -121,13 +122,20 @@ export default function Meja1Page() {
     enabled: !!activeSlotId,
   })
 
-  // Hadir mutation
+  // Hadir mutation — setelah hadir, navigasi ke Meja 2 dengan state balita
   const hadirMutation = useMutation({
-    mutationFn: (antrianId: string) =>
-      apiClient.patch(`/antrian/${antrianId}/hadir`).then((r) => r.data),
-    onSuccess: () => {
+    mutationFn: (payload: { antrianId: string; balitaId: string; namaBalita: string }) =>
+      apiClient.patch(`/antrian/${payload.antrianId}/hadir`).then((r) => r.data),
+    onSuccess: (_data, payload) => {
       void queryClient.invalidateQueries({ queryKey: ['antrian', 'kader', activeSlotId] })
-      toast({ description: 'Balita berhasil dipanggil.' })
+      toast({ description: 'Balita berhasil dipanggil. Lanjut ke Meja 2.' })
+      navigate('/kader/meja/2', {
+        state: {
+          antrianId: payload.antrianId,
+          balitaId: payload.balitaId,
+          namaBalita: payload.namaBalita,
+        },
+      })
     },
     onError: (error) => {
       const msg = isAxiosLikeError(error) ? error.response.data.message : 'Terjadi kesalahan.'
@@ -252,7 +260,13 @@ export default function Meja1Page() {
                         <Button
                           size="sm"
                           className="h-7 text-xs bg-green-600 hover:bg-green-700"
-                          onClick={() => hadirMutation.mutate(antrian.id)}
+                          onClick={() =>
+                            hadirMutation.mutate({
+                              antrianId: antrian.id,
+                              balitaId: antrian.balitaId,
+                              namaBalita: antrian.balita.namaBalita,
+                            })
+                          }
                           disabled={hadirMutation.isPending}
                         >
                           <UserCheck size={12} className="mr-1" />
