@@ -961,22 +961,22 @@ No test framework is installed in either the frontend or backend (`package.json`
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Posyandu module scope**
    - What we know: Puskesmas form needs `GET /api/posyandu` to list posyandu assigned to them; citizen tiket needs posyandu name.
    - What's unclear: Should posyandu be its own module or inline query in jadwal/antrian services?
-   - Recommendation: Create a minimal `posyandu` module with 1 endpoint (`GET /api/posyandu`) protected by puskesmas role. Citizen-facing posyandu data (name, address) is returned via the jadwal/antrian join queries — no separate citizen posyandu endpoint needed.
+   - RESOLVED (02-02): Create a minimal `posyandu` module with 1 endpoint (`GET /api/posyandu`) protected by puskesmas role. Citizen-facing posyandu data (name, address) is returned via the jadwal/antrian join queries — no separate citizen posyandu endpoint needed.
 
 2. **GET /api/jadwal/tersedia date filtering**
    - What we know: Citizen sees calendar for their posyandu; dates with open slots get green dots.
    - What's unclear: Does the endpoint return a list of dates with slots for the full month, or per-date slot data?
-   - Recommendation: Return list of available dates for a month (`GET /api/jadwal/tersedia?bulan=2026-07`), then a separate `GET /api/sesi?jadwalId=X` for the slot picker. This matches the two-step flow (pilih tanggal → pilih sesi).
+   - RESOLVED (02-02): Return list of available dates for a month (`GET /api/jadwal/tersedia?bulan=2026-07`), then a separate `GET /api/sesi?jadwalId=X` for the slot picker. This matches the two-step flow (pilih tanggal → pilih sesi).
 
 3. **BullMQ `parseBullMQConnection()` duplication**
    - What we know: `notification.queue.ts` and `notification.worker.ts` both define this function identically.
    - What's unclear: Should Phase 2 work centralize it to avoid triplication (antrian job adds a third user)?
-   - Recommendation: Extract to `backend/src/config/bullmq.ts` as a shared helper. Low-risk refactor with high payoff for maintainability.
+   - RESOLVED (02-03): Extract to `backend/src/config/bullmq.ts` as a shared helper. Low-risk refactor with high payoff for maintainability.
 
 ---
 
