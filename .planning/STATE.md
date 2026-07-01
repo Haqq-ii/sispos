@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Executing Phase 02
-last_updated: "2026-07-01T06:35:00.000Z"
+last_updated: "2026-07-01T06:47:00.000Z"
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 15
-  completed_plans: 14
-  percent: 29
+  completed_plans: 15
+  percent: 31
 ---
 
 # SISPOS — GSD State
@@ -28,10 +28,10 @@ See: `.planning/PROJECT.md` (updated 2026-06-30)
 ```
 Phase aktif  : Phase 02 — Queue System
 Last update  : 2026-07-01
-Plans done   : 5 / 7 (Phase 02: 02-01 ✓, 02-02 ✓, 02-03 ✓, 02-04 ✓, 02-05 ✓)
+Plans done   : 6 / 7 (Phase 02: 02-01 ✓, 02-02 ✓, 02-03 ✓, 02-04 ✓, 02-05 ✓, 02-06 ✓)
 Phases done  : 2 / 8 (Phase 00 + 01 complete)
-Next command : /gsd-execute-phase 02 06
-Stopped at   : 02-05 complete — citizen PilihTanggalPage + PilihSesiPage (AntrianKalender + SesiCard)
+Next command : /gsd-execute-phase 02 07
+Stopped at   : 02-06 complete — JadwalCard + JadwalTable + BuatJadwalDialog + ManajemenJadwalPage
 ```
 
 ## Phase History
@@ -105,6 +105,9 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 2026-07-01 | InlineProgress inline daripada @radix-ui/react-progress | Package belum ada di package.json; div custom dengan role=progressbar secara visual identik dan tidak butuh install baru |
 | 2026-07-01 | D-02 detect via backend 422 POSYANDU_BELUM_DIPILIH | posyanduUtamaId tidak di useAuthStore; server adalah sumber kebenaran — error response menandai redirect |
 | 2026-07-01 | jadwalId via navigate state (bukan Zustand) | Wizard step data bersifat ephemeral; hanya nilai akhir (selectedDate, selectedSlotId) disimpan ke store |
+| 2026-07-01 | JadwalListItem extended dengan posyanduId + slotSesi | Backend getJadwalList mengembalikan keduanya; interface harus match untuk disabled-date filtering dan kuota display |
+| 2026-07-01 | formatDateYYYYMMDD via local date parts (bukan toISOString) | Menghindari UTC midnight offset yang menyebabkan off-by-one day di WIB timezone |
+| 2026-07-01 | Toaster ditambah ke App.tsx | useToast() tidak render apa-apa tanpa Toaster di component tree |
 
 ## Performance Metrics
 
@@ -122,3 +125,4 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 02 | 03 | ~6 min | 2/2 | 8 |
 | 02 | 04 | ~3 min | 2/2 | 6 |
 | 02 | 05 | ~5 min | 2/2 | 5 |
+| 02 | 06 | ~2 min | 2/2 | 6 |
