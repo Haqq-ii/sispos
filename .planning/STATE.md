@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Executing Phase 02
-last_updated: "2026-07-01T05:57:00.000Z"
+last_updated: "2026-07-01T06:10:00.000Z"
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 15
-  completed_plans: 12
-  percent: 25
+  completed_plans: 13
+  percent: 27
 ---
 
 # SISPOS — GSD State
@@ -28,10 +28,10 @@ See: `.planning/PROJECT.md` (updated 2026-06-30)
 ```
 Phase aktif  : Phase 02 — Queue System
 Last update  : 2026-07-01
-Plans done   : 3 / 7 (Phase 02: 02-01 ✓, 02-02 ✓, 02-03 ✓)
+Plans done   : 4 / 7 (Phase 02: 02-01 ✓, 02-02 ✓, 02-03 ✓, 02-04 ✓)
 Phases done  : 2 / 8 (Phase 00 + 01 complete)
-Next command : /gsd-execute-phase 02 04
-Stopped at   : 02-03 complete — antrian backend (SELECT FOR UPDATE + BullMQ)
+Next command : /gsd-execute-phase 02 05
+Stopped at   : 02-04 complete — frontend shared infrastructure (ProtectedRoute + stores + hooks)
 ```
 
 ## Phase History
@@ -98,6 +98,10 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 2026-07-01 | GET /saya before /:id in antrianRouter | Express route conflict — 'saya' matches /:id if registered after |
 | 2026-07-01 | void enqueueAntrianWaJob(...) fire-and-forget | Antrian creation succeeds even if BullMQ enqueue fails gracefully |
 | 2026-07-01 | P2002 caught in ambilAntrianHandler | Double-tap race safety net — unique constraint violation → 409 SUDAH_DAFTAR |
+| 2026-07-01 | useAntrianStore intentionally has no persist() | Wizard state resets on tab close is correct behavior; antrian data from TanStack Query only |
+| 2026-07-01 | computeCountdown separated as pure function | Independently testable; useCountdownEstimasi wraps it for React lifecycle |
+| 2026-07-01 | ± prefix hardcoded in displayText | Countdown is estimate not promise (QUEUE-03 + CLAUDE.md mandate) |
+| 2026-07-01 | useSesiAvailability staleTime 15s | Slot availability changes frequently; short cache reduces stale kuota display |
 
 ## Performance Metrics
 
@@ -113,3 +117,4 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 02 | 01 | ~7 min | 3/3 | 15 |
 | 02 | 02 | ~25 min | 2/2 | 8 |
 | 02 | 03 | ~6 min | 2/2 | 8 |
+| 02 | 04 | ~3 min | 2/2 | 6 |
