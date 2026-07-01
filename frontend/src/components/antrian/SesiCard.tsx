@@ -1,9 +1,38 @@
 import { Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Card } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+
+// ── Inline progress bar ───────────────────────────────────────────
+// Menghindari @radix-ui/react-progress yang belum ada di package.json;
+// implementasi inline dengan div yang equivalent secara visual.
+interface InlineProgressProps {
+  value: number
+  className?: string
+  'aria-label'?: string
+}
+function InlineProgress({ value, className, 'aria-label': ariaLabel }: InlineProgressProps) {
+  const clamped = Math.min(100, Math.max(0, value))
+  return (
+    <div
+      role="progressbar"
+      aria-valuenow={Math.round(clamped)}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label={ariaLabel}
+      className={cn(
+        'relative w-full overflow-hidden rounded-full bg-secondary',
+        className,
+      )}
+    >
+      <div
+        className="h-full bg-primary transition-all"
+        style={{ width: `${clamped}%` }}
+      />
+    </div>
+  )
+}
 
 // ── Props ──────────────────────────────────────────────────────────
 
@@ -92,7 +121,7 @@ export function SesiCard({ sesi, onPilih, isLoading = false }: SesiCardProps) {
             </>
           )}
         </div>
-        <Progress
+        <InlineProgress
           value={progressValue}
           className="h-1.5"
           aria-label={`Kuota terisi ${terisi} dari ${kuota}`}
