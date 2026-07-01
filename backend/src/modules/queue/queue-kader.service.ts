@@ -177,6 +177,67 @@ export async function tangguhkanAntrian(antrianId: string, kaderId: string): Pro
   return txResult
 }
 
+// ── Today's slots for kader posyandu ─────────────────────────────────────
+
+export async function getTodaySlots(kaderId: string) {
+  const kader = await prisma.kader.findUnique({
+    where: { id: kaderId },
+    select: { posyanduId: true },
+  })
+  if (!kader) {
+    throw Object.assign(new Error('Kader tidak ditemukan'), { code: 'KADER_TIDAK_DITEMUKAN' })
+  }
+
+  // Ambil jadwal hari ini untuk posyandu kader — gunakan tanggal WIB (UTC+7)
+  const nowUtc = new Date()
+  const wibOffset = 7 * 60 * 60 * 1000
+  const nowWib = new Date(nowUtc.getTime() + wibOffset)
+  const todayStart = new Date(Date.UTC(nowWib.getUTCFullYear(), nowWib.getUTCMonth(), nowWib.getUTCDate()))
+  const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
+
+  const jadwal = await prisma.jadwal.findFirst({
+    where: {
+      posyanduId: kader.posyanduId,
+      tanggalPelaksanaan: { gte: todayStart, lt: todayEnd },
+      statusJadwal: { in: ['aktif', 'terkunci'] },
+    },
+    include: {
+      slotSesi: {
+        orderBy: { nomorSesi: 'asc' },
+        include: {
+          _count: {
+            select: {
+              antrian: {
+                where: { statusAntrian: { in: ['menunggu', 'dipanggil', 'ditangguhkan', 'selesai'] } },
+              },
+            },
+          },
+        },
+      },
+    },
+  })
+
+  if (!jadwal) return null
+
+  return {
+    jadwalId: jadwal.id,
+    tanggalPelaksanaan: jadwal.tanggalPelaksanaan,
+    estimasiDurasiMenit: jadwal.estimasiDurasiMenit,
+    statusJadwal: jadwal.statusJadwal,
+    slotSesi: jadwal.slotSesi.map((s) => ({
+      id: s.id,
+      nomorSesi: s.nomorSesi,
+      labelSesi: s.labelSesi,
+      jamMulai: s.jamMulai.toISOString().substring(11, 16),
+      jamSelesai: s.jamSelesai.toISOString().substring(11, 16),
+      kuota: s.kuota,
+      terisi: s.terisi,
+      durasiRataAktual: s.durasiRataAktual,
+      totalAntrian: s._count.antrian,
+    })),
+  }
+}
+
 // ── go-show (daftar manual) ───────────────────────────────────────────────
 
 export async function goShowAntrian(

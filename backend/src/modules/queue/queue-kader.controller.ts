@@ -6,6 +6,7 @@ import {
   setActiveMeja,
   clearActiveMeja,
   getSlotAntrian,
+  getTodaySlots,
   hadirAntrian,
   tangguhkanAntrian,
   goShowAntrian,
@@ -76,6 +77,13 @@ export async function getSlotAntrianHandler(req: AuthRequest, res: Response): Pr
   try {
     const data = await getSlotAntrian(slotId)
     res.status(200).json({ success: true, data, message: 'Daftar antrian berhasil diambil.' })
+  } catch (err) { handleErr(err, res) }
+}
+
+export async function getTodaySlotsHandler(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const data = await getTodaySlots(req.user!.userId)
+    res.status(200).json({ success: true, data, message: data ? 'Jadwal hari ini ditemukan.' : 'Tidak ada jadwal hari ini.' })
   } catch (err) { handleErr(err, res) }
 }
 

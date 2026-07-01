@@ -18,6 +18,7 @@ import {
   setActiveMejaHandler,
   clearActiveMejaHandler,
   getSlotAntrianHandler,
+  getTodaySlotsHandler,
   hadirAntrianHandler,
   tangguhkanAntrianHandler,
   goShowAntrianHandler,
@@ -31,6 +32,9 @@ const kaderAuth = [authMiddleware, requireRole('kader', 'ketua_kader')]
 queueKaderRouter.get('/kader/active-meja', ...kaderAuth, getActiveMejaHandler)
 queueKaderRouter.patch('/kader/active-meja', ...kaderAuth, setActiveMejaHandler)
 queueKaderRouter.delete('/kader/active-meja', ...kaderAuth, clearActiveMejaHandler)
+
+// Today's jadwal + slots for kader's posyandu (kader dashboard)
+queueKaderRouter.get('/kader/today-slots', ...kaderAuth, getTodaySlotsHandler)
 
 // Slot antrian list
 queueKaderRouter.get('/kader/slot/:slotId/antrian', ...kaderAuth, getSlotAntrianHandler)

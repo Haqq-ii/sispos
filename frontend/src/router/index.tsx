@@ -29,9 +29,16 @@ const TiketAntrianPage = lazy(
   () => import('@/pages/citizen/antrian/TiketAntrianPage')
 )
 
-// ── Kader dashboard ───────────────────────────────────────────────────────────
+// ── Kader pages ───────────────────────────────────────────────────────────────
 
-const KaderDashboardPage = lazy(() => import('@/pages/KaderDashboardPage'))
+const KaderDashboardPage = lazy(() => import('@/pages/kader/KaderDashboardPage'))
+const LockScreenPage = lazy(() => import('@/pages/kader/LockScreenPage'))
+const Meja1Page = lazy(() => import('@/pages/kader/meja/Meja1Page'))
+const Meja2Page = lazy(() => import('@/pages/kader/meja/Meja2Page'))
+const Meja3Page = lazy(() => import('@/pages/kader/meja/Meja3Page'))
+const Meja4Page = lazy(() => import('@/pages/kader/meja/Meja4Page'))
+const Meja5Page = lazy(() => import('@/pages/kader/meja/Meja5Page'))
+const RekapHarianPage = lazy(() => import('@/pages/kader/RekapHarianPage'))
 
 // ── Puskesmas pages ───────────────────────────────────────────────────────────
 
@@ -124,6 +131,62 @@ export function AppRouter() {
           element={
             <ProtectedRoute allowedRoles={['kader', 'ketua_kader']}>
               <KaderDashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/kader/lock-screen"
+          element={
+            <ProtectedRoute allowedRoles={['kader', 'ketua_kader']}>
+              <LockScreenPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/kader/meja/1"
+          element={
+            <ProtectedRoute allowedRoles={['kader', 'ketua_kader']}>
+              <Meja1Page />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/kader/meja/2"
+          element={
+            <ProtectedRoute allowedRoles={['kader', 'ketua_kader']}>
+              <Meja2Page />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/kader/meja/3"
+          element={
+            <ProtectedRoute allowedRoles={['kader', 'ketua_kader']}>
+              <Meja3Page />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/kader/meja/4"
+          element={
+            <ProtectedRoute allowedRoles={['kader', 'ketua_kader']}>
+              <Meja4Page />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/kader/meja/5"
+          element={
+            <ProtectedRoute allowedRoles={['kader', 'ketua_kader']}>
+              <Meja5Page />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/kader/rekap"
+          element={
+            <ProtectedRoute allowedRoles={['kader', 'ketua_kader']}>
+              <RekapHarianPage />
             </ProtectedRoute>
           }
         />
