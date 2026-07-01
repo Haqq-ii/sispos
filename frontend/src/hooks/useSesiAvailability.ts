@@ -57,10 +57,19 @@ export function useBatalkanAntrian() {
 
 export interface SlotSesiDetail {
   id: string
+  nomorSesi: number
   labelSesi: string
   jamMulai: string
   jamSelesai: string
   kuota: number
   terisi: number
   jadwalId: string
+  /** Data jadwal induk — tersedia karena backend menyertakannya via include */
+  jadwal?: {
+    estimasiDurasiMenit: number
+    tanggalPelaksanaan: string
+    posyandu: {
+      namaPosyandu: string
+    }
+  }
 }
