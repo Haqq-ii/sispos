@@ -128,6 +128,33 @@ Plans:
 - `docs/ROADMAP.md` Wave 2.1–2.3
 - Figma frames: `5:2314` (Pilih tanggal), `5:2630` (Pilih sesi), `5:2902` (Konfirmasi), `5:3116` (Cetak), `5:15526` (Manajemen Jadwal)
 
+**Plans:** 7 plans
+
+**Wave 0** *(BLOCKING — must complete before any other wave)*
+
+- [ ] 02-01-PLAN.md — Schema migration (StatusJadwal.aktif + StatusAntrian.dibatalkan) + 8 shadcn components + socket singleton + requireRole middleware
+
+**Wave 1** *(blocked on Wave 0)*
+
+- [ ] 02-02-PLAN.md — Backend posyandu module + jadwal module (CRUD + SlotSesi auto-gen via prisma.$transaction)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 02-03-PLAN.md — Backend antrian module (SELECT FOR UPDATE race guard, cancel, Socket.IO broadcast) + BullMQ WA notification
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 02-04-PLAN.md — Frontend: ProtectedRoute allowedRoles + useAntrianStore + TanStack Query hooks + computeCountdown util
+
+**Wave 4** *(blocked on Wave 3 — plans 05 and 06 run in parallel)*
+
+- [ ] 02-05-PLAN.md — Frontend citizen: AntrianKalender + PilihTanggalPage + SesiCard + PilihSesiPage
+- [ ] 02-06-PLAN.md — Frontend puskesmas: JadwalCard + JadwalTable + BuatJadwalDialog + ManajemenJadwalPage
+
+**Wave 5** *(blocked on Wave 4)*
+
+- [ ] 02-07-PLAN.md — Frontend: useAntrianSocket + CountdownEstimasi + TiketAntrianPage + CitizenDashboardPage + router wiring [has checkpoint]
+
 ---
 
 ### Phase 3: Kader — 5 Meja
