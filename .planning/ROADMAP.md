@@ -190,6 +190,38 @@ Plans:
 - `docs/ROADMAP.md` Wave 3.1–3.7
 - Figma frames: `5:9717` (Dashboard kader), `5:9785`, `5:9865` (Meja 2), `5:11874`, `5:11942` (Meja 5), `5:12010` (Imunisasi), `27:*` dan `2001:*` frames (Final screens)
 
+**Plans:** 7 plans
+
+Plans:
+
+**Wave 1** *(blocking foundation)*
+
+- [ ] 03-01-PLAN.md — WHO 2006 LMS data + vitest setup + encrypt.ts + zscore.ts + env.ts + package installs (openai, @google-cloud/speech, recharts)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 03-02-PLAN.md — Backend: growth module (Z-Score + AuditLog + encrypt) + queue-kader module (Redis lock-screen + Meja 1 hadir/tangguhkan) + immunization stubs + app.ts
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 03-03-PLAN.md — Frontend: useKaderMejaStore + useKaderSocket + KaderDashboardPage + LockScreenPage + Meja1Page + router routes (KADER-01, KADER-02)
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 03-04-PLAN.md — Frontend: usePemeriksaan hook + pemeriksaan.schemas.ts (Zod v4) + Meja2Page (numpad BB/TB, biological gate, Z-Score display) (KADER-03)
+
+**Wave 5** *(blocked on Wave 4)*
+
+- [ ] 03-05-PLAN.md — Frontend+Backend: ZScoreChart (recharts) + Meja3Page (tanda klinis checklist + statusGiziOverride) + PATCH /api/growth/pemeriksaan/:id (KADER-04)
+
+**Wave 6** *(blocked on Wave 5)*
+
+- [ ] 03-06-PLAN.md — Frontend+Backend: voice module (Google STT id-ID) + ai module (GPT-4o early warning, temp 0.6) + Meja4Page (KADER-05)
+
+**Wave 7** *(blocked on Wave 6)* [has checkpoint]
+
+- [ ] 03-07-PLAN.md — Frontend+Backend: Meja5Page + selesai endpoint (moving average QUEUE-05 + broadcast) + rekap harian ExcelJS+pdfkit + RekapHarianPage + human verify (KADER-06, KADER-07, QUEUE-05)
+
 ---
 
 ### Phase 4: Dashboard & DSS + AI Chatbot
