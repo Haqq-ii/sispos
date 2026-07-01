@@ -7,7 +7,8 @@
     "build": "tsc --project tsconfig.json",
     "start": "node dist/server.js",
     "migrate": "prisma migrate dev",
-    "studio": "prisma studio"
+    "studio": "prisma studio",
+    "test": "vitest run"
   },
   "dependencies": {
     "@google-cloud/speech": "^7.5.0",
@@ -42,7 +43,8 @@
     "nodemon": "^3.1.4",
     "prisma": "^5.15.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "vitest": "^4.1.9"
   },
   "prisma": {
     "schema": "./prisma/schema.prisma"
