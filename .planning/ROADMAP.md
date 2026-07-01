@@ -14,7 +14,7 @@
 | 0 | Infrastructure & Setup | 4/4 | Complete   | 2026-06-30 |
 | 1 | Auth & Wilayah | 4/4 | Complete   | 2026-07-01 |
 | 2 | Queue System | 6/7 | In Progress|  |
-| 3 | Kader — 5 Meja | Dashboard kader, lock-screen, 5 meja pelayanan, rekap + export | KADER-01..07 | ○ Pending |
+| 3 | Kader — 5 Meja | 2/7 | In Progress|  |
 | 4 | Dashboard & DSS + AI | Peta stunting Leaflet, manajemen kader, AI chatbot gizi + pendaftaran | DSS-01..02, AI-01..03 | ○ Pending |
 | 5 | Reports & Export | Laporan bulanan e-PPGBM Excel + PDF via ExcelJS + pdfkit | REPORT-01 | ○ Pending |
 | 6 | PWA & Offline | Service Worker Workbox, IndexedDB sync Meja 1-5, auto-sync online | PWA-01 | ○ Pending |
@@ -190,17 +190,17 @@ Plans:
 - `docs/ROADMAP.md` Wave 3.1–3.7
 - Figma frames: `5:9717` (Dashboard kader), `5:9785`, `5:9865` (Meja 2), `5:11874`, `5:11942` (Meja 5), `5:12010` (Imunisasi), `27:*` dan `2001:*` frames (Final screens)
 
-**Plans:** 7 plans
+**Plans:** 2/7 plans executed
 
 Plans:
 
 **Wave 1** *(blocking foundation)*
 
-- [ ] 03-01-PLAN.md — WHO 2006 LMS data + vitest setup + encrypt.ts + zscore.ts + env.ts + package installs (openai, @google-cloud/speech, recharts)
+- [x] 03-01-PLAN.md — WHO 2006 LMS data + vitest setup + encrypt.ts + zscore.ts + env.ts + package installs (openai, @google-cloud/speech, recharts)
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 03-02-PLAN.md — Backend: growth module (Z-Score + AuditLog + encrypt) + queue-kader module (Redis lock-screen + Meja 1 hadir/tangguhkan) + immunization stubs + app.ts
+- [x] 03-02-PLAN.md — Backend: growth module (Z-Score + AuditLog + encrypt) + queue-kader module (Redis lock-screen + Meja 1 hadir/tangguhkan) + immunization stubs + app.ts
 
 **Wave 3** *(blocked on Wave 2)*
 
