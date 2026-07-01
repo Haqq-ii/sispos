@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Executing Phase 02
-last_updated: "2026-07-01T11:15:39.149Z"
+last_updated: "2026-07-01T11:35:38.073Z"
 progress:
   total_phases: 8
   completed_phases: 3
@@ -113,6 +113,9 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 2026-07-01 | formatJam handles ISO string dan HH:MM | Prisma @db.Time berbeda antara getSesiList (diformat HH:MM) dan antrian include (raw ISO) |
 | 2026-07-01 | GET /api/balita endpoint added (child module) | KonfirmasiAntrianPage membutuhkan daftar balita — child module belum ada, dibuat minimal |
 | 2026-07-01 | CitizenDashboardPage path: pages/citizen/ bukan pages/ | Konsisten dengan PilihTanggalPage/PilihSesiPage; old file jadi re-export |
+| 2026-07-01 | ManajemenJadwalPage: export default (bukan named export) | React.lazy() membutuhkan { default: Component }; named-only export menyebabkan render undefined → blank page |
+| 2026-07-01 | $queryRaw camelCase kolom harus di-quote: "jadwalId", "durasiRataAktual" | Prisma tidak memetakan kolom ke snake_case by default; PostgreSQL case-sensitive dengan unquoted identifiers → error 42703 |
+| 2026-07-01 | Zod v4: required_error → error (di z.date() dan z.number()) | Zod v4 mengganti nama option ini; required_error tidak lagi valid |
 
 ## Performance Metrics
 

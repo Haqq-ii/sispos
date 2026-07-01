@@ -185,6 +185,25 @@ Setelah checkpoint approved:
 *Phase: 02-queue-system*
 *Completed: 2026-07-01*
 
+## Post-Execution Bug Fixes (commit 4d2fc0e)
+
+Two bugs found during manual testing after Task 2 commit:
+
+**Bug 1 — ManajemenJadwalPage blank page (`/puskesmas/jadwal`)**
+- Symptom: `Uncaught TypeError: Cannot convert object to primitive value` → blank page
+- Root cause: `ManajemenJadwalPage` used named export (`export function`). `React.lazy()` requires `{ default: Component }` — named-only exports cause React to render `undefined`.
+- Fix: Changed to `export default function ManajemenJadwalPage`.
+- File: `frontend/src/pages/puskesmas/jadwal/ManajemenJadwalPage.tsx`
+
+**Bug 2 — Konfirmasi antrian generic error (POST /api/antrian/ambil → 500)**
+- Symptom: Every antrian submission showed "Terjadi kesalahan. Silakan coba beberapa saat lagi."
+- Root cause: `$queryRaw SELECT FOR UPDATE` in `antrian.service.ts` referenced `jadwal_id` and `durasi_rata_aktual` (snake_case) but PostgreSQL column names are camelCase (`"jadwalId"`, `"durasiRataAktual"`) per Prisma default (no `@map` on `SlotSesi.jadwalId`). PostgreSQL is case-sensitive with unquoted identifiers → error 42703.
+- Fix: Changed raw SQL to `SELECT id, kuota, terisi, "jadwalId", "durasiRataAktual"` with double-quoted camelCase. Updated TS interface accordingly.
+- File: `backend/src/modules/antrian/antrian.service.ts`
+
+**Bonus Fix — Zod v4 `required_error` rename**
+- Zod v4 renamed `required_error` to `error`. Fixed in `frontend/src/lib/validations/jadwal.schema.ts`.
+
 ## Self-Check: PASSED
 
 Files exist:
