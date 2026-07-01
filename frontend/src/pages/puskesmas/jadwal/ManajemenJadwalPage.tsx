@@ -21,7 +21,7 @@ interface PosyanduOption {
  * Route: /puskesmas/jadwal (wired in Plan 02-07 per D-07)
  * Figma frame: 5:15526
  */
-export function ManajemenJadwalPage() {
+export default function ManajemenJadwalPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
 
   // ── Jadwal list query ──────────────────────────────────────────────────────

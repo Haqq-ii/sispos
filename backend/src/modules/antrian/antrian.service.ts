@@ -3,7 +3,7 @@
  *
  * KRITIS (CLAUDE.md §Antrian):
  *   1. SELECT FOR UPDATE wajib via prisma.$transaction + $queryRaw — BUKAN Prisma fluent API alone
- *   2. $queryRaw mengembalikan snake_case (terisi, kuota, jadwal_id, durasi_rata_aktual)
+ *   2. $queryRaw: kolom camelCase harus di-quote (e.g. "jadwalId", "durasiRataAktual")
  *   3. broadcastQueueUpdate WAJIB dipanggil DI LUAR blok prisma.$transaction (setelah commit)
  *   4. Selalu guard `if (!io) return` sebelum io.to().emit()
  *   5. WA notification SELALU via BullMQ — tidak pernah Fonnte langsung
@@ -62,17 +62,17 @@ export async function ambilAntrian(
   // ── Dalam transaksi: lock + check + create ──────────────────────────────
   const txResult = await prisma.$transaction(async (tx) => {
     // 1. Lock row slot_sesi — tidak ada transaksi lain yang bisa baca/tulis baris ini
-    //    PENTING: $queryRaw mengembalikan snake_case (jadwal_id, durasi_rata_aktual)
+    //    PENTING: camelCase column names harus di-quote dalam raw SQL ("jadwalId", "durasiRataAktual")
     const slots = await tx.$queryRaw<
       Array<{
         id: string
         kuota: number
         terisi: number
-        jadwal_id: string
-        durasi_rata_aktual: number | null
+        jadwalId: string
+        durasiRataAktual: number | null
       }>
     >`
-      SELECT id, kuota, terisi, jadwal_id, durasi_rata_aktual
+      SELECT id, kuota, terisi, "jadwalId", "durasiRataAktual"
       FROM slot_sesi
       WHERE id = ${slotId}
       FOR UPDATE
