@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Executing Phase 02
-last_updated: "2026-07-01T00:35:33.328Z"
+last_updated: "2026-07-01T05:47:02.345Z"
 progress:
   total_phases: 8
   completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
+  total_plans: 15
+  completed_plans: 10
   percent: 25
 ---
 
@@ -27,11 +27,11 @@ See: `.planning/PROJECT.md` (updated 2026-06-30)
 
 ```
 Phase aktif  : Phase 02 — Queue System
-Last update  : 2026-07-01 (Phase 01 UAT approved)
-Plans done   : 8 / 8 (Phase 00 + 01 complete)
-Phases done  : 2 / 8
-Next command : /gsd-plan-phase 02
-Stopped at   : Phase 01 UAT approved — ready to plan Phase 02
+Last update  : 2026-07-01
+Plans done   : 2 / 7 (Phase 02: 02-01 ✓, 02-02 ✓)
+Phases done  : 2 / 8 (Phase 00 + 01 complete)
+Next command : /gsd-execute-phase 02 03
+Stopped at   : 02-02 complete — jadwal + posyandu backend done
 ```
 
 ## Phase History
@@ -92,6 +92,9 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 2026-06-30 | Axios interceptor type-narrowing (bukan axios.isAxiosError) | TypeScript strict mode; error parameter bertipe unknown di interceptors |
 | 2026-07-01 | FONNTE_API_KEY forwarded via docker-compose.yml | Phase 01 env.ts added it as required; compose never passed it → crash on restart |
 | 2026-07-01 | seed.demo.ts uses BCRYPT_ROUNDS=10 | Faster seed execution; not production |
+| 2026-07-01 | GET /api/sesi alias di app.ts (bukan hanya /api/jadwal/sesi) | Artifacts spec eksplisit menyebut /api/sesi; keduanya aktif |
+| 2026-07-01 | getCitizenPosyanduId helper di jadwal.service | D-01: backend enforce posyanduUtamaId dari DB, bukan client-supplied |
+| 2026-07-01 | SlotSesi times via new Date(0).setUTCHours() | Avoid PostgreSQL @db.Time timezone pitfall per 02-RESEARCH.md |
 
 ## Performance Metrics
 
@@ -104,3 +107,5 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 01 | 02 | ~25 min | 2/2 | 8 |
 | 01 | 03 | ~15 min | 2/2 | 3 |
 | 01 | 04 | ~20 min | 2/2 | 8 |
+| 02 | 01 | ~7 min | 3/3 | 15 |
+| 02 | 02 | ~25 min | 2/2 | 8 |
