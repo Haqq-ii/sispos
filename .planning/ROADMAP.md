@@ -13,7 +13,7 @@
 |---|-------|------|-------------|--------|
 | 0 | Infrastructure & Setup | 4/4 | Complete   | 2026-06-30 |
 | 1 | Auth & Wilayah | 4/4 | Complete   | 2026-07-01 |
-| 2 | Queue System | 2/7 | In Progress|  |
+| 2 | Queue System | 3/7 | In Progress|  |
 | 3 | Kader — 5 Meja | Dashboard kader, lock-screen, 5 meja pelayanan, rekap + export | KADER-01..07 | ○ Pending |
 | 4 | Dashboard & DSS + AI | Peta stunting Leaflet, manajemen kader, AI chatbot gizi + pendaftaran | DSS-01..02, AI-01..03 | ○ Pending |
 | 5 | Reports & Export | Laporan bulanan e-PPGBM Excel + PDF via ExcelJS + pdfkit | REPORT-01 | ○ Pending |
@@ -128,7 +128,7 @@ Plans:
 - `docs/ROADMAP.md` Wave 2.1–2.3
 - Figma frames: `5:2314` (Pilih tanggal), `5:2630` (Pilih sesi), `5:2902` (Konfirmasi), `5:3116` (Cetak), `5:15526` (Manajemen Jadwal)
 
-**Plans:** 2/7 plans executed
+**Plans:** 3/7 plans executed
 
 **Wave 0** *(BLOCKING — must complete before any other wave)*
 
@@ -140,7 +140,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 02-03-PLAN.md — Backend antrian module (SELECT FOR UPDATE race guard, cancel, Socket.IO broadcast) + BullMQ WA notification
+- [x] 02-03-PLAN.md — Backend antrian module (SELECT FOR UPDATE race guard, cancel, Socket.IO broadcast) + BullMQ WA notification ✓ (328a7ba, c5a4958)
 
 **Wave 3** *(blocked on Wave 2)*
 
