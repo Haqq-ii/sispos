@@ -12,6 +12,8 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(3000),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   FRONTEND_URL: z.string().url().default('http://localhost'),
+  OPENAI_API_KEY: z.string().optional(),
+  GOOGLE_APPLICATION_CREDENTIALS: z.string().optional(),
 })
 
 const parsed = envSchema.safeParse(process.env)
