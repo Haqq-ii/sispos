@@ -39,13 +39,20 @@ export function useJadwalTersedia(bulan: string | null) {
 
 export interface JadwalListItem {
   id: string
+  posyanduId: string
   tanggalPelaksanaan: string
   estimasiDurasiMenit: number
   statusJadwal: string
   posyandu: {
-    id: string
     namaPosyandu: string
   }
+  slotSesi?: Array<{
+    id: string
+    nomorSesi?: number
+    labelSesi?: string
+    kuota: number
+    terisi: number
+  }>
   _count?: {
     slotSesi: number
   }
