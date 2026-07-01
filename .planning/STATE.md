@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Phase 02 Complete — Ready for Phase 03
-last_updated: "2026-07-01T11:55:00.000Z"
+status: Phase 03 In Progress — Plan 01 Complete
+last_updated: "2026-07-01T23:30:00.000Z"
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 22
-  completed_plans: 22
-  percent: 38
+  completed_plans: 23
+  percent: 40
 ---
 
 # SISPOS — GSD State
@@ -28,10 +28,10 @@ See: `.planning/PROJECT.md` (updated 2026-06-30)
 ```
 Phase aktif  : Phase 03 — Kader 5-Meja Flow
 Last update  : 2026-07-01
-Plans done   : 7 / 7 Phase 02 (✓ semua), Phase 03 belum dimulai
-Phases done  : 3 / 8 (Phase 00 + 01 + 02 complete)
-Next command : /gsd-plan-phase 03  (jika belum ada PLAN) atau /gsd-execute-phase 03
-Stopped at   : Phase 02 APPROVED — semua 5 success criteria pass
+Plans done   : 03-01 complete (Wave 0 foundation), 03-02 next
+Phases done  : 3 / 8 (Phase 00 + 01 + 02 complete), Phase 03 in progress
+Next command : /gsd-execute-phase 03 (plan 02: growth/Meja 2 backend)
+Stopped at   : Phase 03 Plan 01 — foundation packages + WHO tables + encrypt/zscore complete
 ```
 
 ## Phase History
@@ -116,6 +116,9 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 2026-07-01 | ManajemenJadwalPage: export default (bukan named export) | React.lazy() membutuhkan { default: Component }; named-only export menyebabkan render undefined → blank page |
 | 2026-07-01 | $queryRaw camelCase kolom harus di-quote: "jadwalId", "durasiRataAktual" | Prisma tidak memetakan kolom ke snake_case by default; PostgreSQL case-sensitive dengan unquoted identifiers → error 42703 |
 | 2026-07-01 | Zod v4: required_error → error (di z.date() dan z.number()) | Zod v4 mengganti nama option ini; required_error tidak lagi valid |
+| 2026-07-01 | APP_ENCRYPTION_KEY (bukan ENCRYPTION_KEY) di encrypt.ts | .env dan docker-compose.yml sudah menggunakan APP_ENCRYPTION_KEY; konsistensi lebih penting dari PLAN.md naming |
+| 2026-07-01 | WHO tables flat keys (wfa_boys) bukan nested (WAZ.male) | zscore.ts API yang dispesifikasikan user menggunakan flat key lookup |
+| 2026-07-01 | wfa/lhfa months 0-24 saja (25 entries) | User menyediakan data exact 0-24; expand ke 0-60 jika balita >24 bulan dibutuhkan |
 
 ## Performance Metrics
 
