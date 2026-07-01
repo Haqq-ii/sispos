@@ -9,6 +9,7 @@ import { authRouter } from './modules/auth/auth.routes'
 import { wilayahRouter } from './modules/wilayah/wilayah.routes'
 import { posyanduRouter } from './modules/posyandu/posyandu.routes'
 import { jadwalRouter } from './modules/jadwal/jadwal.routes'
+import { antrianRouter } from './modules/antrian/antrian.routes'
 import { authMiddleware } from './shared/middleware/auth.middleware'
 import { getSesiListHandler } from './modules/jadwal/jadwal.controller'
 
@@ -47,6 +48,7 @@ app.use('/api/auth', authRouter)
 app.use('/api/wilayah', wilayahRouter)
 app.use('/api/posyandu', posyanduRouter)
 app.use('/api/jadwal', jadwalRouter)
+app.use('/api/antrian', antrianRouter)
 // Alias: GET /api/sesi?jadwalId=... (path eksplisit per artifacts spec; juga tersedia di /api/jadwal/sesi)
 app.get('/api/sesi', authMiddleware, getSesiListHandler)
 
