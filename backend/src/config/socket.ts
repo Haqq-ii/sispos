@@ -24,6 +24,14 @@ export function initSocket(httpServer: HttpServer): Server {
   server.on('connection', (socket) => {
     logger.debug({ socketId: socket.id }, 'Socket.IO client terhubung')
 
+    // QUEUE-04: Citizen bergabung ke room antrian sesi tertentu
+    // Client emits: socket.emit('queue:join', { slotId, antrianId })
+    // Server joins: room 'sesi:{slotId}' — broadcasts dikirim ke room ini
+    socket.on('queue:join', ({ slotId, antrianId }: { slotId: string; antrianId: string }) => {
+      void socket.join('sesi:' + slotId)
+      logger.debug({ socketId: socket.id, slotId, antrianId }, 'Citizen bergabung ke room antrian')
+    })
+
     socket.on('disconnect', (reason) => {
       logger.debug({ socketId: socket.id, reason }, 'Socket.IO client terputus')
     })
