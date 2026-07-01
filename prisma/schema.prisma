@@ -34,6 +34,7 @@ enum StatusVerifikasi {
 
 enum StatusJadwal {
   draft
+  aktif
   terkunci
   selesai
   dibatalkan
@@ -45,6 +46,7 @@ enum StatusAntrian {
   selesai
   ditangguhkan
   tidak_hadir
+  dibatalkan
 }
 
 enum StatusGizi {
