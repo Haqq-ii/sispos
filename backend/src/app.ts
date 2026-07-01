@@ -7,6 +7,10 @@ import { env } from './config/env'
 import { healthRouter } from './modules/health/health.routes'
 import { authRouter } from './modules/auth/auth.routes'
 import { wilayahRouter } from './modules/wilayah/wilayah.routes'
+import { posyanduRouter } from './modules/posyandu/posyandu.routes'
+import { jadwalRouter } from './modules/jadwal/jadwal.routes'
+import { authMiddleware } from './shared/middleware/auth.middleware'
+import { getSesiListHandler } from './modules/jadwal/jadwal.controller'
 
 export const logger = pino({
   level: env.NODE_ENV === 'production' ? 'info' : 'debug',
@@ -41,9 +45,10 @@ app.use(express.urlencoded({ extended: true }))
 app.use('/api/health', healthRouter)
 app.use('/api/auth', authRouter)
 app.use('/api/wilayah', wilayahRouter)
-// TODO Phase 1+: mount module routers here
-// app.use('/api/queue', queueRouter)
-// dst.
+app.use('/api/posyandu', posyanduRouter)
+app.use('/api/jadwal', jadwalRouter)
+// Alias: GET /api/sesi?jadwalId=... (path eksplisit per artifacts spec; juga tersedia di /api/jadwal/sesi)
+app.get('/api/sesi', authMiddleware, getSesiListHandler)
 
 // ── 404 Handler ─────────────────────────────────────────────
 app.use((_req, res) => {
