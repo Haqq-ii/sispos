@@ -11,6 +11,9 @@ import { posyanduRouter } from './modules/posyandu/posyandu.routes'
 import { jadwalRouter } from './modules/jadwal/jadwal.routes'
 import { antrianRouter } from './modules/antrian/antrian.routes'
 import { childRouter } from './modules/child/child.routes'
+import { growthRouter } from './modules/growth/growth.routes'
+import { queueKaderRouter } from './modules/queue/queue-kader.routes'
+import { immunizationRouter } from './modules/immunization/immunization.routes'
 import { authMiddleware } from './shared/middleware/auth.middleware'
 import { getSesiListHandler } from './modules/jadwal/jadwal.controller'
 
@@ -51,6 +54,12 @@ app.use('/api/posyandu', posyanduRouter)
 app.use('/api/jadwal', jadwalRouter)
 app.use('/api/antrian', antrianRouter)
 app.use('/api/balita', childRouter)
+// Growth module: POST /api/growth/pemeriksaan, GET /api/growth/balita/:id/history
+app.use('/api/growth', growthRouter)
+// Queue-kader: mounted at /api so paths /api/kader/* and /api/antrian/:id/hadir|tangguhkan resolve
+app.use('/api', queueKaderRouter)
+// Immunization: GET /api/immunization/balita/:id, POST /api/immunization
+app.use('/api/immunization', immunizationRouter)
 // Alias: GET /api/sesi?jadwalId=... (path eksplisit per artifacts spec; juga tersedia di /api/jadwal/sesi)
 app.get('/api/sesi', authMiddleware, getSesiListHandler)
 
