@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Phase 03 In Progress — Plan 01 Complete
-last_updated: "2026-07-01T17:12:54.334Z"
+status: Executing Phase 03
+last_updated: "2026-07-02T00:00:00.000Z"
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 22
-  completed_plans: 17
-  percent: 38
+  completed_plans: 20
+  percent: 40
 ---
 
 # SISPOS — GSD State
@@ -21,17 +21,17 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-30)
 
 **Core value:** Countdown antrian adaptif + alur 5 Meja kader end-to-end
-**Current focus:** Phase 03 — Kader 5-Meja Flow
+**Current focus:** Phase 03 — kader-5-meja
 
 ## Current Status
 
 ```
 Phase aktif  : Phase 03 — Kader 5-Meja Flow
-Last update  : 2026-07-01
-Plans done   : 03-01 complete (Wave 0 foundation), 03-02 next
+Last update  : 2026-07-02
+Plans done   : 03-01, 03-02, 03-03, 03-04, 03-05 complete
 Phases done  : 3 / 8 (Phase 00 + 01 + 02 complete), Phase 03 in progress
-Next command : /gsd-execute-phase 03 (plan 02: growth/Meja 2 backend)
-Stopped at   : Phase 03 Plan 01 — foundation packages + WHO tables + encrypt/zscore complete
+Next command : /gsd-execute-phase 03 (plan 06: Meja 4 — AI Early Warning + STT)
+Stopped at   : Phase 03 Plan 05 — Meja3Page + ZScoreChart + PATCH endpoint complete
 ```
 
 ## Phase History
@@ -119,6 +119,9 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 2026-07-01 | APP_ENCRYPTION_KEY (bukan ENCRYPTION_KEY) di encrypt.ts | .env dan docker-compose.yml sudah menggunakan APP_ENCRYPTION_KEY; konsistensi lebih penting dari PLAN.md naming |
 | 2026-07-01 | WHO tables flat keys (wfa_boys) bukan nested (WAZ.male) | zscore.ts API yang dispesifikasikan user menggunakan flat key lookup |
 | 2026-07-01 | wfa/lhfa months 0-24 saja (25 entries) | User menyediakan data exact 0-24; expand ke 0-60 jika balita >24 bulan dibutuhkan |
+| 2026-07-02 | Native HTML checkbox (Meja 3) — @radix-ui/react-checkbox tidak ada di package.json | Tidak perlu package baru; Tailwind styling identik secara visual; pola sama dengan InlineProgress |
+| 2026-07-02 | TandaKlinisSchema tanpa .default() — zodResolver mismatch di Zod v4 | Zod v4 .default() menghasilkan InputType opsional vs OutputType required; fix: defaultValues di useForm |
+| 2026-07-02 | IDOR guard via antrian chain di updatePemeriksaan | T-03-05-01: kader hanya bisa update pemeriksaan dari posyandu-nya sendiri |
 
 ## Performance Metrics
 
@@ -138,3 +141,4 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 02 | 05 | ~5 min | 2/2 | 5 |
 | 02 | 06 | ~2 min | 2/2 | 6 |
 | 02 | 07 | ~20 min | 2/2 + checkpoint | 13 |
+| 03 | 05 | ~30 min | 2/2 | 5 |

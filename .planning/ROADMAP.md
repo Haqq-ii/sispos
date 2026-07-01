@@ -212,7 +212,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4)*
 
-- [ ] 03-05-PLAN.md — Frontend+Backend: ZScoreChart (recharts) + Meja3Page (tanda klinis checklist + statusGiziOverride) + PATCH /api/growth/pemeriksaan/:id (KADER-04)
+- [x] 03-05-PLAN.md — Frontend+Backend: ZScoreChart (recharts) + Meja3Page (tanda klinis checklist + statusGiziOverride) + PATCH /api/growth/pemeriksaan/:id (KADER-04) ✓ 2026-07-02
 
 **Wave 6** *(blocked on Wave 5)*
 
