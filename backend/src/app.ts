@@ -14,6 +14,8 @@ import { childRouter } from './modules/child/child.routes'
 import { growthRouter } from './modules/growth/growth.routes'
 import { queueKaderRouter } from './modules/queue/queue-kader.routes'
 import { immunizationRouter } from './modules/immunization/immunization.routes'
+import { voiceRouter } from './modules/voice/voice.routes'
+import { aiRouter } from './modules/ai/ai.routes'
 import { authMiddleware } from './shared/middleware/auth.middleware'
 import { getSesiListHandler } from './modules/jadwal/jadwal.controller'
 
@@ -60,6 +62,10 @@ app.use('/api/growth', growthRouter)
 app.use('/api', queueKaderRouter)
 // Immunization: GET /api/immunization/balita/:id, POST /api/immunization
 app.use('/api/immunization', immunizationRouter)
+// Voice: POST /api/voice/transcribe (Google Cloud STT via Multer multipart)
+app.use('/api/voice', voiceRouter)
+// AI: POST /api/ai/early-warning (GPT-4o early warning + saves rekomendasiAi encrypted)
+app.use('/api/ai', aiRouter)
 // Alias: GET /api/sesi?jadwalId=... (path eksplisit per artifacts spec; juga tersedia di /api/jadwal/sesi)
 app.get('/api/sesi', authMiddleware, getSesiListHandler)
 
