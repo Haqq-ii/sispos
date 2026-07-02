@@ -28,10 +28,10 @@ See: `.planning/PROJECT.md` (updated 2026-06-30)
 ```
 Phase aktif  : Phase 03 — Kader 5-Meja Flow
 Last update  : 2026-07-02
-Plans done   : 03-01, 03-02, 03-03, 03-04, 03-05 complete
+Plans done   : 03-01, 03-02, 03-03, 03-04, 03-05, 03-06 complete
 Phases done  : 3 / 8 (Phase 00 + 01 + 02 complete), Phase 03 in progress
-Next command : /gsd-execute-phase 03 (plan 06: Meja 4 — AI Early Warning + STT)
-Stopped at   : Phase 03 Plan 05 — Meja3Page + ZScoreChart + PATCH endpoint complete
+Next command : /gsd-execute-phase 03 (plan 07: Meja 5 — Selesai + moving average + Socket.IO broadcast)
+Stopped at   : Phase 03 Plan 06 — Meja4Page + AI Early Warning + STT complete
 ```
 
 ## Phase History
@@ -122,6 +122,9 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 2026-07-02 | Native HTML checkbox (Meja 3) — @radix-ui/react-checkbox tidak ada di package.json | Tidak perlu package baru; Tailwind styling identik secara visual; pola sama dengan InlineProgress |
 | 2026-07-02 | TandaKlinisSchema tanpa .default() — zodResolver mismatch di Zod v4 | Zod v4 .default() menghasilkan InputType opsional vs OutputType required; fix: defaultValues di useForm |
 | 2026-07-02 | IDOR guard via antrian chain di updatePemeriksaan | T-03-05-01: kader hanya bisa update pemeriksaan dari posyandu-nya sendiri |
+| 2026-07-02 | Native textarea (Meja 4) — @/components/ui/textarea.tsx tidak ada di package | Konsisten dengan InlineProgress + native checkbox pattern dari 03-02 dan 03-05 |
+| 2026-07-02 | Lazy import SpeechClient dan OpenAI di service files | Graceful degradation saat env vars tidak ada; development bisa berlanjut tanpa credentials |
+| 2026-07-02 | IDOR guard duplikat di earlyWarningHandler sebelum OpenAI call | Menghindari billing OpenAI untuk request tidak authorized; defense-in-depth T-03-06-06 |
 
 ## Performance Metrics
 
@@ -142,3 +145,4 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 02 | 06 | ~2 min | 2/2 | 6 |
 | 02 | 07 | ~20 min | 2/2 + checkpoint | 13 |
 | 03 | 05 | ~30 min | 2/2 | 5 |
+| 03 | 06 | ~25 min | 3/3 | 7 |

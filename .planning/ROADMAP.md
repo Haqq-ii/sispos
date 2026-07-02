@@ -14,7 +14,7 @@
 | 0 | Infrastructure & Setup | 4/4 | Complete   | 2026-06-30 |
 | 1 | Auth & Wilayah | 4/4 | Complete   | 2026-07-01 |
 | 2 | Queue System | 6/7 | In Progress|  |
-| 3 | Kader — 5 Meja | 2/7 | In Progress|  |
+| 3 | Kader — 5 Meja | 6/7 | In Progress|  |
 | 4 | Dashboard & DSS + AI | Peta stunting Leaflet, manajemen kader, AI chatbot gizi + pendaftaran | DSS-01..02, AI-01..03 | ○ Pending |
 | 5 | Reports & Export | Laporan bulanan e-PPGBM Excel + PDF via ExcelJS + pdfkit | REPORT-01 | ○ Pending |
 | 6 | PWA & Offline | Service Worker Workbox, IndexedDB sync Meja 1-5, auto-sync online | PWA-01 | ○ Pending |
@@ -190,7 +190,7 @@ Plans:
 - `docs/ROADMAP.md` Wave 3.1–3.7
 - Figma frames: `5:9717` (Dashboard kader), `5:9785`, `5:9865` (Meja 2), `5:11874`, `5:11942` (Meja 5), `5:12010` (Imunisasi), `27:*` dan `2001:*` frames (Final screens)
 
-**Plans:** 2/7 plans executed
+**Plans:** 6/7 plans executed
 
 Plans:
 
@@ -204,11 +204,11 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 03-03-PLAN.md — Frontend: useKaderMejaStore + useKaderSocket + KaderDashboardPage + LockScreenPage + Meja1Page + router routes (KADER-01, KADER-02)
+- [x] 03-03-PLAN.md — Frontend: useKaderMejaStore + useKaderSocket + KaderDashboardPage + LockScreenPage + Meja1Page + router routes (KADER-01, KADER-02)
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [ ] 03-04-PLAN.md — Frontend: usePemeriksaan hook + pemeriksaan.schemas.ts (Zod v4) + Meja2Page (numpad BB/TB, biological gate, Z-Score display) (KADER-03)
+- [x] 03-04-PLAN.md — Frontend: usePemeriksaan hook + pemeriksaan.schemas.ts (Zod v4) + Meja2Page (numpad BB/TB, biological gate, Z-Score display) (KADER-03)
 
 **Wave 5** *(blocked on Wave 4)*
 
@@ -216,7 +216,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5)*
 
-- [ ] 03-06-PLAN.md — Frontend+Backend: voice module (Google STT id-ID) + ai module (GPT-4o early warning, temp 0.6) + Meja4Page (KADER-05)
+- [x] 03-06-PLAN.md — Frontend+Backend: voice module (Google STT id-ID) + ai module (GPT-4o early warning, temp 0.6) + Meja4Page (KADER-05) ✓ 2026-07-02
 
 **Wave 7** *(blocked on Wave 6)* [has checkpoint]
 
