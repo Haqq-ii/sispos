@@ -21,6 +21,7 @@ import {
   getTodaySlotsHandler,
   hadirAntrianHandler,
   tangguhkanAntrianHandler,
+  selesaikanAntrianHandler,
   goShowAntrianHandler,
   getAntrianDetailHandler,
 } from './queue-kader.controller'
@@ -40,9 +41,11 @@ queueKaderRouter.get('/kader/today-slots', ...kaderAuth, getTodaySlotsHandler)
 // Slot antrian list
 queueKaderRouter.get('/kader/slot/:slotId/antrian', ...kaderAuth, getSlotAntrianHandler)
 
-// Antrian status transitions (Meja 1)
+// Antrian status transitions (Meja 1 + Meja 5)
 queueKaderRouter.patch('/antrian/:id/hadir', ...kaderAuth, hadirAntrianHandler)
 queueKaderRouter.patch('/antrian/:id/tangguhkan', ...kaderAuth, tangguhkanAntrianHandler)
+// Meja 5: selesaikan antrian → update statusAntrian='selesai' + CMA durasiRataAktual + broadcast
+queueKaderRouter.patch('/antrian/:id/selesai', ...kaderAuth, selesaikanAntrianHandler)
 
 // Go-show: daftar manual oleh kader
 queueKaderRouter.post('/kader/go-show', ...kaderAuth, goShowAntrianHandler)

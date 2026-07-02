@@ -300,6 +300,123 @@ export async function getAntrianDetail(antrianId: string, kaderId: string) {
   }
 }
 
+// ── selesaikan (Meja 5) ───────────────────────────────────────────────────
+
+/**
+ * selesaikanAntrian — Kader tandai balita selesai → statusAntrian = 'selesai' + CMA update.
+ *
+ * QUEUE-05: Update SlotSesi.durasiRataAktual dengan Cumulative Moving Average setiap selesai.
+ * Formula: n<=1 ? durasiLayanan : (oldAvg*(n-1)+durasiLayanan)/n
+ *   - n = jumlah antrian 'selesai' di slot ini SETELAH update ini
+ *   - Sanity guard: hanya update jika 0 < durasiLayanan < 60 menit
+ *
+ * T-03-07-01 Mitigation: SELECT FOR UPDATE mencegah double-selesai concurrent.
+ *   Jika statusAntrian sudah 'selesai', throws ANTRIAN_BELUM_AKTIF (bukan 'dipanggil').
+ * T-03-07-04 Mitigation: IDOR guard verifikasi kader.posyanduId === jadwal.posyanduId.
+ * broadcastQueueUpdate WAJIB dipanggil DI LUAR transaksi (CLAUDE.md §Antrian + T-02-14).
+ */
+export async function selesaikanAntrian(
+  antrianId: string,
+  kaderId: string
+): Promise<{ slotId: string; durasiRataAktual: number | null }> {
+  // IDOR guard: ambil posyanduId kader sebelum masuk transaksi
+  const kader = await prisma.kader.findUnique({
+    where: { id: kaderId },
+    select: { posyanduId: true },
+  })
+  if (!kader) {
+    throw Object.assign(new Error('Kader tidak ditemukan'), { code: 'KADER_TIDAK_DITEMUKAN' })
+  }
+
+  let finalDurasiRataAktual: number | null = null
+
+  const txResult = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    // SELECT FOR UPDATE — cegah race condition double-selesai (T-03-07-01)
+    const rows = await tx.$queryRaw<Array<{
+      id: string
+      statusAntrian: string
+      slotId: string
+      waktuMulaiLayanan: Date | null
+    }>>`
+      SELECT id, "statusAntrian", "slotId", "waktuMulaiLayanan"
+      FROM antrian WHERE id = ${antrianId} FOR UPDATE
+    `
+    const antrian = rows[0]
+    if (!antrian) {
+      throw Object.assign(new Error('Antrian tidak ditemukan'), { code: 'ANTRIAN_TIDAK_DITEMUKAN' })
+    }
+    // T-03-07-01: hanya 'dipanggil' yang bisa selesai; 'selesai'/'menunggu' → error
+    if (antrian.statusAntrian !== 'dipanggil') {
+      throw Object.assign(new Error('Antrian belum aktif — status harus dipanggil'), {
+        code: 'ANTRIAN_BELUM_AKTIF',
+      })
+    }
+
+    // IDOR: kader hanya bisa operasikan antrian di posyanduId-nya (T-03-07-04)
+    const antrianDetail = await tx.antrian.findUnique({
+      where: { id: antrianId },
+      include: { slotSesi: { include: { jadwal: { select: { posyanduId: true } } } } },
+    })
+    if (antrianDetail?.slotSesi.jadwal.posyanduId !== kader.posyanduId) {
+      throw Object.assign(new Error('Akses ditolak — antrian bukan milik posyandu Anda'), {
+        code: 'FORBIDDEN_POSYANDU',
+      })
+    }
+
+    const waktuSelesai = new Date()
+    const durasiLayananBaru = antrian.waktuMulaiLayanan
+      ? (waktuSelesai.getTime() - antrian.waktuMulaiLayanan.getTime()) / 60000
+      : null
+
+    // Update status antrian
+    await tx.antrian.update({
+      where: { id: antrianId },
+      data: { statusAntrian: 'selesai', waktuSelesai },
+    })
+
+    // CMA moving average — hanya jika durasi valid (> 0 dan < 60 menit sanity guard)
+    if (durasiLayananBaru !== null && durasiLayananBaru > 0 && durasiLayananBaru < 60) {
+      const slot = await tx.slotSesi.findUnique({
+        where: { id: antrian.slotId },
+        select: { durasiRataAktual: true },
+      })
+
+      // n = jumlah antrian selesai setelah update ini (include antrian ini sendiri)
+      const n = await tx.antrian.count({
+        where: { slotId: antrian.slotId, statusAntrian: 'selesai' },
+      })
+
+      const oldAvg = slot?.durasiRataAktual ?? durasiLayananBaru
+      const newAvg =
+        n <= 1
+          ? durasiLayananBaru
+          : (oldAvg * (n - 1) + durasiLayananBaru) / n
+
+      await tx.slotSesi.update({
+        where: { id: antrian.slotId },
+        data: { durasiRataAktual: newAvg },
+      })
+
+      finalDurasiRataAktual = newAvg
+    }
+
+    return { slotId: antrian.slotId }
+  })
+
+  // Broadcast WAJIB di luar transaksi (CLAUDE.md §Antrian + T-02-14)
+  void broadcastQueueUpdate(txResult.slotId)
+
+  // BullMQ: enqueue WA selesai notification (CLAUDE.md §WhatsApp)
+  void notificationQueue.add(
+    'selesai_whatsapp',
+    { antrianId },
+    { attempts: 3, backoff: { type: 'exponential', delay: 1000 } }
+  )
+
+  logger.info({ antrianId, kaderId, durasiRataAktual: finalDurasiRataAktual }, 'Antrian selesai')
+  return { slotId: txResult.slotId, durasiRataAktual: finalDurasiRataAktual }
+}
+
 // ── go-show (daftar manual) ───────────────────────────────────────────────
 
 export async function goShowAntrian(

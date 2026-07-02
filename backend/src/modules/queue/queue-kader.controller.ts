@@ -9,6 +9,7 @@ import {
   getTodaySlots,
   hadirAntrian,
   tangguhkanAntrian,
+  selesaikanAntrian,
   goShowAntrian,
   getAntrianDetail,
 } from './queue-kader.service'
@@ -31,6 +32,7 @@ const ERROR_MAP: Record<string, number> = {
   SLOT_PENUH: 409,
   SUDAH_DAFTAR: 409,
   ANTRIAN_STATUS_TIDAK_VALID: 409,
+  ANTRIAN_BELUM_AKTIF: 409,
   FORBIDDEN_POSYANDU: 403,
 }
 
@@ -109,6 +111,18 @@ export async function getAntrianDetailHandler(req: AuthRequest, res: Response): 
   try {
     const data = await getAntrianDetail(id, req.user!.userId)
     res.status(200).json({ success: true, data, message: 'Detail antrian berhasil diambil.' })
+  } catch (err) { handleErr(err, res) }
+}
+
+export async function selesaikanAntrianHandler(req: AuthRequest, res: Response): Promise<void> {
+  const { id } = req.params
+  try {
+    const result = await selesaikanAntrian(id, req.user!.userId)
+    res.status(200).json({
+      success: true,
+      data: result,
+      message: 'Pelayanan selesai. Terima kasih.',
+    })
   } catch (err) { handleErr(err, res) }
 }
 
