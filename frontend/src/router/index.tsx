@@ -57,6 +57,9 @@ const ManajemenJadwalPage = lazy(
 const ManajemenPenggunaPage = lazy(
   () => import('@/pages/puskesmas/ManajemenPenggunaPage')
 )
+const AuditLogPage = lazy(
+  () => import('@/pages/puskesmas/AuditLogPage')
+)
 
 // Placeholder untuk halaman yang belum dibuat
 const HalamanDevelopment = () => (
@@ -240,7 +243,7 @@ export function AppRouter() {
           <Route path="jadwal" element={<ManajemenJadwalPage />} />
           <Route path="pengguna" element={<ManajemenPenggunaPage />} />
           <Route path="laporan" element={<HalamanDevelopment />} />
-          <Route path="audit-log" element={<HalamanDevelopment />} />
+          <Route path="audit-log" element={<AuditLogPage />} />
         </Route>
 
         {/* 404 */}

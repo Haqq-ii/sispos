@@ -19,6 +19,7 @@ import { aiRouter } from './modules/ai/ai.routes'
 import { rekapHarianRouter } from './modules/reports/rekap-harian.routes'
 import { dashboardRouter } from './modules/dashboard/dashboard.routes'
 import { usersRouter } from './modules/users/users.routes'
+import { auditRouter } from './modules/audit/audit.routes'
 import { authMiddleware } from './shared/middleware/auth.middleware'
 import { getSesiListHandler } from './modules/jadwal/jadwal.controller'
 
@@ -75,6 +76,8 @@ app.use('/api/reports', rekapHarianRouter)
 app.use('/api/dashboard', dashboardRouter)
 // Users: GET /api/users/kader, PATCH /api/users/kader/:id/unlock (puskesmas only, IDOR guard)
 app.use('/api/users', usersRouter)
+// Audit Log: GET /api/audit-log?page=1&limit=20 (puskesmas only, scoped by kaderIds)
+app.use('/api/audit-log', auditRouter)
 // Alias: GET /api/sesi?jadwalId=... (path eksplisit per artifacts spec; juga tersedia di /api/jadwal/sesi)
 app.get('/api/sesi', authMiddleware, getSesiListHandler)
 
