@@ -9,9 +9,9 @@
  * - Section A (ada antrian aktif): card dengan StatusBadge + nomor + estimasi + "Lihat Tiket"
  * - Section B (tidak ada antrian): CTA card "Ambil Antrian" → /citizen/antrian/pilih-tanggal
  */
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { CalendarPlus } from 'lucide-react'
+import { CalendarPlus, MessageCircle, CalendarCheck } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -173,6 +173,52 @@ export default function CitizenDashboardPage() {
             >
               Ambil Antrian
             </Button>
+          </div>
+        )}
+
+        {/* Layanan Digital — navigasi ke chatbot */}
+        {!isLoading && (
+          <div className="mx-4 mt-4">
+            <p className="text-xs uppercase tracking-wider text-gray-400 mb-2 px-1">
+              LAYANAN DIGITAL
+            </p>
+            <div className="space-y-2">
+              {/* Card: Tanya Asisten Gizi */}
+              <Link
+                to="/citizen/chat-gizi"
+                className="bg-white border border-gray-100 rounded-xl p-4 flex items-center gap-3 shadow-sm hover:shadow-md transition-shadow active:opacity-80"
+              >
+                <div className="flex-shrink-0 w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                  <MessageCircle size={20} className="text-green-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 leading-tight">
+                    Tanya Asisten Gizi
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5 leading-snug">
+                    Jawab pertanyaan gizi balita, tumbuh kembang, dan imunisasi
+                  </p>
+                </div>
+              </Link>
+
+              {/* Card: Daftar Antrian via Chat */}
+              <Link
+                to="/citizen/chat-pendaftaran"
+                className="bg-white border border-gray-100 rounded-xl p-4 flex items-center gap-3 shadow-sm hover:shadow-md transition-shadow active:opacity-80"
+              >
+                <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                  <CalendarCheck size={20} className="text-blue-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 leading-tight">
+                    Daftar Antrian via Chat
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5 leading-snug">
+                    Daftar, batalkan, atau jadwal ulang antrian dengan percakapan
+                  </p>
+                </div>
+              </Link>
+            </div>
           </div>
         )}
       </div>
