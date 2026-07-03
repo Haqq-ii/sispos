@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from './ProtectedRoute'
 import { useAuthStore } from '@/stores/useAuthStore'
+import PuskesmasLayout from '@/layouts/PuskesmasLayout'
 
 // ── Auth pages ────────────────────────────────────────────────────────────────
 
@@ -45,10 +46,18 @@ const RekapHarianPage = lazy(() => import('@/pages/kader/RekapHarianPage'))
 // ── Puskesmas pages ───────────────────────────────────────────────────────────
 
 const PuskesmasDashboardPage = lazy(
-  () => import('@/pages/PuskesmasDashboardPage')
+  () => import('@/pages/puskesmas/PuskesmasDashboardPage')
+)
+const PetaStuntingPage = lazy(
+  () => import('@/pages/puskesmas/PetaStuntingPage')
 )
 const ManajemenJadwalPage = lazy(
   () => import('@/pages/puskesmas/jadwal/ManajemenJadwalPage')
+)
+
+// Placeholder untuk halaman yang belum dibuat
+const HalamanDevelopment = () => (
+  <div className="p-6 text-gray-500">Halaman sedang dikembangkan.</div>
 )
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
@@ -213,24 +222,23 @@ export function AppRouter() {
           }
         />
 
-        {/* ── Puskesmas protected routes ────────────────────────────── */}
+        {/* ── Puskesmas protected routes — nested under PuskesmasLayout ── */}
 
         <Route
-          path="/puskesmas/dashboard"
+          path="/puskesmas"
           element={
             <ProtectedRoute allowedRoles={['puskesmas']}>
-              <PuskesmasDashboardPage />
+              <PuskesmasLayout />
             </ProtectedRoute>
           }
-        />
-        <Route
-          path="/puskesmas/jadwal"
-          element={
-            <ProtectedRoute allowedRoles={['puskesmas']}>
-              <ManajemenJadwalPage />
-            </ProtectedRoute>
-          }
-        />
+        >
+          <Route path="dashboard" element={<PuskesmasDashboardPage />} />
+          <Route path="peta" element={<PetaStuntingPage />} />
+          <Route path="jadwal" element={<ManajemenJadwalPage />} />
+          <Route path="pengguna" element={<HalamanDevelopment />} />
+          <Route path="laporan" element={<HalamanDevelopment />} />
+          <Route path="audit-log" element={<HalamanDevelopment />} />
+        </Route>
 
         {/* 404 */}
         <Route path="*" element={<NotFoundPage />} />
