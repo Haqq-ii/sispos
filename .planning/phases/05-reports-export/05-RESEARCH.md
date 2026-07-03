@@ -624,22 +624,25 @@ Phase 5 tidak blocked oleh Phase 4 (04-04 checkpoint). Phase 5 hanya butuh: auth
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Format kolom e-PPGBM yang tepat**
    - What we know: Standard e-PPGBM Kemenkes punya laporan export Excel, tapi exact column list tidak dapat diverifikasi dari sumber otoritatif dalam sesi ini (sigiziterpadu.gizi.kemkes.go.id tidak dapat diakses)
    - What's unclear: Apakah ada template Excel resmi yang harus diikuti persis (header names, column order, sheet names)?
    - Recommendation: Konfirmasi dengan instruktur PSI — jika tidak ada template spesifik, gunakan kolom A1-A4 di Assumptions Log sebagai "format e-PPGBM akademik yang reasonable"
+   - **RESOLVED:** Gunakan layout 17 kolom dari Assumptions Log sebagai "format e-PPGBM akademik yang reasonable" untuk konteks PSI. Jika instruktur mensyaratkan template spesifik, kolom dapat disesuaikan tanpa mengubah arsitektur service.
 
 2. **Export kader rekap harian di scope Phase 5?**
    - What we know: Phase 3 Plan 07 sudah implement `rekap-harian` untuk kader. CLAUDE.md §Export menyebut "berlaku untuk kader (rekap harian) dan puskesmas (laporan bulanan)".
    - What's unclear: Apakah Phase 5 perlu tambah apa-apa untuk kader side, atau Phase 3 sudah cukup?
    - Recommendation: ROADMAP.md Phase 5 description hanya menyebut Puskesmas. Anggap kader rekap harian sudah done (Phase 3) — Phase 5 hanya laporan bulanan puskesmas.
+   - **RESOLVED:** Phase 5 scope = laporan bulanan puskesmas only. Kader rekap harian sudah selesai di Phase 3 Plan 07 (03-07-PLAN.md). ROADMAP.md Phase 5 goal tidak menyebut kader.
 
 3. **Nama Puskesmas di laporan header**
    - What we know: `Puskesmas` model punya `namaPuskesmas` field. Auth token hanya berisi `userId` (puskesmasId).
    - What's unclear: Perlu satu query tambahan ke `prisma.puskesmas.findUnique({ where: { id: puskesmasId }, select: { namaPuskesmas: true } })` untuk header laporan.
    - Recommendation: Tambahkan query ini di service function — lightweight, single-row lookup.
+   - **RESOLVED:** Query `prisma.puskesmas.findUnique({ where: { id: puskesmasId }, select: { namaPuskesmas: true } })` ditambahkan di `generateLaporanBulananXlsx` dan `generateLaporanBulananPdf` sebelum data aggregation query. Diimplementasi di Plan 05-01 Task 2.
 
 ---
 
