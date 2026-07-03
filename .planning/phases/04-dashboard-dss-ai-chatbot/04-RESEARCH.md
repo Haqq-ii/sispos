@@ -799,22 +799,22 @@ function handleSend() {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Posyandu coordinates for demo seed data**
    - What we know: No lat/lng in current schema; seed data is in Phase 7
    - What's unclear: What coordinates should demo Posyandu Mergangsan/DIY have?
-   - Recommendation: Wave 4.1 migrates schema; Wave 4.1 or Phase 7 populates demo values. Use actual Yogyakarta kelurahan coordinates from OpenStreetMap Nominatim API during seed.
+   - RESOLVED: Wave 4.1 migrates schema (add latitude/longitude to Posyandu). Demo lat/lng deferred to Phase 7 seed (prisma/seed.ts). Executor may add placeholder coordinates (e.g., Yogyakarta center: -7.797, 110.370) directly in the migration or seed.today.ts.
 
 2. **Chat history scope for pendaftaran chatbot**
    - What we know: RiwayatChat stores only user/assistant content messages
    - What's unclear: Should pendaftaran and gizi history be separated or combined?
-   - Recommendation: Add optional `chatType` field to RiwayatChat (`'gizi' | 'pendaftaran'`) or use separate fetch scope. For MVP: single table, filter by last N messages.
+   - RESOLVED: MVP uses client-side state for pendaftaran chat history (no DB persistence). Gizi chatbot saves to RiwayatChat (single table, last 10 messages). No schema change needed.
 
 3. **Kader list scope for Puskesmas dashboard**
    - What we know: Puskesmas owns multiple Posyandu; each Posyandu has multiple Kader
    - What's unclear: Should Puskesmas see ALL kader across all their posyandu, or only kader linked to specific posyandu?
-   - Recommendation: Show all kader grouped by posyandu; GET /api/users/kader returns all kader for the puskesmasId (via posyandu relation).
+   - RESOLVED: GET /api/users/kader returns all kader for the requesting puskesmasId (via posyandu relation), grouped by posyandu in response. No cross-puskesmas data leakage (IDOR guard via JWT).
 
 ---
 
