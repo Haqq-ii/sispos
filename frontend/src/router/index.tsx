@@ -3,6 +3,8 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from './ProtectedRoute'
 import { useAuthStore } from '@/stores/useAuthStore'
 import PuskesmasLayout from '@/layouts/PuskesmasLayout'
+import CitizenLayout from '@/layouts/CitizenLayout'
+import KaderLayout from '@/layouts/KaderLayout'
 
 // ── Auth pages ────────────────────────────────────────────────────────────────
 
@@ -12,12 +14,9 @@ const VerifikasiOtpPage = lazy(() => import('@/pages/auth/VerifikasiOtpPage'))
 const OnboardingLokasiPage = lazy(() => import('@/pages/auth/OnboardingLokasiPage'))
 const LokasiSelesaiPage = lazy(() => import('@/pages/auth/LokasiSelesaiPage'))
 
-// ── Citizen dashboard (path baru — frontend/src/pages/citizen/CitizenDashboardPage.tsx) ──
+// ── Citizen pages ─────────────────────────────────────────────────────────────
 
 const CitizenDashboardPage = lazy(() => import('@/pages/citizen/CitizenDashboardPage'))
-
-// ── Citizen chat pages ────────────────────────────────────────────────────────
-
 const ChatGiziPage = lazy(() => import('@/pages/citizen/ChatGiziPage'))
 const ChatPendaftaranPage = lazy(() => import('@/pages/citizen/ChatPendaftaranPage'))
 
@@ -113,87 +112,44 @@ export function AppRouter() {
         <Route path="/register/lokasi" element={<OnboardingLokasiPage />} />
         <Route path="/register/lokasi-selesai" element={<LokasiSelesaiPage />} />
 
-        {/* ── Citizen protected routes ──────────────────────────────── */}
+        {/* ── Citizen protected routes — nested under CitizenLayout ──────── */}
 
         <Route
-          path="/citizen/dashboard"
+          path="/citizen"
           element={
             <ProtectedRoute allowedRoles={['citizen']}>
-              <CitizenDashboardPage />
+              <CitizenLayout />
             </ProtectedRoute>
           }
-        />
+        >
+          <Route path="dashboard" element={<CitizenDashboardPage />} />
+          {/* Antrian redirect: /citizen/antrian → pilih-tanggal */}
+          <Route path="antrian" element={<Navigate to="pilih-tanggal" replace />} />
+          <Route path="antrian/pilih-tanggal" element={<PilihTanggalPage />} />
+          <Route path="antrian/pilih-sesi" element={<PilihSesiPage />} />
+          <Route path="antrian/konfirmasi" element={<KonfirmasiAntrianPage />} />
+          <Route path="antrian/tiket/:antrianId" element={<TiketAntrianPage />} />
+          <Route path="chat-gizi" element={<ChatGiziPage />} />
+          <Route path="chat-pendaftaran" element={<ChatPendaftaranPage />} />
+        </Route>
 
-        {/* Citizen antrian flow — 4 routes (Wave 4a + 4b, Plan 02-05 + 02-07) */}
-        <Route
-          path="/citizen/antrian/pilih-tanggal"
-          element={
-            <ProtectedRoute allowedRoles={['citizen']}>
-              <PilihTanggalPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/citizen/antrian/pilih-sesi"
-          element={
-            <ProtectedRoute allowedRoles={['citizen']}>
-              <PilihSesiPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/citizen/antrian/konfirmasi"
-          element={
-            <ProtectedRoute allowedRoles={['citizen']}>
-              <KonfirmasiAntrianPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/citizen/antrian/tiket/:antrianId"
-          element={
-            <ProtectedRoute allowedRoles={['citizen']}>
-              <TiketAntrianPage />
-            </ProtectedRoute>
-          }
-        />
+        {/* ── Kader protected routes — split between KaderLayout and standalone ── */}
 
-        {/* Citizen chat pages */}
+        {/* Main kader pages with sidebar/bottom-nav layout */}
         <Route
-          path="/citizen/chat-gizi"
-          element={
-            <ProtectedRoute allowedRoles={['citizen']}>
-              <ChatGiziPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/citizen/chat-pendaftaran"
-          element={
-            <ProtectedRoute allowedRoles={['citizen']}>
-              <ChatPendaftaranPage />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* ── Kader protected routes ────────────────────────────────── */}
-
-        <Route
-          path="/kader/dashboard"
+          path="/kader"
           element={
             <ProtectedRoute allowedRoles={['kader', 'ketua_kader']}>
-              <KaderDashboardPage />
+              <KaderLayout />
             </ProtectedRoute>
           }
-        />
-        <Route
-          path="/kader/pelayanan"
-          element={
-            <ProtectedRoute allowedRoles={['kader', 'ketua_kader']}>
-              <PelayananHariHPage />
-            </ProtectedRoute>
-          }
-        />
+        >
+          <Route path="dashboard" element={<KaderDashboardPage />} />
+          <Route path="pelayanan" element={<PelayananHariHPage />} />
+          <Route path="rekap" element={<RekapHarianPage />} />
+        </Route>
+
+        {/* Kader operational pages — standalone (no layout wrapper) */}
         <Route
           path="/kader/lock-screen"
           element={
@@ -239,14 +195,6 @@ export function AppRouter() {
           element={
             <ProtectedRoute allowedRoles={['kader', 'ketua_kader']}>
               <Meja5Page />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/kader/rekap"
-          element={
-            <ProtectedRoute allowedRoles={['kader', 'ketua_kader']}>
-              <RekapHarianPage />
             </ProtectedRoute>
           }
         />

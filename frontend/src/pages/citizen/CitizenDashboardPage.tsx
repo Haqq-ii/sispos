@@ -105,10 +105,10 @@ export default function CitizenDashboardPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-8">
-      <div className="max-w-[400px] mx-auto">
+    <div className="min-h-full bg-gray-50 pb-8">
+      <div className="max-w-2xl mx-auto">
         {/* Greeting card */}
-        <div className="bg-white border-b px-4 py-4">
+        <div className="bg-white border-b px-4 py-4 md:px-6 md:py-5">
           <h1 className="text-xl font-bold text-foreground">
             Selamat datang, {namaDepan}
           </h1>
@@ -119,14 +119,14 @@ export default function CitizenDashboardPage() {
 
         {/* Loading state */}
         {isLoading && (
-          <div className="mx-4 mt-4">
+          <div className="mx-4 mt-4 md:mx-6">
             <Skeleton className="h-[120px] rounded-xl" />
           </div>
         )}
 
         {/* Section A — Antrian aktif */}
         {!isLoading && isAntrian && antrian && (
-          <div className="bg-white rounded-xl shadow-sm p-4 mx-4 mt-4">
+          <div className="bg-white rounded-xl shadow-sm p-4 mx-4 mt-4 md:mx-6 md:p-5">
             <p className="text-xs uppercase tracking-wider text-gray-400 mb-2">
               ANTRIAN AKTIF HARI INI
             </p>
@@ -160,7 +160,7 @@ export default function CitizenDashboardPage() {
 
         {/* Section B — Tidak ada antrian aktif */}
         {!isLoading && !isAntrian && (
-          <div className="bg-green-50 rounded-xl p-6 mx-4 mt-4 text-center">
+          <div className="bg-green-50 rounded-xl p-6 mx-4 mt-4 md:mx-6 text-center">
             <CalendarPlus size={40} className="mx-auto text-primary mb-3" />
             <p className="text-sm text-gray-500">Belum ada antrian hari ini</p>
             <p className="text-sm text-gray-500 mb-4">
@@ -178,7 +178,7 @@ export default function CitizenDashboardPage() {
 
         {/* Layanan Digital — navigasi ke chatbot */}
         {!isLoading && (
-          <div className="mx-4 mt-4">
+          <div className="mx-4 mt-4 md:mx-6">
             <p className="text-xs uppercase tracking-wider text-gray-400 mb-2 px-1">
               LAYANAN DIGITAL
             </p>

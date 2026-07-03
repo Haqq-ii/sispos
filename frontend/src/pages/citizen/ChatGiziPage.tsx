@@ -11,6 +11,8 @@
  * Security:
  * - wargaId ditentukan server-side dari JWT (tidak dikirim dari client)
  * - Hanya citizen yang bisa akses (ProtectedRoute di router)
+ *
+ * Layout: dirender di dalam CitizenLayout — mengisi sisa ruang dengan flex-1 min-h-0
  */
 import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
@@ -89,13 +91,14 @@ export default function ChatGiziPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 max-w-[430px] mx-auto">
-      {/* Fixed header */}
+    // flex-1 min-h-0: fills available height provided by CitizenLayout's content area
+    <div className="flex flex-col flex-1 min-h-0 bg-gray-50">
+      {/* Header — sticky top bar */}
       <div className="bg-white border-b px-4 py-3 flex-shrink-0">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 max-w-3xl mx-auto w-full">
           <Link
             to="/citizen/dashboard"
-            className="text-gray-600 hover:text-gray-900 p-1 -ml-1 rounded"
+            className="md:hidden text-gray-600 hover:text-gray-900 p-1 -ml-1 rounded"
             aria-label="Kembali ke dashboard"
           >
             <ArrowLeft size={22} />
@@ -112,67 +115,69 @@ export default function ChatGiziPage() {
       </div>
 
       {/* Scrollable message area */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-        {/* Empty state */}
-        {messages.length === 0 && !chatMutation.isPending && (
-          <div className="text-center py-8">
-            <div className="text-4xl mb-3">🌿</div>
-            <p className="text-sm text-gray-500 leading-relaxed">
-              Halo! Tanyakan pertanyaan seputar gizi balita Anda.
-            </p>
-            <p className="text-xs text-gray-400 mt-2">
-              Saya bisa membantu tentang gizi, tumbuh kembang, imunisasi, dan posyandu.
-            </p>
-          </div>
-        )}
-
-        {/* Message list */}
-        {messages.map((msg, idx) => (
-          <div
-            key={idx}
-            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            <div
-              className={
-                msg.role === 'user'
-                  ? 'bg-green-600 text-white rounded-xl px-3 py-2 max-w-[80%] text-sm leading-relaxed'
-                  : 'bg-white border border-gray-200 text-gray-800 rounded-xl px-3 py-2 max-w-[80%] text-sm leading-relaxed shadow-sm'
-              }
-            >
-              {msg.content}
+      <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4">
+        <div className="max-w-3xl mx-auto space-y-3">
+          {/* Empty state */}
+          {messages.length === 0 && !chatMutation.isPending && (
+            <div className="text-center py-8">
+              <div className="text-4xl mb-3">🌿</div>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                Halo! Tanyakan pertanyaan seputar gizi balita Anda.
+              </p>
+              <p className="text-xs text-gray-400 mt-2">
+                Saya bisa membantu tentang gizi, tumbuh kembang, imunisasi, dan posyandu.
+              </p>
             </div>
-          </div>
-        ))}
+          )}
 
-        {/* Loading indicator saat menunggu respons AI */}
-        {chatMutation.isPending && (
-          <div className="flex justify-start">
-            <div className="bg-white border border-gray-200 rounded-xl px-3 py-2 shadow-sm">
-              <div className="flex items-center gap-1">
-                <span
-                  className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                  style={{ animationDelay: '0ms' }}
-                />
-                <span
-                  className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                  style={{ animationDelay: '150ms' }}
-                />
-                <span
-                  className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                  style={{ animationDelay: '300ms' }}
-                />
+          {/* Message list */}
+          {messages.map((msg, idx) => (
+            <div
+              key={idx}
+              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              <div
+                className={
+                  msg.role === 'user'
+                    ? 'bg-green-600 text-white rounded-xl px-3 py-2 max-w-[80%] text-sm leading-relaxed'
+                    : 'bg-white border border-gray-200 text-gray-800 rounded-xl px-3 py-2 max-w-[80%] text-sm leading-relaxed shadow-sm'
+                }
+              >
+                {msg.content}
               </div>
             </div>
-          </div>
-        )}
+          ))}
 
-        {/* Scroll anchor */}
-        <div ref={messagesEndRef} />
+          {/* Loading indicator saat menunggu respons AI */}
+          {chatMutation.isPending && (
+            <div className="flex justify-start">
+              <div className="bg-white border border-gray-200 rounded-xl px-3 py-2 shadow-sm">
+                <div className="flex items-center gap-1">
+                  <span
+                    className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                    style={{ animationDelay: '0ms' }}
+                  />
+                  <span
+                    className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                    style={{ animationDelay: '150ms' }}
+                  />
+                  <span
+                    className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                    style={{ animationDelay: '300ms' }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Scroll anchor */}
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
-      {/* Fixed input area at bottom */}
+      {/* Input area at bottom */}
       <div className="bg-white border-t px-4 py-3 flex-shrink-0">
-        <div className="flex items-end gap-2">
+        <div className="max-w-3xl mx-auto flex items-end gap-2">
           <textarea
             rows={1}
             value={input}
