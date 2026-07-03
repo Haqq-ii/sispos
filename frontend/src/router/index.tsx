@@ -54,6 +54,9 @@ const PetaStuntingPage = lazy(
 const ManajemenJadwalPage = lazy(
   () => import('@/pages/puskesmas/jadwal/ManajemenJadwalPage')
 )
+const ManajemenPenggunaPage = lazy(
+  () => import('@/pages/puskesmas/ManajemenPenggunaPage')
+)
 
 // Placeholder untuk halaman yang belum dibuat
 const HalamanDevelopment = () => (
@@ -235,7 +238,7 @@ export function AppRouter() {
           <Route path="dashboard" element={<PuskesmasDashboardPage />} />
           <Route path="peta" element={<PetaStuntingPage />} />
           <Route path="jadwal" element={<ManajemenJadwalPage />} />
-          <Route path="pengguna" element={<HalamanDevelopment />} />
+          <Route path="pengguna" element={<ManajemenPenggunaPage />} />
           <Route path="laporan" element={<HalamanDevelopment />} />
           <Route path="audit-log" element={<HalamanDevelopment />} />
         </Route>
