@@ -108,10 +108,15 @@ export async function getJadwalTersedia(posyanduId: string, bulan: string) {
   const startDate = new Date(bulan + '-01')
   const endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0)
 
+  // Jangan tampilkan jadwal hari yang sudah lewat — pakai midnight WIB sebagai batas
+  const todayWIB = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  const today = new Date(todayWIB + 'T00:00:00+07:00')
+  const effectiveStart = today > startDate ? today : startDate
+
   const jadwalList = await prisma.jadwal.findMany({
     where: {
       posyanduId,
-      tanggalPelaksanaan: { gte: startDate, lte: endDate },
+      tanggalPelaksanaan: { gte: effectiveStart, lte: endDate },
       statusJadwal: StatusJadwal.aktif,
     },
     select: {

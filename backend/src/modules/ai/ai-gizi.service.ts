@@ -48,7 +48,7 @@ export const GIZI_SYSTEM_PROMPT =
 export async function checkAndIncrementRateLimit(wargaId: string): Promise<void> {
   // WIB date (UTC+7) per Pitfall 5
   const today = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10)
-  const key = `chatbot:gizi:citizen:${wargaId}:${today}`
+  const key = `chatbot:citizen:${wargaId}:${today}`
 
   const count = await redis.incr(key)
 

@@ -18,6 +18,7 @@
  */
 import pino from 'pino'
 import type OpenAI from 'openai'
+import { redis } from '../../config/redis'
 import { prisma } from '../../config/db'
 import { ambilAntrian, batalkanAntrian } from '../antrian/antrian.service'
 import { env } from '../../config/env'
@@ -179,7 +180,8 @@ async function getJadwalTersedia(wargaId: string, tanggal?: string): Promise<obj
     return { error: 'Citizen belum memilih posyandu utama.' }
   }
 
-  const dateFrom = tanggal ? new Date(tanggal) : new Date()
+  const todayWIB = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  const dateFrom = tanggal ? new Date(tanggal) : new Date(todayWIB + 'T00:00:00+07:00')
   const dateTo = new Date(dateFrom)
   dateTo.setDate(dateTo.getDate() + 7)
 
@@ -327,12 +329,35 @@ async function executeToolCall(
  * @param userMessage   Pesan citizen saat ini
  * @param clientHistory Riwayat conversation sebelumnya (dari frontend state)
  */
+async function checkAndIncrementRateLimit(wargaId: string): Promise<void> {
+  const today = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  const key = `chatbot:citizen:${wargaId}:${today}`
+  const count = await redis.incr(key)
+  if (count === 1) {
+    const endOfDayWIB = new Date(Date.now() + 7 * 60 * 60 * 1000)
+    endOfDayWIB.setUTCHours(17, 0, 0, 0)
+    if (endOfDayWIB.getTime() <= Date.now()) {
+      endOfDayWIB.setUTCDate(endOfDayWIB.getUTCDate() + 1)
+    }
+    await redis.expireat(key, Math.floor(endOfDayWIB.getTime() / 1000))
+  }
+  if (count > 20) {
+    throw Object.assign(
+      new Error('Batas 20 pesan per hari telah tercapai. Coba lagi besok.'),
+      { code: 'RATE_LIMIT_EXCEEDED' }
+    )
+  }
+}
+
 export async function chatPendaftaran(
   wargaId: string,
   userMessage: string,
   clientHistory: Array<{ role: string; content: string }>
 ): Promise<{ reply: string; messages: Array<{ role: string; content: string }> }> {
-  // 1. Graceful degradation ketika OPENAI_API_KEY tidak ada (development/test env)
+  // 1. Rate limit — counter shared dengan /chat/gizi dan /chat/assistant
+  await checkAndIncrementRateLimit(wargaId)
+
+  // 2. Graceful degradation ketika OPENAI_API_KEY tidak ada (development/test env)
   if (!process.env.OPENAI_API_KEY) {
     logger.warn('OPENAI_API_KEY not set — AI pendaftaran chatbot disabled, returning stub')
     const stubReply = 'Asisten pendaftaran tidak tersedia saat ini.'

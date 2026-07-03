@@ -312,6 +312,14 @@ async function chatPendaftaranHandler(req: AuthRequest, res: Response): Promise<
     })
   } catch (err) {
     const e = err as { code?: string; message?: string }
+    if (e.code === 'RATE_LIMIT_EXCEEDED') {
+      res.status(429).json({
+        success: false,
+        error: 'RATE_LIMIT_EXCEEDED',
+        message: 'Batas 20 pesan per hari telah tercapai. Coba lagi besok.',
+      })
+      return
+    }
     if (e.code === 'AI_TIMEOUT') {
       res.status(503).json({
         success: false,

@@ -164,7 +164,7 @@ export const TOOLS: OpenAI.Chat.ChatCompletionTool[] = [
  */
 export async function checkAndIncrementRateLimit(wargaId: string): Promise<void> {
   const today = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10)
-  const key = `chatbot:assistant:citizen:${wargaId}:${today}`
+  const key = `chatbot:citizen:${wargaId}:${today}`
 
   const count = await redis.incr(key)
 
@@ -197,7 +197,10 @@ async function getJadwalTersedia(wargaId: string, tanggal?: string): Promise<obj
     return { error: 'Citizen belum memilih posyandu utama.' }
   }
 
-  const dateFrom = tanggal ? new Date(tanggal) : new Date()
+  // Gunakan midnight WIB (UTC+7) sebagai dateFrom agar jadwal hari ini tidak terlewat
+  // dan tanggal tidak meleset ke hari kemarin akibat UTC vs WIB.
+  const todayWIB = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  const dateFrom = tanggal ? new Date(tanggal) : new Date(todayWIB + 'T00:00:00+07:00')
   const dateTo = new Date(dateFrom)
   dateTo.setDate(dateTo.getDate() + 7)
 

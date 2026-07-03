@@ -88,7 +88,7 @@ export default function LandingPage() {
             {[
               { icon: CalendarCheck, title: 'Antrian Online', desc: 'Daftar antrian Posyandu dari rumah dengan estimasi waktu real-time.', color: '#1447e6' },
               { icon: TrendingUp, title: 'Tumbuh Kembang', desc: 'Pantau BB, TB, dan Z-Score balita dengan grafik WHO secara berkala.', color: '#008236' },
-              { icon: MessageCircle, title: 'AI Konsultasi Gizi', desc: 'Tanya jawab seputar gizi dan imunisasi balita dengan AI 24/7.', color: '#00a63e' },
+              { icon: MessageCircle, title: 'AI Assistant', desc: 'Tanya jawab seputar gizi dan imunisasi balita dengan AI 24/7.', color: '#00a63e' },
               { icon: Users, title: 'Multi-Profil Balita', desc: 'Kelola beberapa profil balita dalam satu akun keluarga.', color: '#f59e0b' },
               { icon: Shield, title: 'Deteksi Stunting Dini', desc: 'Sistem peringatan otomatis untuk risiko stunting berbasis Z-Score.', color: '#ff6900' },
               { icon: Activity, title: 'Pelayanan 5 Meja', desc: 'Digitalisasi alur pelayanan Posyandu dari pendaftaran hingga konsultasi.', color: '#008236' },

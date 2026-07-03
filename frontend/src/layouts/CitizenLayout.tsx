@@ -44,7 +44,7 @@ const NAV_ITEMS: NavItem[] = [
     end: false,
   },
   {
-    label: 'AI Konsultasi Gizi',
+    label: 'AI Assistant',
     to: '/citizen/chat-gizi',
     icon: MessageCircle,
     end: false,
