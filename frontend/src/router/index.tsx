@@ -19,6 +19,7 @@ const CitizenDashboardPage = lazy(() => import('@/pages/citizen/CitizenDashboard
 // ── Citizen chat pages ────────────────────────────────────────────────────────
 
 const ChatGiziPage = lazy(() => import('@/pages/citizen/ChatGiziPage'))
+const ChatPendaftaranPage = lazy(() => import('@/pages/citizen/ChatPendaftaranPage'))
 
 // ── Citizen antrian flow (Wave 4a + 4b) ──────────────────────────────────────
 
@@ -163,6 +164,14 @@ export function AppRouter() {
           element={
             <ProtectedRoute allowedRoles={['citizen']}>
               <ChatGiziPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/citizen/chat-pendaftaran"
+          element={
+            <ProtectedRoute allowedRoles={['citizen']}>
+              <ChatPendaftaranPage />
             </ProtectedRoute>
           }
         />
