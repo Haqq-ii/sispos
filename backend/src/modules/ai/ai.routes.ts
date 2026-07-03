@@ -26,6 +26,7 @@ import type { AuthRequest } from '../../shared/middleware/auth.middleware'
 import { prisma } from '../../config/db'
 import { generateEarlyWarning } from './ai.service'
 import { updatePemeriksaan } from '../growth/growth.service'
+import { chatGizi } from './ai-gizi.service'
 
 export const aiRouter = Router()
 
@@ -180,11 +181,77 @@ async function earlyWarningHandler(req: AuthRequest, res: Response): Promise<voi
   }
 }
 
-// ── Route ─────────────────────────────────────────────────────────────────
+// ── Route: early-warning ──────────────────────────────────────────────────
 
 aiRouter.post(
   '/early-warning',
   authMiddleware,
   requireRole('kader', 'ketua_kader'),
   earlyWarningHandler
+)
+
+// ── Schema: chatGizi ──────────────────────────────────────────────────────
+
+const ChatGiziSchema = z.object({
+  message: z
+    .string()
+    .min(1, 'Pesan tidak boleh kosong')
+    .max(500, 'Pesan terlalu panjang'),
+})
+
+// ── Handler: chatGizi ─────────────────────────────────────────────────────
+
+/**
+ * chatGiziHandler — POST /api/ai/chat/gizi
+ *
+ * Security (T-04-03-01):
+ *   - wargaId dari req.user!.userId (JWT) — TIDAK pernah dari body
+ *   - Hanya citizen yang bisa akses (requireRole('citizen'))
+ */
+async function chatGiziHandler(req: AuthRequest, res: Response): Promise<void> {
+  const parsed = ChatGiziSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({
+      success: false,
+      error: 'VALIDASI_GAGAL',
+      message: parsed.error.errors.map((e) => e.message).join('; '),
+    })
+    return
+  }
+
+  // wargaId dari JWT — NEVER from request body (T-04-03-01)
+  const wargaId = req.user!.userId
+
+  try {
+    const result = await chatGizi(wargaId, parsed.data.message)
+    res.status(200).json({
+      success: true,
+      data: { reply: result },
+      message: 'Pesan berhasil diproses.',
+    })
+  } catch (err) {
+    const e = err as { code?: string; message?: string }
+    if (e.code === 'RATE_LIMIT_EXCEEDED') {
+      res.status(429).json({
+        success: false,
+        error: 'RATE_LIMIT_EXCEEDED',
+        message: 'Batas 20 pesan per hari telah tercapai. Coba lagi besok.',
+      })
+      return
+    }
+    res.status(500).json({
+      success: false,
+      error: 'INTERNAL_ERROR',
+      message: 'Gagal memproses pesan. Coba lagi beberapa saat.',
+    })
+  }
+}
+
+// ── Route: chat/gizi ──────────────────────────────────────────────────────
+
+aiRouter.post(
+  '/chat/gizi',
+  authMiddleware,
+  requireRole('citizen'),
+  chatGiziHandler
 )
