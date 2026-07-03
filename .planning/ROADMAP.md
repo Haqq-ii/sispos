@@ -250,6 +250,26 @@ Plans:
 - `docs/ROADMAP.md` Wave 4.1–4.4
 - Figma frames: `5:13232` (Puskesmas Utama), `5:14204` (Manajemen Pengguna), `5:14838` (Reset PIN), `5:15180` (Blokir)
 
+**Plans:** 4 plans
+
+Plans:
+
+**Wave 1** *(no dependencies)*
+
+- [ ] 04-01-PLAN.md — Schema migration add-posyandu-coordinates + Dashboard backend (GET /stunting + /stats) + PuskesmasDashboardPage Leaflet map + filter bulan
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 04-02-PLAN.md — Users backend kader list + master overrule unlock + AuditLog + ManajemenPenggunaPage
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 04-03-PLAN.md — AI Chatbot gizi backend (GPT-4o temp 0.6, rate limit Redis 20/hari) + ChatGiziPage + CitizenDashboard link
+
+**Wave 4** *(blocked on Wave 3)* [has checkpoint]
+
+- [ ] 04-04-PLAN.md — AI Chatbot pendaftaran backend (5 tools, parallel_tool_calls:false, confirmation gate) + ChatPendaftaranPage + human verify
+
 ---
 
 ### Phase 5: Reports & Export
