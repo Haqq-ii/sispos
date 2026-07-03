@@ -20,8 +20,7 @@ const LokasiSelesaiPage = lazy(() => import('@/pages/auth/LokasiSelesaiPage'))
 // ── Citizen pages ─────────────────────────────────────────────────────────────
 
 const CitizenDashboardPage = lazy(() => import('@/pages/citizen/CitizenDashboardPage'))
-const ChatGiziPage = lazy(() => import('@/pages/citizen/ChatGiziPage'))
-const ChatPendaftaranPage = lazy(() => import('@/pages/citizen/ChatPendaftaranPage'))
+const ChatAssistantPage = lazy(() => import('@/pages/citizen/ChatAssistantPage'))
 const TumbuhKembangPage = lazy(() => import('@/pages/citizen/TumbuhKembangPage'))
 const FamilyAccountPage = lazy(() => import('@/pages/citizen/FamilyAccountPage'))
 const ProfilSayaPage = lazy(() => import('@/pages/citizen/ProfilSayaPage'))
@@ -125,8 +124,10 @@ export function AppRouter() {
           <Route path="antrian/pilih-sesi" element={<PilihSesiPage />} />
           <Route path="antrian/konfirmasi" element={<KonfirmasiAntrianPage />} />
           <Route path="antrian/tiket/:antrianId" element={<TiketAntrianPage />} />
-          <Route path="chat-gizi" element={<ChatGiziPage />} />
-          <Route path="chat-pendaftaran" element={<ChatPendaftaranPage />} />
+          <Route path="chat-assistant" element={<ChatAssistantPage />} />
+          {/* Redirect lama ke AI Assistant */}
+          <Route path="chat-gizi" element={<Navigate to="/citizen/chat-assistant" replace />} />
+          <Route path="chat-pendaftaran" element={<Navigate to="/citizen/chat-assistant" replace />} />
           <Route path="tumbuh-kembang" element={<TumbuhKembangPage />} />
           <Route path="family-account" element={<FamilyAccountPage />} />
           <Route path="profil" element={<ProfilSayaPage />} />

@@ -28,6 +28,7 @@ import { generateEarlyWarning } from './ai.service'
 import { updatePemeriksaan } from '../growth/growth.service'
 import { chatGizi } from './ai-gizi.service'
 import { chatPendaftaran } from './ai-pendaftaran.service'
+import { chatAssistant } from './ai-assistant.service'
 
 export const aiRouter = Router()
 
@@ -334,4 +335,78 @@ aiRouter.post(
   authMiddleware,
   requireRole('citizen'),
   chatPendaftaranHandler
+)
+
+// ── Schema: chatAssistant ─────────────────────────────────────────────────
+
+const ChatAssistantSchema = z.object({
+  message: z
+    .string()
+    .min(1, 'Pesan tidak boleh kosong')
+    .max(1000, 'Pesan terlalu panjang'),
+  history: z
+    .array(
+      z.object({
+        role: z.enum(['user', 'assistant']),
+        content: z.string(),
+      })
+    )
+    .default([]),
+})
+
+// ── Handler: chatAssistant ────────────────────────────────────────────────
+
+async function chatAssistantHandler(req: AuthRequest, res: Response): Promise<void> {
+  const parsed = ChatAssistantSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({
+      success: false,
+      error: 'VALIDASI_GAGAL',
+      message: parsed.error.errors.map((e) => e.message).join('; '),
+    })
+    return
+  }
+
+  const wargaId = req.user!.userId
+
+  try {
+    const result = await chatAssistant(wargaId, parsed.data.message, parsed.data.history)
+    res.status(200).json({
+      success: true,
+      data: { reply: result.reply, messages: result.messages },
+      message: 'Pesan berhasil diproses.',
+    })
+  } catch (err) {
+    const e = err as { code?: string }
+    if (e.code === 'RATE_LIMIT_EXCEEDED') {
+      res.status(429).json({
+        success: false,
+        error: 'RATE_LIMIT_EXCEEDED',
+        message: 'Batas 20 pesan per hari telah tercapai. Coba lagi besok.',
+      })
+      return
+    }
+    if (e.code === 'AI_TIMEOUT') {
+      res.status(503).json({
+        success: false,
+        error: 'AI_TIMEOUT',
+        message: 'Asisten tidak merespons. Coba lagi.',
+      })
+      return
+    }
+    res.status(500).json({
+      success: false,
+      error: 'INTERNAL_ERROR',
+      message: 'Gagal memproses pesan. Coba lagi beberapa saat.',
+    })
+  }
+}
+
+// ── Route: chat/assistant ─────────────────────────────────────────────────
+
+aiRouter.post(
+  '/chat/assistant',
+  authMiddleware,
+  requireRole('citizen'),
+  chatAssistantHandler
 )

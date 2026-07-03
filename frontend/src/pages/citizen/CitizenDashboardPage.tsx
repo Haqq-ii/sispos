@@ -228,10 +228,10 @@ export default function CitizenDashboardPage() {
                 to: '/citizen/tumbuh-kembang',
               },
               {
-                label: 'AI Konsultasi Gizi',
-                subtitle: 'Tanya jawab mandiri',
+                label: 'AI Assistant',
+                subtitle: 'Gizi & daftar antrian',
                 icon: MessageCircle,
-                to: '/citizen/chat-gizi',
+                to: '/citizen/chat-assistant',
               },
               {
                 label: 'Riwayat Imunisasi',
