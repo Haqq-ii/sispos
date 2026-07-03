@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Executing Phase 04
-last_updated: "2026-07-03T07:36:00.000Z"
+last_updated: "2026-07-03T11:10:00.000Z"
 progress:
   total_phases: 8
   completed_phases: 4
@@ -28,10 +28,10 @@ See: `.planning/PROJECT.md` (updated 2026-06-30)
 ```
 Phase aktif  : Phase 04 — Dashboard & DSS + AI Chatbot
 Last update  : 2026-07-03
-Plans done   : 03-01..07 complete; 04-01..03 complete
+Plans done   : 03-01..07 complete; 04-01..04 in progress (04-04 at checkpoint)
 Phases done  : 3 / 8 (Phase 00 + 01 + 02 complete), Phase 03 pending verification, Phase 04 in progress
-Next command : /gsd-execute-phase 04 (plan 04 — AI Chatbot Pendaftaran + function calling)
-Stopped at   : Completed Phase 04 Plan 03 — AI chatbot gizi + ChatGiziPage + CitizenDashboard nav cards
+Next command : /gsd-execute-phase 04 (resume plan 04 — human verify checkpoint)
+Stopped at   : Phase 04 Plan 04 — Tasks 1+2 complete; waiting at Task 3 checkpoint:human-verify
 ```
 
 ## Phase History
@@ -131,6 +131,9 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 2026-07-03 | WIB timezone rate limit key: Date.now() + 7h (bukan new Date()) | Pitfall 5: UTC midnight ≠ WIB midnight; EXPIREAT ke 17:00 UTC = 00:00 WIB |
 | 2026-07-03 | Type annotation eksplisit h: {role,pesan} di history.map() | TypeScript strict mode; Prisma infer tidak cukup untuk arrow function param |
 | 2026-07-03 | chatGizi graceful degradation sebelum lazy import OpenAI | Cek OPENAI_API_KEY sebelum dynamic import; development tanpa key tetap berjalan |
+| 2026-07-03 | parallel_tool_calls:false di setiap openai.chat.completions.create (pendaftaran) | T-04-04-01: mencegah bypass konfirmasi gate via simultaneous tool execution |
+| 2026-07-03 | client-side history management di ChatPendaftaranPage | Server return updated messages array; DB hanya untuk audit (user+assistant turns) |
+| 2026-07-03 | type narrowing toolCall.type !== 'function' + as unknown as FunctionToolCall | OpenAI SDK v6 union type ChatCompletionMessageCustomToolCall tidak punya .function |
 
 ## Performance Metrics
 
@@ -155,3 +158,4 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 04 | 01 | ~7 min | 3/3 | 11 |
 | 04 | 02 | ~15 min | 3/3 | 11 |
 | 04 | 03 | ~20 min | 2/2 | 6 |
+| 04 | 04 | ~15 min | 2/3 + checkpoint | 5 |
