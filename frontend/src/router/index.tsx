@@ -1,10 +1,13 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from './ProtectedRoute'
-import { useAuthStore } from '@/stores/useAuthStore'
 import PuskesmasLayout from '@/layouts/PuskesmasLayout'
 import CitizenLayout from '@/layouts/CitizenLayout'
 import KaderLayout from '@/layouts/KaderLayout'
+
+// ── Landing page ──────────────────────────────────────────────────────────────
+
+const LandingPage = lazy(() => import('@/pages/LandingPage'))
 
 // ── Auth pages ────────────────────────────────────────────────────────────────
 
@@ -19,6 +22,9 @@ const LokasiSelesaiPage = lazy(() => import('@/pages/auth/LokasiSelesaiPage'))
 const CitizenDashboardPage = lazy(() => import('@/pages/citizen/CitizenDashboardPage'))
 const ChatGiziPage = lazy(() => import('@/pages/citizen/ChatGiziPage'))
 const ChatPendaftaranPage = lazy(() => import('@/pages/citizen/ChatPendaftaranPage'))
+const TumbuhKembangPage = lazy(() => import('@/pages/citizen/TumbuhKembangPage'))
+const FamilyAccountPage = lazy(() => import('@/pages/citizen/FamilyAccountPage'))
+const ProfilSayaPage = lazy(() => import('@/pages/citizen/ProfilSayaPage'))
 
 // ── Citizen antrian flow (Wave 4a + 4b) ──────────────────────────────────────
 
@@ -46,6 +52,7 @@ const Meja3Page = lazy(() => import('@/pages/kader/meja/Meja3Page'))
 const Meja4Page = lazy(() => import('@/pages/kader/meja/Meja4Page'))
 const Meja5Page = lazy(() => import('@/pages/kader/meja/Meja5Page'))
 const RekapHarianPage = lazy(() => import('@/pages/kader/RekapHarianPage'))
+const KaderProfilPage = lazy(() => import('@/pages/kader/KaderProfilPage'))
 
 // ── Puskesmas pages ───────────────────────────────────────────────────────────
 
@@ -64,6 +71,7 @@ const ManajemenPenggunaPage = lazy(
 const AuditLogPage = lazy(
   () => import('@/pages/puskesmas/AuditLogPage')
 )
+const LaporanPage = lazy(() => import('@/pages/puskesmas/LaporanPage'))
 
 // Placeholder untuk halaman yang belum dibuat
 const HalamanDevelopment = () => (
@@ -82,26 +90,14 @@ const LoadingSpinner = () => (
   </div>
 )
 
-function RootRedirect() {
-  const { isAuthenticated, user } = useAuthStore()
-  if (!isAuthenticated || !user) return <Navigate to="/login" replace />
-  switch (user.role) {
-    case 'citizen': return <Navigate to="/citizen/dashboard" replace />
-    case 'kader':
-    case 'ketua_kader': return <Navigate to="/kader/dashboard" replace />
-    case 'puskesmas': return <Navigate to="/puskesmas/dashboard" replace />
-    default: return <Navigate to="/login" replace />
-  }
-}
-
 // ── Router ────────────────────────────────────────────────────────────────────
 
 export function AppRouter() {
   return (
     <Suspense fallback={<LoadingSpinner />}>
       <Routes>
-        {/* Root redirects to role-specific dashboard if logged in, else login */}
-        <Route path="/" element={<RootRedirect />} />
+        {/* Root — Landing page (handles auth redirect internally) */}
+        <Route path="/" element={<LandingPage />} />
 
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
@@ -131,6 +127,9 @@ export function AppRouter() {
           <Route path="antrian/tiket/:antrianId" element={<TiketAntrianPage />} />
           <Route path="chat-gizi" element={<ChatGiziPage />} />
           <Route path="chat-pendaftaran" element={<ChatPendaftaranPage />} />
+          <Route path="tumbuh-kembang" element={<TumbuhKembangPage />} />
+          <Route path="family-account" element={<FamilyAccountPage />} />
+          <Route path="profil" element={<ProfilSayaPage />} />
         </Route>
 
         {/* ── Kader protected routes — split between KaderLayout and standalone ── */}
@@ -147,6 +146,7 @@ export function AppRouter() {
           <Route path="dashboard" element={<KaderDashboardPage />} />
           <Route path="pelayanan" element={<PelayananHariHPage />} />
           <Route path="rekap" element={<RekapHarianPage />} />
+          <Route path="profil" element={<KaderProfilPage />} />
         </Route>
 
         {/* Kader operational pages — standalone (no layout wrapper) */}
@@ -213,7 +213,7 @@ export function AppRouter() {
           <Route path="peta" element={<PetaStuntingPage />} />
           <Route path="jadwal" element={<ManajemenJadwalPage />} />
           <Route path="pengguna" element={<ManajemenPenggunaPage />} />
-          <Route path="laporan" element={<HalamanDevelopment />} />
+          <Route path="laporan" element={<LaporanPage />} />
           <Route path="audit-log" element={<AuditLogPage />} />
         </Route>
 

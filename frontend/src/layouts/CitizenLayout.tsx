@@ -1,10 +1,13 @@
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
-  LayoutDashboard,
+  Home,
   CalendarPlus,
+  TrendingUp,
   MessageCircle,
-  CalendarCheck,
+  Users,
+  User,
   LogOut,
+  MapPin,
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/useAuthStore'
 import apiClient from '@/lib/axios'
@@ -13,7 +16,6 @@ import apiClient from '@/lib/axios'
 
 interface NavItem {
   label: string
-  labelMobile: string
   to: string
   icon: React.ElementType
   end: boolean
@@ -23,42 +25,53 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   {
-    label: 'Dashboard',
-    labelMobile: 'Dashboard',
+    label: 'Beranda',
     to: '/citizen/dashboard',
-    icon: LayoutDashboard,
+    icon: Home,
     end: true,
   },
   {
     label: 'Antrian',
-    labelMobile: 'Antrian',
     to: '/citizen/antrian/pilih-tanggal',
     icon: CalendarPlus,
     end: false,
     activePrefix: '/citizen/antrian',
   },
   {
-    label: 'Asisten Gizi',
-    labelMobile: 'Asisten',
+    label: 'Tumbuh Kembang',
+    to: '/citizen/tumbuh-kembang',
+    icon: TrendingUp,
+    end: false,
+  },
+  {
+    label: 'AI Konsultasi Gizi',
     to: '/citizen/chat-gizi',
     icon: MessageCircle,
     end: false,
   },
   {
-    label: 'Daftar via Chat',
-    labelMobile: 'Daftar Chat',
-    to: '/citizen/chat-pendaftaran',
-    icon: CalendarCheck,
+    label: 'Family Account',
+    to: '/citizen/family-account',
+    icon: Users,
+    end: false,
+  },
+  {
+    label: 'Profil Saya',
+    to: '/citizen/profil',
+    icon: User,
     end: false,
   },
 ]
+
+// Mobile bottom nav — only first 4 items
+const MOBILE_NAV_ITEMS = NAV_ITEMS.slice(0, 4)
 
 // ── CitizenLayout ─────────────────────────────────────────────────────────────
 
 export default function CitizenLayout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { clearAuth } = useAuthStore()
+  const { clearAuth, user } = useAuthStore()
 
   async function handleLogout() {
     try {
@@ -77,25 +90,30 @@ export default function CitizenLayout() {
     return navLinkActive
   }
 
+  const firstLetter = user?.namaLengkap?.[0]?.toUpperCase() ?? 'W'
+
   return (
-    <div className="flex flex-col md:flex-row bg-gray-50 h-screen overflow-hidden">
+    <div className="flex flex-col md:flex-row bg-[#f9fafb] h-screen overflow-hidden">
       {/* ── Desktop Sidebar ─────────────────────────────────────────────────── */}
-      <aside className="hidden md:flex md:flex-col md:w-64 md:h-full bg-white border-r border-gray-200 shadow-sm flex-shrink-0">
-        {/* Header */}
-        <div className="px-6 py-5 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#008236] flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-xs font-bold">SP</span>
+      <aside
+        className="hidden md:flex md:flex-col md:h-full bg-white border-r border-[#f3f4f6] flex-shrink-0"
+        style={{ width: '256px' }}
+      >
+        {/* Branding */}
+        <div className="px-5 pt-6 pb-5">
+          <div className="flex items-center gap-3">
+            <div className="bg-[#00a63e] rounded-[14px] w-10 h-10 flex items-center justify-center flex-shrink-0">
+              <span className="text-white font-bold text-sm">SP</span>
             </div>
             <div>
-              <p className="text-sm font-bold text-gray-900 leading-tight">SISPOS</p>
-              <p className="text-xs text-[#008236] font-medium">Warga / Citizen</p>
+              <p className="text-[#1e2939] font-extrabold text-base leading-tight">SISPOS</p>
+              <p className="text-[#99a1af] text-xs leading-tight">Portal Warga</p>
             </div>
           </div>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon
             return (
@@ -105,12 +123,9 @@ export default function CitizenLayout() {
                 end={item.end}
                 className={({ isActive: navActive }) => {
                   const active = isActive(item, navActive)
-                  return [
-                    'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                    active
-                      ? 'bg-green-50 text-[#008236] font-semibold'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
-                  ].join(' ')
+                  return active
+                    ? 'bg-[#f0fdf4] border border-[#b9f8cf] text-[#008236] font-semibold rounded-[14px] flex items-center gap-3 px-[13px] py-[11px] text-sm'
+                    : 'text-[#4a5565] rounded-[14px] flex items-center gap-3 px-3 py-2.5 text-sm hover:bg-gray-50 transition-colors'
                 }}
               >
                 <Icon size={18} className="flex-shrink-0" />
@@ -120,13 +135,27 @@ export default function CitizenLayout() {
           })}
         </nav>
 
-        {/* Logout */}
-        <div className="px-3 py-4 border-t border-gray-100 flex-shrink-0">
+        {/* User section at bottom */}
+        <div className="px-3 pb-5 pt-3 border-t border-[#f3f4f6] flex-shrink-0">
+          <div className="flex items-center gap-3 px-3 py-2 mb-2">
+            <div className="w-8 h-8 bg-[#008236] rounded-[10px] flex items-center justify-center flex-shrink-0">
+              <span className="text-white font-semibold text-sm">{firstLetter}</span>
+            </div>
+            <div className="min-w-0">
+              <p className="text-[#364153] font-semibold text-sm truncate">
+                {user?.namaLengkap ?? 'Warga'}
+              </p>
+              <div className="flex items-center gap-1">
+                <MapPin size={10} className="text-[#99a1af] flex-shrink-0" />
+                <p className="text-[#99a1af] text-xs truncate">Posyandu Anda</p>
+              </div>
+            </div>
+          </div>
           <button
             onClick={() => void handleLogout()}
-            className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors"
+            className="text-[#fb2c36] hover:bg-red-50 flex items-center gap-2 px-3 py-2 rounded-[14px] text-sm w-full transition-colors"
           >
-            <LogOut size={18} className="flex-shrink-0" />
+            <LogOut size={16} className="flex-shrink-0" />
             <span>Keluar</span>
           </button>
         </div>
@@ -140,9 +169,9 @@ export default function CitizenLayout() {
         </div>
 
         {/* ── Mobile Bottom Navigation ─────────────────────────────────────── */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[#f3f4f6] shadow-lg">
           <div className="grid grid-cols-4 h-16">
-            {NAV_ITEMS.map((item) => {
+            {MOBILE_NAV_ITEMS.map((item) => {
               const Icon = item.icon
               return (
                 <NavLink
@@ -153,13 +182,13 @@ export default function CitizenLayout() {
                     const active = isActive(item, navActive)
                     return [
                       'flex flex-col items-center justify-center gap-0.5 transition-colors',
-                      active ? 'text-[#008236]' : 'text-gray-500',
+                      active ? 'text-[#008236]' : 'text-[#4a5565]',
                     ].join(' ')
                   }}
                 >
                   <Icon size={20} />
                   <span className="text-[10px] text-center leading-tight max-w-[64px] truncate">
-                    {item.labelMobile}
+                    {item.label}
                   </span>
                 </NavLink>
               )

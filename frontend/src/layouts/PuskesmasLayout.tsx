@@ -1,12 +1,13 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard,
+  LayoutGrid,
   Map,
   Calendar,
   Users,
   FileText,
-  ClipboardList,
+  Shield,
   LogOut,
+  Activity,
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/useAuthStore'
 import apiClient from '@/lib/axios'
@@ -14,19 +15,21 @@ import apiClient from '@/lib/axios'
 // ── Nav items ─────────────────────────────────────────────────────────────────
 
 const NAV_ITEMS = [
-  { label: 'Dashboard', to: '/puskesmas/dashboard', icon: LayoutDashboard, end: true },
+  { label: 'Dashboard', to: '/puskesmas/dashboard', icon: LayoutGrid, end: true },
   { label: 'Peta Stunting', to: '/puskesmas/peta', icon: Map, end: false },
-  { label: 'Jadwal', to: '/puskesmas/jadwal', icon: Calendar, end: false },
-  { label: 'Manajemen User', to: '/puskesmas/pengguna', icon: Users, end: false },
-  { label: 'Laporan', to: '/puskesmas/laporan', icon: FileText, end: false },
-  { label: 'Audit Log', to: '/puskesmas/audit-log', icon: ClipboardList, end: false },
+  { label: 'Manajemen Jadwal', to: '/puskesmas/jadwal', icon: Calendar, end: false },
+  { label: 'Manajemen Pengguna', to: '/puskesmas/pengguna', icon: Users, end: false },
+  { label: 'Laporan e-PPGBM', to: '/puskesmas/laporan', icon: FileText, end: false },
+  { label: 'Audit Log', to: '/puskesmas/audit-log', icon: Shield, end: false },
 ] as const
+
+const MOBILE_NAV_ITEMS = NAV_ITEMS.slice(0, 4)
 
 // ── PuskesmasLayout ───────────────────────────────────────────────────────────
 
 export default function PuskesmasLayout() {
   const navigate = useNavigate()
-  const { clearAuth } = useAuthStore()
+  const { clearAuth, user } = useAuthStore()
 
   async function handleLogout() {
     try {
@@ -39,18 +42,18 @@ export default function PuskesmasLayout() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-gray-50">
+    <div className="min-h-screen flex flex-col md:flex-row bg-[#f9fafb]">
       {/* ── Desktop Sidebar ─────────────────────────────────────────────────── */}
-      <aside className="hidden md:flex md:flex-col md:w-64 md:min-h-screen bg-white border-r border-gray-200 shadow-sm">
+      <aside className="hidden md:flex md:flex-col md:w-64 md:min-h-screen bg-white border-r border-[#f3f4f6] shadow-sm">
         {/* Header */}
-        <div className="px-6 py-5 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#008236] flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-xs font-bold">SP</span>
+        <div className="px-5 py-5 border-b border-[#f3f4f6]">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-[#008236] rounded-[14px] flex items-center justify-center flex-shrink-0">
+              <Activity size={20} className="text-white" />
             </div>
             <div>
-              <p className="text-sm font-bold text-gray-900 leading-tight">SISPOS</p>
-              <p className="text-xs text-[#008236] font-medium">Puskesmas</p>
+              <p className="text-sm font-bold text-[#1e2939] leading-tight">SISPOS</p>
+              <p className="text-xs text-[#6a7282]">Portal Puskesmas</p>
             </div>
           </div>
         </div>
@@ -63,12 +66,9 @@ export default function PuskesmasLayout() {
               to={to}
               end={end}
               className={({ isActive }) =>
-                [
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-green-50 text-[#008236] font-semibold'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
-                ].join(' ')
+                isActive
+                  ? 'bg-[#f0fdf4] border border-[#b9f8cf] text-[#008236] font-semibold rounded-[14px] flex items-center gap-3 px-[13px] py-[11px] text-sm'
+                  : 'text-[#4a5565] rounded-[14px] flex items-center gap-3 px-3 py-2.5 text-sm hover:bg-gray-50'
               }
             >
               <Icon size={18} className="flex-shrink-0" />
@@ -77,11 +77,17 @@ export default function PuskesmasLayout() {
           ))}
         </nav>
 
-        {/* Logout */}
-        <div className="px-3 py-4 border-t border-gray-100">
+        {/* Footer: user info + logout */}
+        <div className="px-3 py-4 border-t border-[#f3f4f6] space-y-3">
+          <div className="px-3">
+            <p className="text-[#1e2939] text-sm font-semibold truncate">
+              {user?.namaLengkap ?? 'Puskesmas'}
+            </p>
+            <p className="text-[#6a7282] text-xs mt-0.5">Portal Puskesmas</p>
+          </div>
           <button
             onClick={() => void handleLogout()}
-            className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 w-full rounded-[14px] text-sm font-medium text-[#fb2c36] hover:bg-red-50 transition-colors"
           >
             <LogOut size={18} className="flex-shrink-0" />
             <span>Keluar</span>
@@ -96,24 +102,28 @@ export default function PuskesmasLayout() {
           <Outlet />
         </div>
 
-        {/* ── Mobile Bottom Navigation ─────────────────────────────────────── */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg">
-          <div className="grid grid-cols-6 h-16">
-            {NAV_ITEMS.map(({ label, to, icon: Icon, end }) => (
+        {/* ── Mobile Bottom Navigation (4 items) ───────────────────────────── */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[#f3f4f6] shadow-lg">
+          <div className="grid grid-cols-4 h-16">
+            {MOBILE_NAV_ITEMS.map(({ label, to, icon: Icon, end }) => (
               <NavLink
                 key={to}
                 to={to}
                 end={end}
                 className={({ isActive }) =>
                   [
-                    'flex flex-col items-center justify-center gap-0.5 text-xs transition-colors',
-                    isActive ? 'text-[#008236]' : 'text-gray-500',
+                    'flex flex-col items-center justify-center gap-0.5 transition-colors',
+                    isActive ? 'text-[#008236]' : 'text-[#4a5565]',
                   ].join(' ')
                 }
               >
                 <Icon size={20} />
-                <span className="truncate max-w-[56px] text-center leading-tight">
-                  {label === 'Manajemen User' ? 'Pengguna' : label}
+                <span className="text-[10px] text-center leading-tight max-w-[60px] truncate">
+                  {label === 'Manajemen Jadwal'
+                    ? 'Jadwal'
+                    : label === 'Manajemen Pengguna'
+                    ? 'Pengguna'
+                    : label}
                 </span>
               </NavLink>
             ))}

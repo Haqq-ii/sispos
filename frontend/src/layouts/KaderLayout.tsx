@@ -1,41 +1,65 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+﻿import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   Users,
   FileText,
+  User,
   LogOut,
+  MapPin,
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/useAuthStore'
 import apiClient from '@/lib/axios'
 
 // ── Nav items ─────────────────────────────────────────────────────────────────
 
-const NAV_ITEMS = [
+interface NavItem {
+  label: string
+  labelMobile: string
+  to: string
+  icon: React.ElementType
+  end: boolean
+  activePrefix?: string
+}
+
+const NAV_ITEMS: NavItem[] = [
   {
     label: 'Dashboard',
+    labelMobile: 'Dashboard',
     to: '/kader/dashboard',
     icon: LayoutDashboard,
     end: true,
   },
   {
     label: 'Pelayanan Hari-H',
+    labelMobile: 'Pelayanan',
     to: '/kader/pelayanan',
     icon: Users,
     end: false,
   },
   {
     label: 'Rekap Harian',
+    labelMobile: 'Rekap',
     to: '/kader/rekap',
     icon: FileText,
     end: false,
   },
-] as const
+  {
+    label: 'Profil Kader',
+    labelMobile: 'Profil',
+    to: '/kader/profil',
+    icon: User,
+    end: false,
+  },
+]
+
+const MOBILE_NAV_ITEMS = NAV_ITEMS.slice(0, 4)
 
 // ── KaderLayout ───────────────────────────────────────────────────────────────
 
 export default function KaderLayout() {
   const navigate = useNavigate()
-  const { clearAuth } = useAuthStore()
+  const location = useLocation()
+  const { clearAuth, user } = useAuthStore()
 
   async function handleLogout() {
     try {
@@ -47,85 +71,119 @@ export default function KaderLayout() {
     navigate('/login', { replace: true })
   }
 
+  function isActive(item: NavItem, navLinkActive: boolean): boolean {
+    if (item.activePrefix) {
+      return location.pathname.startsWith(item.activePrefix)
+    }
+    return navLinkActive
+  }
+
+  const firstLetter = user?.namaLengkap?.[0]?.toUpperCase() ?? 'K'
+  const isKetua = user?.role === 'ketua_kader'
+
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-gray-50">
+    <div className="flex flex-col md:flex-row bg-[#f9fafb] h-screen overflow-hidden">
       {/* ── Desktop Sidebar ─────────────────────────────────────────────────── */}
-      <aside className="hidden md:flex md:flex-col md:w-64 md:min-h-screen bg-white border-r border-gray-200 shadow-sm">
-        {/* Header */}
-        <div className="px-6 py-5 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#008236] flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-xs font-bold">SP</span>
+      <aside
+        className="hidden md:flex md:flex-col md:h-full bg-white border-r border-[#f3f4f6] flex-shrink-0"
+        style={{ width: '256px' }}
+      >
+        {/* Branding */}
+        <div className="px-5 pt-6 pb-5">
+          <div className="flex items-center gap-3">
+            <div className="bg-[#00a63e] rounded-[14px] w-10 h-10 flex items-center justify-center flex-shrink-0">
+              <span className="text-white font-bold text-sm">SP</span>
             </div>
             <div>
-              <p className="text-sm font-bold text-gray-900 leading-tight">SISPOS</p>
-              <p className="text-xs text-[#008236] font-medium">Kader Posyandu</p>
+              <p className="text-[#1e2939] font-extrabold text-base leading-tight">SISPOS</p>
+              <p className="text-[#99a1af] text-xs leading-tight">
+                {isKetua ? 'Ketua Kader' : 'Portal Kader'}
+              </p>
             </div>
           </div>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-4 space-y-1">
-          {NAV_ITEMS.map(({ label, to, icon: Icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              className={({ isActive }) =>
-                [
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-green-50 text-[#008236] font-semibold'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
-                ].join(' ')
-              }
-            >
-              <Icon size={18} className="flex-shrink-0" />
-              <span>{label}</span>
-            </NavLink>
-          ))}
+        <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive: navActive }) => {
+                  const active = isActive(item, navActive)
+                  return active
+                    ? 'bg-[#f0fdf4] border border-[#b9f8cf] text-[#008236] font-semibold rounded-[14px] flex items-center gap-3 px-[13px] py-[11px] text-sm'
+                    : 'text-[#4a5565] rounded-[14px] flex items-center gap-3 px-3 py-2.5 text-sm hover:bg-gray-50 transition-colors'
+                }}
+              >
+                <Icon size={18} className="flex-shrink-0" />
+                <span>{item.label}</span>
+              </NavLink>
+            )
+          })}
         </nav>
 
-        {/* Logout */}
-        <div className="px-3 py-4 border-t border-gray-100">
+        {/* User section at bottom */}
+        <div className="px-3 pb-5 pt-3 border-t border-[#f3f4f6] flex-shrink-0">
+          <div className="flex items-center gap-3 px-3 py-2 mb-2">
+            <div className="w-8 h-8 bg-[#008236] rounded-[10px] flex items-center justify-center flex-shrink-0">
+              <span className="text-white font-semibold text-sm">{firstLetter}</span>
+            </div>
+            <div className="min-w-0">
+              <p className="text-[#364153] font-semibold text-sm truncate">
+                {user?.namaLengkap ?? 'Kader'}
+              </p>
+              <div className="flex items-center gap-1">
+                <MapPin size={10} className="text-[#99a1af] flex-shrink-0" />
+                <p className="text-[#99a1af] text-xs truncate">Posyandu Anda</p>
+              </div>
+            </div>
+          </div>
           <button
             onClick={() => void handleLogout()}
-            className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors"
+            className="text-[#fb2c36] hover:bg-red-50 flex items-center gap-2 px-3 py-2 rounded-[14px] text-sm w-full transition-colors"
           >
-            <LogOut size={18} className="flex-shrink-0" />
+            <LogOut size={16} className="flex-shrink-0" />
             <span>Keluar</span>
           </button>
         </div>
       </aside>
 
       {/* ── Main content area ────────────────────────────────────────────────── */}
-      <main className="flex-1 flex flex-col min-h-screen">
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto pb-20 md:pb-0">
+      <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        {/* Scrollable content */}
+        <div className="flex-1 flex flex-col min-h-0 overflow-y-auto pb-20 md:pb-0">
           <Outlet />
         </div>
 
         {/* ── Mobile Bottom Navigation ─────────────────────────────────────── */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg">
-          <div className="grid grid-cols-3 h-16">
-            {NAV_ITEMS.map(({ label, to, icon: Icon, end }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={end}
-                className={({ isActive }) =>
-                  [
-                    'flex flex-col items-center justify-center gap-0.5 text-xs transition-colors',
-                    isActive ? 'text-[#008236]' : 'text-gray-500',
-                  ].join(' ')
-                }
-              >
-                <Icon size={20} />
-                <span className="truncate max-w-[72px] text-center leading-tight">
-                  {label === 'Pelayanan Hari-H' ? 'Pelayanan' : label}
-                </span>
-              </NavLink>
-            ))}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[#f3f4f6] shadow-lg">
+          <div className="grid grid-cols-4 h-16">
+            {MOBILE_NAV_ITEMS.map((item) => {
+              const Icon = item.icon
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  className={({ isActive: navActive }) => {
+                    const active = isActive(item, navActive)
+                    return [
+                      'flex flex-col items-center justify-center gap-0.5 transition-colors',
+                      active ? 'text-[#008236]' : 'text-[#4a5565]',
+                    ].join(' ')
+                  }}
+                >
+                  <Icon size={20} />
+                  <span className="text-[10px] text-center leading-tight max-w-[64px] truncate">
+                    {item.labelMobile}
+                  </span>
+                </NavLink>
+              )
+            })}
           </div>
         </nav>
       </main>
