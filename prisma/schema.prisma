@@ -104,6 +104,8 @@ model Posyandu {
   kelurahan      String    @db.VarChar(100)
   rw             String    @db.VarChar(10)
   jamOperasional String?   @db.VarChar(50)
+  latitude       Float?
+  longitude      Float?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
