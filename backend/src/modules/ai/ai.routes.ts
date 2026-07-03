@@ -27,6 +27,7 @@ import { prisma } from '../../config/db'
 import { generateEarlyWarning } from './ai.service'
 import { updatePemeriksaan } from '../growth/growth.service'
 import { chatGizi } from './ai-gizi.service'
+import { chatPendaftaran } from './ai-pendaftaran.service'
 
 export const aiRouter = Router()
 
@@ -254,4 +255,83 @@ aiRouter.post(
   authMiddleware,
   requireRole('citizen'),
   chatGiziHandler
+)
+
+// ── Schema: chatPendaftaran ───────────────────────────────────────────────
+
+const ChatPendaftaranSchema = z.object({
+  message: z
+    .string()
+    .min(1, 'Pesan tidak boleh kosong')
+    .max(1000, 'Pesan terlalu panjang'),
+  history: z
+    .array(
+      z.object({
+        role: z.enum(['user', 'assistant']),
+        content: z.string(),
+      })
+    )
+    .default([]),
+})
+
+// ── Handler: chatPendaftaran ──────────────────────────────────────────────
+
+/**
+ * chatPendaftaranHandler — POST /api/ai/chat/pendaftaran
+ *
+ * Security (T-04-04-05):
+ *   - wargaId dari req.user!.userId (JWT) — TIDAK pernah dari body
+ *   - Hanya citizen yang bisa akses (requireRole('citizen'))
+ *   - clientHistory diterima dari body tetapi HANYA untuk text generation context
+ *     — semua aksi (daftar/batalkan/reschedule) validasi ownership via wargaId dari JWT
+ */
+async function chatPendaftaranHandler(req: AuthRequest, res: Response): Promise<void> {
+  const parsed = ChatPendaftaranSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({
+      success: false,
+      error: 'VALIDASI_GAGAL',
+      message: parsed.error.errors.map((e) => e.message).join('; '),
+    })
+    return
+  }
+
+  // wargaId dari JWT — NEVER dari request body (T-04-04-05)
+  const wargaId = req.user!.userId
+
+  try {
+    const result = await chatPendaftaran(wargaId, parsed.data.message, parsed.data.history)
+    res.status(200).json({
+      success: true,
+      data: {
+        reply: result.reply,
+        messages: result.messages,
+      },
+      message: 'Pesan berhasil diproses.',
+    })
+  } catch (err) {
+    const e = err as { code?: string; message?: string }
+    if (e.code === 'AI_TIMEOUT') {
+      res.status(503).json({
+        success: false,
+        error: 'AI_TIMEOUT',
+        message: 'Asisten tidak merespons. Coba lagi.',
+      })
+      return
+    }
+    res.status(500).json({
+      success: false,
+      error: 'INTERNAL_ERROR',
+      message: 'Gagal memproses pesan. Coba lagi beberapa saat.',
+    })
+  }
+}
+
+// ── Route: chat/pendaftaran ───────────────────────────────────────────────
+
+aiRouter.post(
+  '/chat/pendaftaran',
+  authMiddleware,
+  requireRole('citizen'),
+  chatPendaftaranHandler
 )
