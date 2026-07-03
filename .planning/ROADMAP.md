@@ -294,6 +294,18 @@ Plans:
 - `docs/ROADMAP.md` Wave 5.1
 - Figma frames: `5:16705` (Laporan e-PPGBM)
 
+**Plans:** 2 plans
+
+Plans:
+
+**Wave 0** *(test scaffold + service implementation — no dependencies)*
+
+- [ ] 05-01-PLAN.md — Test scaffold (laporan-bulanan.test.ts) + service implementation (ExcelJS 2-sheet + pdfkit + Prisma aggregation query)
+
+**Wave 1** *(blocked on Wave 0)*
+
+- [ ] 05-02-PLAN.md — Route handler (GET /api/reports/laporan-bulanan) + app.ts wiring + LaporanPage.tsx functional rewrite
+
 ---
 
 ### Phase 6: PWA & Offline
