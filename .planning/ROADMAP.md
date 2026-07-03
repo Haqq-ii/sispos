@@ -256,7 +256,7 @@ Plans:
 
 **Wave 1** *(no dependencies)*
 
-- [ ] 04-01-PLAN.md — Schema migration add-posyandu-coordinates + Dashboard backend (GET /stunting + /stats) + PuskesmasDashboardPage Leaflet map + filter bulan
+- [x] 04-01-PLAN.md — Schema migration add-posyandu-coordinates + Dashboard backend (GET /stunting + /stats) + PuskesmasLayout sidebar + PuskesmasDashboardPage stats + PetaStuntingPage Leaflet map + filter bulan ✓ (ba5fcca, 71f54cb, afd6c45)
 
 **Wave 2** *(blocked on Wave 1)*
 

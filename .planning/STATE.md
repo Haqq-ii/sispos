@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Executing Phase 03
-last_updated: "2026-07-02T19:47:42.820Z"
+status: Executing Phase 04
+last_updated: "2026-07-03T07:36:00.000Z"
 progress:
   total_phases: 8
-  completed_phases: 3
-  total_plans: 22
-  completed_plans: 21
-  percent: 38
+  completed_phases: 4
+  total_plans: 26
+  completed_plans: 23
+  percent: 53
 ---
 
 # SISPOS — GSD State
@@ -21,17 +21,17 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-30)
 
 **Core value:** Countdown antrian adaptif + alur 5 Meja kader end-to-end
-**Current focus:** Phase 03 — kader-5-meja
+**Current focus:** Phase 04 — dashboard-dss-ai-chatbot
 
 ## Current Status
 
 ```
-Phase aktif  : Phase 03 — Kader 5-Meja Flow
-Last update  : 2026-07-02
-Plans done   : 03-01, 03-02, 03-03, 03-04, 03-05, 03-06 complete; 03-07 paused at checkpoint
-Phases done  : 3 / 8 (Phase 00 + 01 + 02 complete), Phase 03 in progress
-Next command : /gsd-execute-phase 03 (plan 07 continuation after human verify)
-Stopped at   : Phase 03 Plan 07 — Task 1+2 done; awaiting checkpoint:human-verify (5-Meja smoke test)
+Phase aktif  : Phase 04 — Dashboard & DSS + AI Chatbot
+Last update  : 2026-07-03
+Plans done   : 03-01..07 complete; 04-01 complete (3/3 tasks)
+Phases done  : 3 / 8 (Phase 00 + 01 + 02 complete), Phase 03 pending verification, Phase 04 in progress
+Next command : /gsd-execute-phase 04 (plan 02 — Manajemen Kader + master overrule)
+Stopped at   : Completed Phase 04 Plan 01 — dashboard backend + PuskesmasLayout + PetaStuntingPage
 ```
 
 ## Phase History
@@ -125,6 +125,9 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 2026-07-02 | Native textarea (Meja 4) — @/components/ui/textarea.tsx tidak ada di package | Konsisten dengan InlineProgress + native checkbox pattern dari 03-02 dan 03-05 |
 | 2026-07-02 | Lazy import SpeechClient dan OpenAI di service files | Graceful degradation saat env vars tidak ada; development bisa berlanjut tanpa credentials |
 | 2026-07-02 | IDOR guard duplikat di earlyWarningHandler sebelum OpenAI call | Menghindari billing OpenAI untuk request tidak authorized; defense-in-depth T-03-06-06 |
+| 2026-07-03 | puskesmasId dari req.user!.userId (JWT) di dashboard endpoints | IDOR guard T-04-01-01 + T-04-01-03; tidak pernah dari query params |
+| 2026-07-03 | react-leaflet@4.2.1 pinned (v5 requires React 19) | SISPOS pada React 18.3.1; v5 crash dengan peer dependency error |
+| 2026-07-03 | MapContainer tanpa key prop | Mencegah "Map container is already initialized" error saat bulan filter berubah |
 
 ## Performance Metrics
 
@@ -146,3 +149,4 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 02 | 07 | ~20 min | 2/2 + checkpoint | 13 |
 | 03 | 05 | ~30 min | 2/2 | 5 |
 | 03 | 06 | ~25 min | 3/3 | 7 |
+| 04 | 01 | ~7 min | 3/3 | 11 |
