@@ -153,8 +153,8 @@ export default function ChatPendaftaranPage() {
               <div
                 className={
                   msg.role === 'user'
-                    ? 'bg-blue-600 text-white rounded-xl px-3 py-2 max-w-[80%] text-sm leading-relaxed'
-                    : 'bg-white border border-gray-200 text-gray-800 rounded-xl px-3 py-2 max-w-[80%] text-sm leading-relaxed shadow-sm'
+                    ? 'bg-blue-600 text-white rounded-xl px-3 py-2 max-w-[80%] text-sm leading-relaxed whitespace-pre-wrap'
+                    : 'bg-white border border-gray-200 text-gray-800 rounded-xl px-3 py-2 max-w-[80%] text-sm leading-relaxed shadow-sm whitespace-pre-wrap'
                 }
               >
                 {msg.content}

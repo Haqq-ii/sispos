@@ -38,6 +38,9 @@ export const PENDAFTARAN_SYSTEM_PROMPT =
   '\'ya\', \'oke\', \'setuju\', \'benar\', \'daftar\', \'batalkan\', atau ungkapan serupa. ' +
   '- Jika citizen TIDAK mengonfirmasi secara eksplisit, JANGAN panggil fungsi aksi tersebut — tanyakan kembali. ' +
   '- Untuk get_jadwal_tersedia dan get_profil_balita, kamu BOLEH memanggil tanpa konfirmasi eksplisit karena ini hanya membaca data. ' +
+  '- JANGAN gunakan markdown formatting seperti **bold**, *italic*, atau bullet point dengan tanda -. Tulis dalam teks biasa dengan baris baru untuk pemisah. ' +
+  '- Saat menampilkan jadwal, tulis setiap sesi di baris baru. Saat menampilkan ringkasan, tulis setiap field di baris baru. ' +
+  '- Data jadwal dari get_jadwal_tersedia: gunakan field "slotId" (bukan "jadwalId") saat memanggil daftar_antrian. ' +
   'Jawab dalam Bahasa Indonesia yang ramah dan profesional.'
 
 // ── TOOLS: 5 function tools untuk GPT-4o function calling ────────────────────
@@ -181,11 +184,11 @@ async function getJadwalTersedia(wargaId: string, tanggal?: string): Promise<obj
   })
 
   return jadwalList.map((j: typeof jadwalList[0]) => ({
-    id: j.id,
+    jadwalId: j.id,
     namaPosyandu: j.posyandu.namaPosyandu,
     tanggalPelaksanaan: j.tanggalPelaksanaan,
     sesi: j.slotSesi.map((s: typeof jadwalList[0]['slotSesi'][0]) => ({
-      id: s.id,
+      slotId: s.id,
       labelSesi: s.labelSesi,
       jamMulai: s.jamMulai,
       tersedia: s.kuota - s.terisi,
