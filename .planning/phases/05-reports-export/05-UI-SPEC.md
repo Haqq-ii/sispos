@@ -74,7 +74,7 @@ Declared values (all multiples of 4):
 
 - Green header: `px-5 py-6` (20px/24px) — matches existing puskesmas pages; keep consistent.
 - Card internal: `p-5` (20px) — existing LaporanPage stub uses this; keep for visual consistency with PuskesmasDashboardPage.
-- Month picker input: `px-3 py-1.5` — matches dashboard month picker; use identical style.
+- Month picker input: `px-3 py-2` — nearest valid multiple-of-4 equivalent (8px vertical padding).
 - List item row: `p-3` (12px) — matches existing stub format-row items.
 
 ---
@@ -84,7 +84,7 @@ Declared values (all multiples of 4):
 | Role | Size | Weight | Line Height | Usage |
 |------|------|--------|-------------|-------|
 | Body | 14px (text-sm) | 400 (regular) | 1.5 | Card body text, list labels, button labels |
-| Label | 12px (text-xs) | 600 (semibold) | 1.4 | Section headings (`tracking-wider`), badge text, form labels |
+| Label | 12px (text-xs) | 700 (bold) | 1.4 | Section headings (`tracking-wider`), badge text, form labels |
 | Heading | 20px (text-xl) | 700 (bold) | 1.2 | Page title in green header (`text-xl font-bold`) |
 | Hint | 10px (text-[10px]) | 400 (regular) | 1.4 | Stat box sub-labels in header, minor help text |
 
@@ -106,7 +106,7 @@ Declared values (all multiples of 4):
 1. Download Excel button icon color (`text-[#008236]` on hover state, `text-emerald-700` at rest — follows RekapHarianPage pattern)
 2. Primary CTA download button border/text when enabled
 3. Green header background — the singular dominant brand surface
-4. "Unduh" inline action text in list rows
+4. "Unduh Excel" / "Unduh PDF" inline action text in list rows
 
 **Accent NOT used for:** general text, disabled states, stat boxes sub-labels.
 
@@ -188,7 +188,8 @@ PuskesmasLayout
 | Excel row description | `Data individual balita + rekap status gizi` | Bahasa Indonesia |
 | PDF row label | `Laporan Ringkas (.pdf)` | Bahasa Indonesia |
 | PDF row description | `Ringkasan per posyandu untuk bulan terpilih` | Bahasa Indonesia |
-| Download CTA (inline) | `Unduh` | Bahasa Indonesia |
+| Download CTA (inline — Excel row) | `Unduh Excel` | Bahasa Indonesia |
+| Download CTA (inline — PDF row) | `Unduh PDF` | Bahasa Indonesia |
 | Download CTA (button) | `Download Excel (.xlsx)` / `Download PDF (.pdf)` | Bahasa Indonesia + format hint |
 | Empty state heading | `Belum ada data untuk bulan ini` | Bahasa Indonesia |
 | Empty state body | `Tidak ada pemeriksaan selesai pada [bulan terpilih]. Pilih bulan lain atau tunggu setelah sesi pelayanan selesai.` | Bahasa Indonesia |
@@ -207,7 +208,7 @@ PuskesmasLayout
 - Native `input[type=month]` — same widget as in `PuskesmasDashboardPage`.
 - Default value: current month WIB, computed via `Date.now() + 7h` offset (matches dashboard pattern).
 - Position: top-right of green header (same layout as PuskesmasDashboardPage).
-- Style: `px-3 py-1.5 text-xs border border-[rgba(255,255,255,0.3)] bg-[rgba(255,255,255,0.15)] text-white rounded-[14px] focus:outline-none focus:bg-[rgba(255,255,255,0.25)]` — exact copy from `PuskesmasDashboardPage.tsx` line 100.
+- Style: `px-3 py-2 text-xs border border-[rgba(255,255,255,0.3)] bg-[rgba(255,255,255,0.15)] text-white rounded-[14px] focus:outline-none focus:bg-[rgba(255,255,255,0.25)]` — matches dashboard pattern; `py-2` (8px) substitutes `py-1.5` (6px, non-multiple of 4).
 - On change: update local `bulan` state (no server call — download is on-demand).
 
 ### Stat Summary Boxes (optional but recommended for UX)
@@ -267,7 +268,7 @@ MUST match `PuskesmasDashboardPage.tsx` header structure exactly:
       <h1 className="text-white font-bold text-xl leading-tight">Laporan e-PPGBM</h1>
       <p className="text-[#b9f8cf] text-xs mt-1">Ekspor laporan bulanan Kemenkes</p>
     </div>
-    <input type="month" ... className="px-3 py-1.5 text-xs border border-[rgba(255,255,255,0.3)] bg-[rgba(255,255,255,0.15)] text-white rounded-[14px] focus:outline-none focus:bg-[rgba(255,255,255,0.25)]" />
+    <input type="month" ... className="px-3 py-2 text-xs border border-[rgba(255,255,255,0.3)] bg-[rgba(255,255,255,0.15)] text-white rounded-[14px] focus:outline-none focus:bg-[rgba(255,255,255,0.25)]" />
   </div>
   {/* 2×2 stat grid here */}
 </div>
@@ -281,7 +282,7 @@ Follow stub's row structure, rewritten as functional:
 
 ```
 <div className="bg-white border border-[#f3f4f6] rounded-2xl shadow-sm p-5">
-  <p className="text-[#6a7282] text-xs font-semibold tracking-wider mb-3">FORMAT LAPORAN</p>
+  <p className="text-[#6a7282] text-xs font-bold tracking-wider mb-3">FORMAT LAPORAN</p>
   <div className="space-y-2">
     {/* Excel row */}
     <div className="flex items-center justify-between p-3 border border-[#f3f4f6] rounded-[14px]">
@@ -295,8 +296,9 @@ Follow stub's row structure, rewritten as functional:
       <button onClick={() => handleDownload('xlsx')}
         className="flex items-center gap-1.5 text-[#008236] text-xs font-medium hover:text-[#00a63e]">
         <Download size={14} />
-        Unduh
+        Unduh Excel
       </button>
+    {/* PDF row button uses "Unduh PDF" */}
     </div>
     {/* PDF row — same structure, FileText icon */}
   </div>
