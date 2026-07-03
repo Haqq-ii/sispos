@@ -4,7 +4,7 @@
  * AuditLog WAJIB dalam transaksi yang sama (CLAUDE.md §Keamanan).
  */
 import pino from 'pino'
-import type { Prisma } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 import { prisma } from '../../config/db'
 import { env } from '../../config/env'
 import type { IncomingHttpHeaders } from 'http'
@@ -51,7 +51,7 @@ export async function createImunisasi(
         aksi: 'CREATE_IMUNISASI',
         tabelTerkait: 'imunisasi',
         recordId: imunisasi.id,
-        dataSebelum: null,
+        dataSebelum: Prisma.JsonNull,
         dataSesudah: {
           namaVaksin: data.namaVaksin,
           dosisKe: data.dosisKe,

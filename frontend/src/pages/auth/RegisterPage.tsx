@@ -22,7 +22,7 @@ import apiClient from '@/lib/axios'
 interface RegisterResponse {
   success: boolean
   data: {
-    maskedPhone: string
+    nomorPonselMasked: string
   }
   message: string
 }

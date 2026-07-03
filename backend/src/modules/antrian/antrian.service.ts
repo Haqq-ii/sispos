@@ -315,23 +315,30 @@ export async function broadcastQueueUpdate(slotId: string): Promise<void> {
   }
 
   // Ambil antrian aktif untuk slot ini
-  const antrianList = await prisma.antrian.findMany({
-    where: {
-      slotId,
-      statusAntrian: { in: ['menunggu', 'dipanggil'] },
-    },
-    orderBy: { nomorUrut: 'asc' },
-    select: { id: true, nomorUrut: true, statusAntrian: true },
-  })
-
-  const slot = await prisma.slotSesi.findUnique({
-    where: { id: slotId },
-    select: { durasiRataAktual: true },
-  })
+  const [antrianList, dipanggilRow, slot] = await Promise.all([
+    prisma.antrian.findMany({
+      where: {
+        slotId,
+        statusAntrian: { in: ['menunggu', 'dipanggil'] },
+      },
+      orderBy: { nomorUrut: 'asc' },
+      select: { id: true, nomorUrut: true, statusAntrian: true },
+    }),
+    // nomorAktif = nomorUrut antrian yang sedang dilayani (status dipanggil)
+    prisma.antrian.findFirst({
+      where: { slotId, statusAntrian: 'dipanggil' },
+      orderBy: { nomorUrut: 'asc' },
+      select: { nomorUrut: true },
+    }),
+    prisma.slotSesi.findUnique({
+      where: { id: slotId },
+      select: { durasiRataAktual: true },
+    }),
+  ])
 
   // Payload sesuai CLAUDE.md §Socket.IO Events
   io.to('sesi:' + slotId).emit('queue:update', {
-    nomorAktif: 0, // Phase 2: Meja 1 hadir belum diimplementasi — selalu 0
+    nomorAktif: dipanggilRow?.nomorUrut ?? 0,
     durasiRataAktual: slot?.durasiRataAktual ?? null,
     antrianList,
   })

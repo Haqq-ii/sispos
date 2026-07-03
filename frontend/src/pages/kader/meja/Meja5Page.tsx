@@ -1,96 +1,80 @@
 /**
- * Meja5Page — Meja 5: Selesai Pelayanan
+ * Meja5Page — Meja 5: Imunisasi
+ * Figma: node 5:11874, 5:12010, 5:12441
  *
- * Features:
- *   1. Summary pelayanan: BB, TB, Z-Scores, statusGizi, tanda klinis dari Meja 2-4
- *   2. "Selesai Pelayanan" button → PATCH /api/antrian/:id/selesai
- *   3. onSuccess:
- *      - setLocked(false) + setActiveMeja(null,null) + setActivePemeriksaanId(null)
- *      - DELETE /api/kader/active-meja (clear Redis)
- *      - navigate('/kader/rekap', { state: { slotId } })
+ * Flow:
+ *   1. Tampilkan riwayat imunisasi balita aktif
+ *   2. Inline form "Tambah Imunisasi Hari Ini" (namaVaksin + dosisKe)
+ *   3. "Selesai Pelayanan" → selesaikanAntrian → navigate ke /kader/rekap
  *
  * State source: router state dari Meja4Page
  *   { antrianId, balitaId, namaBalita, pemeriksaanId }
  * slotId: from useKaderMejaStore.activeSlotId
- *
- * Security: PATCH /api/antrian/:id/selesai dilindungi authMiddleware + requireRole('kader')
- * QUEUE-05: broadcast durasiRataAktual setelah selesai (di backend, bukan di sini)
  */
+import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { useMutation } from '@tanstack/react-query'
-import { CheckCircle, Loader2, LogOut } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { CheckCircle, Plus, Syringe, Loader2, LogOut } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useToast } from '@/hooks/use-toast'
 import { useKaderMejaStore } from '@/stores/useKaderMejaStore'
-import { usePemeriksaanHistory } from '@/hooks/usePemeriksaan'
 import apiClient from '@/lib/axios'
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// ── Types ──────────────────────────────────────────────────────────────────────
+
+interface ImunisasiItem {
+  id: string
+  namaVaksin: string
+  dosisKe: number
+  tanggalInjeksi: string
+  keterangan?: string | null
+}
 
 interface SelesaiResult {
-  slotId: string
-  durasiRataAktual: number | null
+  antrianId: string
+  durasiLayananBaru: number
+  durasiRataAktual: number
 }
 
-// ── StatusGizi badge ───────────────────────────────────────────────────────
+// ── Vaksin options (standar Kemenkes) ──────────────────────────────────────────
 
-function StatusGiziBadge({ status }: { status: string | null }) {
-  if (!status) return null
+const VAKSIN_OPTIONS = [
+  'BCG',
+  'Hepatitis B',
+  'Polio (OPV)',
+  'Polio (IPV)',
+  'DPT-HB-Hib',
+  'Campak-Rubella (MR)',
+  'DPT Lanjutan',
+  'Campak-Rubella Lanjutan',
+  'Japanese Encephalitis',
+  'Vitamin A',
+]
 
-  const config: Record<string, { bg: string; text: string; label: string }> = {
-    normal: { bg: 'bg-green-100', text: 'text-green-800', label: 'Normal' },
-    kurang: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Gizi Kurang' },
-    buruk: { bg: 'bg-red-100', text: 'text-red-800', label: 'Gizi Buruk' },
-    lebih: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Gizi Lebih' },
-    obesitas: { bg: 'bg-purple-100', text: 'text-purple-800', label: 'Obesitas' },
-  }
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
-  const c = config[status] ?? { bg: 'bg-gray-100', text: 'text-gray-700', label: status }
-
-  return (
-    <span
-      className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${c.bg} ${c.text}`}
-    >
-      {c.label}
-    </span>
-  )
+function formatTanggal(iso: string): string {
+  const d = new Date(iso)
+  return d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-// ── Z-Score chip ───────────────────────────────────────────────────────────
-
-function ZChip({ label, value }: { label: string; value: number | null }) {
-  if (value === null)
-    return (
-      <div className="text-center">
-        <p className="text-xs text-gray-400">{label}</p>
-        <p className="text-sm text-gray-400">—</p>
-      </div>
-    )
-
-  const color =
-    value < -3 || value > 3
-      ? 'text-red-600 font-bold'
-      : value < -2 || value > 2
-      ? 'text-yellow-600 font-semibold'
-      : 'text-green-700'
-
-  return (
-    <div className="text-center">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className={`text-sm ${color}`}>{value.toFixed(2)}</p>
-    </div>
-  )
+function isToday(iso: string): boolean {
+  const d = new Date(iso)
+  const now = new Date()
+  return d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
 }
 
-// ── Main Component ─────────────────────────────────────────────────────────
+// ── Main Component ─────────────────────────────────────────────────────────────
 
 export default function Meja5Page() {
   const navigate = useNavigate()
   const location = useLocation()
   const { toast } = useToast()
-  const { activeSlotId, setActiveMeja, setActivePemeriksaanId, setLocked } = useKaderMejaStore()
+  const queryClient = useQueryClient()
+  const { activeSlotId, setActiveMeja, setActivePemeriksaanId, setLocked, activeAntrianId, activeBalitaId, activeNamaBalita } = useKaderMejaStore()
 
   const state = location.state as {
     antrianId?: string
@@ -99,23 +83,51 @@ export default function Meja5Page() {
     pemeriksaanId?: string
   } | null
 
-  const antrianId = state?.antrianId
-  const balitaId = state?.balitaId ?? null
-  const namaBalita = state?.namaBalita ?? 'Balita'
+  const antrianId = state?.antrianId ?? activeAntrianId ?? undefined
+  const balitaId = state?.balitaId ?? activeBalitaId ?? null
+  const namaBalita = state?.namaBalita ?? activeNamaBalita ?? 'Balita'
 
-  // Guard: antrianId wajib ada
-  if (!antrianId) {
-    navigate('/kader/dashboard', { replace: true })
-    return null
-  }
+  // Guard via useEffect — avoids synchronous navigate() during render
+  useEffect(() => {
+    if (!antrianId) {
+      navigate('/kader/dashboard', { replace: true })
+    }
+  }, [antrianId, navigate])
 
-  // Fetch riwayat pemeriksaan untuk tampilkan summary terbaru
-  const { data: riwayat, isLoading: riwayatLoading } = usePemeriksaanHistory(balitaId)
+  // ── All hooks before any return ────────────────────────────────────────────
+  const [showForm, setShowForm] = useState(false)
+  const [namaVaksin, setNamaVaksin] = useState('')
+  const [dosisKe, setDosisKe] = useState('1')
 
-  // Latest pemeriksaan entry (last in asc-sorted list)
-  const latest = riwayat && riwayat.length > 0 ? riwayat[riwayat.length - 1] : null
+  const { data: riwayat = [], isLoading: riwayatLoading } = useQuery<ImunisasiItem[]>({
+    queryKey: ['imunisasi', balitaId],
+    queryFn: () =>
+      apiClient.get(`/immunization/balita/${balitaId}`).then((r) => r.data.data as ImunisasiItem[]),
+    enabled: !!balitaId,
+  })
 
-  // ── Selesai mutation ─────────────────────────────────────────────────────
+  const todayCount = riwayat.filter((i) => isToday(i.tanggalInjeksi)).length
+  const doneCount = riwayat.length
+
+  const tambahMutation = useMutation({
+    mutationFn: () =>
+      apiClient.post('/immunization', {
+        balitaId,
+        namaVaksin,
+        dosisKe: parseInt(dosisKe, 10),
+        tanggalInjeksi: new Date().toISOString(),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['imunisasi', balitaId] })
+      setShowForm(false)
+      setNamaVaksin('')
+      setDosisKe('1')
+      toast({ title: 'Imunisasi dicatat', description: `${namaVaksin} dosis ${dosisKe} berhasil disimpan.` })
+    },
+    onError: () => {
+      toast({ title: 'Gagal menyimpan', description: 'Coba lagi.', variant: 'destructive' })
+    },
+  })
 
   const selesaiMutation = useMutation<SelesaiResult, Error>({
     mutationFn: async () => {
@@ -123,147 +135,197 @@ export default function Meja5Page() {
       return (response.data as { data: SelesaiResult }).data
     },
     onSuccess: async () => {
-      // Clear Redis active-meja
-      try {
-        await apiClient.delete('/kader/active-meja')
-      } catch {
-        // Non-critical — Redis clear failure doesn't block flow
-      }
-
-      // Clear Zustand store
+      try { await apiClient.delete('/kader/active-meja') } catch {}
       setLocked(false)
       setActiveMeja(null, null)
       setActivePemeriksaanId(null)
-
-      toast({ description: 'Pelayanan selesai! Silakan unduh rekap harian.' })
-
-      // Navigate to rekap harian with slotId for download links
-      navigate('/kader/rekap', {
-        state: { slotId: activeSlotId },
-      })
+      toast({ title: 'Pelayanan selesai', description: `${namaBalita} telah selesai dilayani.` })
+      navigate('/kader/rekap', { state: { slotId: activeSlotId }, replace: true })
     },
-    onError: () => {
-      toast({
-        description: 'Gagal menyelesaikan pelayanan. Coba lagi.',
-        variant: 'destructive',
-      })
+    onError: (err) => {
+      toast({ title: 'Gagal', description: err.message, variant: 'destructive' })
     },
   })
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
+  // Guard: antrianId wajib ada — useEffect handles navigation above
+  if (!antrianId) return null
 
-  function handleKeluar() {
-    navigate('/kader/dashboard', { replace: true })
-  }
-
-  // ── Render ────────────────────────────────────────────────────────────────
-
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-white border-b px-4 py-3 flex items-center justify-between shadow-sm">
-        <div>
-          <h1 className="text-base font-bold text-gray-900">Meja 5 — Selesai Pelayanan</h1>
-          <p className="text-xs text-gray-500">{namaBalita}</p>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Header — orange sesuai Figma */}
+      <div className="bg-[#e17100] px-4 pt-10 pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Syringe size={16} className="text-white" />
+            <div>
+              <p className="text-white font-bold text-sm">MEJA 5 — Imunisasi</p>
+              <p className="text-[#fee685] text-xs">Catat &amp; rekam riwayat imunisasi</p>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/kader/pelayanan', { state: { slotId: activeSlotId, slotLabel: 'Sesi Aktif' } })}
+            className="bg-[rgba(254,154,0,0.6)] border border-[rgba(255,185,0,0.5)] rounded-xl px-3 py-1.5 text-white text-xs font-medium"
+          >
+            Tukar Meja
+          </button>
         </div>
-        <Button variant="ghost" size="sm" onClick={handleKeluar} className="text-red-600">
-          <LogOut className="h-4 w-4 mr-1" />
-          Keluar Meja
-        </Button>
       </div>
 
-      <div className="max-w-[480px] mx-auto px-4 py-6 space-y-6">
+      {/* Sub-header — nama balita */}
+      <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
+        <div>
+          <p className="font-bold text-[#1e2939] text-sm">{namaBalita}</p>
+        </div>
+        <button
+          onClick={() => navigate(-1)}
+          className="text-[#99a1af] text-xs font-medium"
+        >
+          ← Kembali
+        </button>
+      </div>
 
-        {/* ── Ringkasan Pelayanan ──────────────────────────────────────── */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold text-gray-700">
-              Ringkasan Pelayanan Hari Ini
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {riwayatLoading ? (
-              <div className="flex items-center justify-center py-6 text-gray-400 text-sm">
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Memuat data...
-              </div>
-            ) : latest ? (
-              <div className="space-y-4">
-                {/* BB + TB */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-emerald-50 rounded-lg p-3 text-center">
-                    <p className="text-xs text-emerald-600 font-medium">Berat Badan</p>
-                    <p className="text-xl font-bold text-emerald-800">
-                      {latest.beratBadan !== null ? `${latest.beratBadan} kg` : '—'}
-                    </p>
-                  </div>
-                  <div className="bg-blue-50 rounded-lg p-3 text-center">
-                    <p className="text-xs text-blue-600 font-medium">Tinggi Badan</p>
-                    <p className="text-xl font-bold text-blue-800">
-                      {latest.tinggiBadan !== null ? `${latest.tinggiBadan} cm` : '—'}
-                    </p>
-                  </div>
-                </div>
+      {/* Body */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
 
-                {/* Status Gizi */}
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-600">Status Gizi:</p>
-                  <StatusGiziBadge
-                    status={latest.statusGiziOverride ?? latest.statusGizi}
-                  />
-                </div>
-
-                {/* Z-Scores */}
-                <div>
-                  <p className="text-xs text-gray-500 mb-2">Z-Scores:</p>
-                  <div className="grid grid-cols-3 gap-2 bg-gray-50 rounded-lg p-3">
-                    <ZChip label="BB/U" value={latest.zScoreBbU} />
-                    <ZChip label="TB/U" value={latest.zScoreTbU} />
-                    <ZChip label="BB/TB" value={latest.zScoreBbTb} />
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-gray-400 text-center py-4">
-                Tidak ada data pemeriksaan untuk sesi ini.
-              </p>
+        {/* Riwayat imunisasi card */}
+        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+          {/* Card header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
+            <p className="font-bold text-[#364153] text-sm">Riwayat Imunisasi</p>
+            {!riwayatLoading && (
+              <p className="text-[#e17100] text-xs font-medium">{doneCount} vaksin tercatat</p>
             )}
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* ── Konfirmasi Selesai ───────────────────────────────────────── */}
-        <Card className="border-2 border-emerald-200 bg-emerald-50">
-          <CardContent className="pt-6 space-y-4">
-            <div className="flex flex-col items-center text-center space-y-2">
-              <CheckCircle className="h-10 w-10 text-emerald-500" />
-              <h2 className="text-base font-semibold text-gray-800">Selesaikan Pelayanan</h2>
-              <p className="text-xs text-gray-500">
-                Klik tombol di bawah untuk menandai antrian ini selesai.
-                Data antrian dan estimasi waktu tunggu akan diperbarui secara otomatis.
-              </p>
+          {/* Vaccine list */}
+          {riwayatLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 size={20} className="animate-spin text-gray-400" />
+            </div>
+          ) : riwayat.length === 0 ? (
+            <div className="py-8 text-center">
+              <p className="text-sm text-gray-400">Belum ada riwayat imunisasi</p>
+            </div>
+          ) : (
+            riwayat.map((item, idx) => {
+              const today = isToday(item.tanggalInjeksi)
+              return (
+                <div
+                  key={item.id}
+                  className={`flex items-center gap-3 px-4 py-3 ${idx < riwayat.length - 1 ? 'border-b border-gray-50' : ''}`}
+                >
+                  {/* Icon */}
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${today ? 'bg-blue-50' : 'bg-[#dcfce7]'}`}>
+                    {today
+                      ? <Plus size={14} className="text-blue-500" />
+                      : <CheckCircle size={14} className="text-[#008236]" />
+                    }
+                  </div>
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-[#364153]">
+                      {item.namaVaksin} — Dosis {item.dosisKe}
+                    </p>
+                    <p className="text-xs text-[#99a1af]">{formatTanggal(item.tanggalInjeksi)}</p>
+                  </div>
+                  {/* Badge */}
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                    today
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'bg-[#dcfce7] text-[#008236]'
+                  }`}>
+                    {today ? 'Hari ini' : '✓'}
+                  </span>
+                </div>
+              )
+            })
+          )}
+        </div>
+
+        {/* Tambah imunisasi */}
+        {!showForm ? (
+          <button
+            onClick={() => setShowForm(true)}
+            className="w-full border-2 border-dashed border-[#ffd230] rounded-2xl py-3 flex items-center justify-center gap-2 text-[#e17100] text-sm font-semibold"
+          >
+            <Plus size={16} />
+            Catat Imunisasi Hari Ini
+          </button>
+        ) : (
+          <div className="bg-white border border-[#fee685] rounded-2xl shadow-sm p-4 space-y-3">
+            <p className="font-bold text-[#364153] text-sm">Tambah Imunisasi Hari Ini</p>
+
+            {/* Nama vaksin */}
+            <div>
+              <label className="text-xs font-medium text-[#4a5565] block mb-1">Nama Vaksin</label>
+              <select
+                value={namaVaksin}
+                onChange={(e) => setNamaVaksin(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#e17100]"
+              >
+                <option value="">-- Pilih vaksin --</option>
+                {VAKSIN_OPTIONS.map((v) => (
+                  <option key={v} value={v}>{v}</option>
+                ))}
+              </select>
             </div>
 
-            <Button
-              type="button"
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
-              onClick={() => selesaiMutation.mutate()}
-              disabled={selesaiMutation.isPending}
-            >
-              {selesaiMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Memproses...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Selesai Pelayanan
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
+            {/* Dosis */}
+            <div>
+              <label className="text-xs font-medium text-[#4a5565] block mb-1">Dosis ke-</label>
+              <select
+                value={dosisKe}
+                onChange={(e) => setDosisKe(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#e17100]"
+              >
+                {[1, 2, 3, 4, 5].map((d) => (
+                  <option key={d} value={d}>Dosis ke-{d}</option>
+                ))}
+              </select>
+            </div>
 
+            {/* Actions */}
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <button
+                onClick={() => { setShowForm(false); setNamaVaksin(''); setDosisKe('1') }}
+                className="border border-gray-200 rounded-xl py-2.5 text-sm font-semibold text-[#4a5565]"
+              >
+                Batal
+              </button>
+              <button
+                disabled={!namaVaksin || tambahMutation.isPending}
+                onClick={() => tambahMutation.mutate()}
+                className="bg-[#e17100] rounded-xl py-2.5 text-sm font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2"
+              >
+                {tambahMutation.isPending && <Loader2 size={14} className="animate-spin" />}
+                Tambahkan
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Info hari ini */}
+        {todayCount > 0 && (
+          <p className="text-xs text-center text-[#e17100]">
+            {todayCount} imunisasi dicatat hari ini
+          </p>
+        )}
+      </div>
+
+      {/* Footer — Selesai Meja 5 */}
+      <div className="bg-white border-t border-gray-100 p-4">
+        <Button
+          variant="ghost"
+          className="w-full bg-[#fef2f2] border border-[#ffc9c9] text-[#e7000b] font-semibold rounded-2xl h-12 hover:bg-red-50"
+          onClick={() => selesaiMutation.mutate()}
+          disabled={selesaiMutation.isPending}
+        >
+          {selesaiMutation.isPending
+            ? <><Loader2 size={16} className="animate-spin mr-2" />Memproses...</>
+            : <><LogOut size={16} className="mr-2" />Selesai Meja 5</>
+          }
+        </Button>
       </div>
     </div>
   )

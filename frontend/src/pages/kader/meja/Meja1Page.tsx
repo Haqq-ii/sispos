@@ -1,26 +1,8 @@
-/**
- * Meja1Page — Meja 1: Pendaftaran & Kehadiran
- *
- * Features:
- * - Antrian list grouped by RT (client-side groupBy)
- * - Hadir button: PATCH /api/antrian/:id/hadir
- * - Tangguhkan button: PATCH /api/antrian/:id/tangguhkan
- * - Go-show form: POST /api/kader/go-show
- * - Realtime: useKaderSocket invalidates query on queue:update
- * - Keluar Meja: DELETE /api/kader/active-meja → /kader/dashboard
- *
- * T-03-03-01 mitigation: if activeSlotId is null in store → redirect to dashboard
- */
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { LogOut, UserCheck, PauseCircle, UserPlus, ChevronDown, ChevronUp } from 'lucide-react'
+import { Lock, UserPlus, Loader2 } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
-import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { useKaderSocket } from '@/hooks/useKaderSocket'
 import { useMutationClearActiveMeja } from '@/hooks/useActiveMeja'
@@ -29,7 +11,13 @@ import apiClient from '@/lib/axios'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type StatusAntrianValue = 'menunggu' | 'dipanggil' | 'selesai' | 'ditangguhkan' | 'tidak_hadir' | 'dibatalkan'
+type StatusAntrianValue =
+  | 'menunggu'
+  | 'dipanggil'
+  | 'selesai'
+  | 'ditangguhkan'
+  | 'tidak_hadir'
+  | 'dibatalkan'
 
 interface AntrianItem {
   id: string
@@ -42,39 +30,10 @@ interface AntrianItem {
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-const STATUS_BADGE: Record<StatusAntrianValue, string> = {
-  menunggu: 'bg-blue-50 text-blue-600 border-blue-200',
-  dipanggil: 'bg-amber-50 text-amber-600 border-amber-200',
-  selesai: 'bg-green-50 text-green-600 border-green-200',
-  ditangguhkan: 'bg-gray-100 text-gray-500 border-gray-200',
-  tidak_hadir: 'bg-gray-100 text-gray-500 border-gray-200',
-  dibatalkan: 'bg-gray-100 text-gray-500 border-gray-200',
-}
-
-const STATUS_LABELS: Record<StatusAntrianValue, string> = {
-  menunggu: 'Menunggu',
-  dipanggil: 'Dipanggil',
-  selesai: 'Selesai',
-  ditangguhkan: 'Ditangguhkan',
-  tidak_hadir: 'Tidak Hadir',
-  dibatalkan: 'Dibatalkan',
-}
-
 function ageInMonths(tanggalLahir: string): number {
   const birth = new Date(tanggalLahir)
   const now = new Date()
-  const diffMs = now.getTime() - birth.getTime()
-  return Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30.4375))
-}
-
-/** Group antrian by RT (client-side) */
-function groupByRt(antrian: AntrianItem[]): Record<string, AntrianItem[]> {
-  return antrian.reduce<Record<string, AntrianItem[]>>((acc, item) => {
-    const rt = item.warga.rt ?? 'Tidak Diketahui'
-    if (!acc[rt]) acc[rt] = []
-    acc[rt].push(item)
-    return acc
-  }, {})
+  return Math.floor((now.getTime() - birth.getTime()) / (1000 * 60 * 60 * 24 * 30.4375))
 }
 
 function isAxiosLikeError(
@@ -86,34 +45,57 @@ function isAxiosLikeError(
     'response' in error &&
     typeof (error as { response: unknown }).response === 'object' &&
     (error as { response: unknown }).response !== null &&
-    'data' in ((error as { response: Record<string, unknown> }).response)
+    'data' in (error as { response: Record<string, unknown> }).response
   )
 }
 
-// ── Component ──────────────────────────────────────────────────────────────────
+// ── Guard wrapper ──────────────────────────────────────────────────────────────
 
 export default function Meja1Page() {
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const { toast } = useToast()
   const { activeSlotId, reset: resetStore } = useKaderMejaStore()
   const clearActiveMejaMutation = useMutationClearActiveMeja()
 
+  useEffect(() => {
+    if (!activeSlotId) navigate('/kader/dashboard', { replace: true })
+  }, [activeSlotId, navigate])
+
+  if (!activeSlotId) return null
+
+  return (
+    <Meja1Content
+      activeSlotId={activeSlotId}
+      clearActiveMejaMutation={clearActiveMejaMutation}
+      resetStore={resetStore}
+    />
+  )
+}
+
+// ── Inner component (after guard) ──────────────────────────────────────────────
+
+interface Meja1ContentProps {
+  activeSlotId: string
+  clearActiveMejaMutation: ReturnType<typeof useMutationClearActiveMeja>
+  resetStore: () => void
+}
+
+function Meja1Content({ activeSlotId, clearActiveMejaMutation, resetStore }: Meja1ContentProps) {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+  const { setActiveAntrian } = useKaderMejaStore()
+
+  const [selectedRt, setSelectedRt] = useState<string>('Semua')
+  const [searchQuery, setSearchQuery] = useState('')
   const [showGoShow, setShowGoShow] = useState(false)
   const [goShowBalitaId, setGoShowBalitaId] = useState('')
   const [goShowWargaId, setGoShowWargaId] = useState('')
 
-  // T-03-03-01: if no activeSlotId, redirect to dashboard
-  if (!activeSlotId) {
-    navigate('/kader/dashboard', { replace: true })
-    return null
-  }
-
-  // Realtime: invalidate antrian list on queue:update
+  // Realtime
   useKaderSocket(activeSlotId)
 
-  // Antrian list query
-  const { data: antrianList, isLoading } = useQuery<AntrianItem[]>({
+  // Antrian list
+  const { data: antrianList = [], isLoading } = useQuery<AntrianItem[]>({
     queryKey: ['antrian', 'kader', activeSlotId],
     queryFn: () =>
       apiClient
@@ -122,13 +104,14 @@ export default function Meja1Page() {
     enabled: !!activeSlotId,
   })
 
-  // Hadir mutation — setelah hadir, navigasi ke Meja 2 dengan state balita
+  // Mutations
   const hadirMutation = useMutation({
     mutationFn: (payload: { antrianId: string; balitaId: string; namaBalita: string }) =>
       apiClient.patch(`/antrian/${payload.antrianId}/hadir`).then((r) => r.data),
     onSuccess: (_data, payload) => {
       void queryClient.invalidateQueries({ queryKey: ['antrian', 'kader', activeSlotId] })
       toast({ description: 'Balita berhasil dipanggil. Lanjut ke Meja 2.' })
+      setActiveAntrian(payload.antrianId, payload.balitaId, payload.namaBalita)
       navigate('/kader/meja/2', {
         state: {
           antrianId: payload.antrianId,
@@ -143,7 +126,6 @@ export default function Meja1Page() {
     },
   })
 
-  // Tangguhkan mutation
   const tangguhkanMutation = useMutation({
     mutationFn: (antrianId: string) =>
       apiClient.patch(`/antrian/${antrianId}/tangguhkan`).then((r) => r.data),
@@ -157,7 +139,6 @@ export default function Meja1Page() {
     },
   })
 
-  // Go-show mutation
   const goShowMutation = useMutation({
     mutationFn: (body: { slotId: string; balitaId: string; wargaId: string }) =>
       apiClient.post('/kader/go-show', body).then((r) => r.data),
@@ -175,162 +156,227 @@ export default function Meja1Page() {
   })
 
   const handleKeluarMeja = () => {
-    clearActiveMejaMutation.mutate(undefined, {
-      onSuccess: () => {
-        resetStore()
-        navigate('/kader/dashboard', { replace: true })
-      },
-    })
+    clearActiveMejaMutation.mutate()
+    resetStore()
+    navigate('/kader/dashboard', { replace: true })
   }
 
-  const grouped = antrianList ? groupByRt(antrianList) : {}
-  const totalMenunggu = antrianList?.filter((a) => a.statusAntrian === 'menunggu').length ?? 0
-  const totalSelesai = antrianList?.filter((a) => a.statusAntrian === 'selesai').length ?? 0
+  // ── Derived state ───────────────────────────────────────────────────────────
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  const hadirCount = antrianList.filter(
+    (a) => a.statusAntrian === 'selesai' || a.statusAntrian === 'dipanggil',
+  ).length
+  const belumCount = antrianList.filter(
+    (a) => a.statusAntrian === 'menunggu' || a.statusAntrian === 'ditangguhkan',
+  ).length
+  const total = antrianList.length
+  const progressPct = total > 0 ? Math.round((hadirCount / total) * 100) : 0
+
+  // RT list for filter chips
+  const rtList = ['Semua', ...Array.from(new Set(antrianList.map((a) => a.warga.rt ?? 'Tidak Diketahui'))).sort()]
+
+  // Filtered list
+  const filtered = antrianList.filter((a) => {
+    const rtMatch = selectedRt === 'Semua' || (a.warga.rt ?? 'Tidak Diketahui') === selectedRt
+    const searchMatch =
+      !searchQuery ||
+      a.balita.namaBalita.toLowerCase().includes(searchQuery.toLowerCase())
+    return rtMatch && searchMatch
+  })
+
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-white border-b px-4 py-3 flex items-center justify-between">
-        <span className="text-primary font-bold text-sm">Meja 1 — Kehadiran</span>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleKeluarMeja}
-          disabled={clearActiveMejaMutation.isPending}
-          className="text-xs text-gray-500"
-        >
-          <LogOut size={14} className="mr-1" />
-          Keluar Meja
-        </Button>
-      </div>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
 
-      <div className="max-w-[480px] mx-auto px-4 py-4 space-y-4">
-        {/* Counts */}
-        <div className="flex gap-4 text-sm text-gray-600">
-          <span>Total: <strong>{antrianList?.length ?? 0}</strong></span>
-          <span>Menunggu: <strong>{totalMenunggu}</strong></span>
-          <span>Selesai: <strong>{totalSelesai}</strong></span>
+      {/* ── Header ────────────────────────────────────────────────────────── */}
+      <div className="bg-[#008236] px-4 pt-10 pb-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Lock size={14} className="text-white" />
+            <div>
+              <p className="text-white font-bold text-sm">MEJA 1 — Pendaftaran</p>
+              <p className="text-[#b9f8cf] text-xs">Mode Pelayanan Aktif · Layar Terkunci</p>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/kader/dashboard')}
+            className="bg-[rgba(0,166,62,0.6)] border border-[rgba(0,201,80,0.5)] rounded-xl px-3 py-1.5 text-white text-xs font-medium"
+          >
+            Tukar Meja
+          </button>
         </div>
 
-        {/* Antrian list */}
+        {/* Stat badges */}
+        <div className="flex gap-2 mb-3">
+          <span className="bg-[rgba(5,223,114,0.3)] rounded-full px-3 py-1 text-[#dcfce7] text-xs font-semibold">
+            Hadir {hadirCount}
+          </span>
+          <span className="bg-[rgba(5,223,114,0.2)] rounded-full px-3 py-1 text-[#b9f8cf] text-xs font-semibold">
+            Belum {belumCount}
+          </span>
+          <span className="bg-[rgba(255,255,255,0.2)] rounded-full px-3 py-1 text-white text-xs font-semibold">
+            Total {total}
+          </span>
+        </div>
+
+        {/* Progress bar */}
+        <div className="space-y-1">
+          <div className="h-[8px] bg-[#016630] rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[#05df72] rounded-full transition-all"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+          <p className="text-[#b9f8cf] text-xs text-right">
+            {hadirCount}/{total} balita sudah hadir
+          </p>
+        </div>
+      </div>
+
+      {/* ── Filter chips ──────────────────────────────────────────────────── */}
+      <div className="bg-white border-b border-gray-100 px-4 py-2.5 flex gap-2 overflow-x-auto scrollbar-none">
+        {rtList.map((rt) => (
+          <button
+            key={rt}
+            onClick={() => setSelectedRt(rt)}
+            className={`flex-shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              selectedRt === rt
+                ? 'bg-[#008236] text-white border border-[#008236]'
+                : 'bg-white text-gray-600 border border-[#e5e7eb]'
+            }`}
+          >
+            {rt === 'Semua' ? 'Semua' : `RT ${rt}`}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Search ────────────────────────────────────────────────────────── */}
+      <div className="bg-white px-4 py-2 border-b border-gray-100">
+        <div className="flex items-center gap-2 bg-[#f9fafb] border border-[#e5e7eb] rounded-xl px-3 py-2">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <circle cx="6" cy="6" r="5" stroke="#9ca3af" strokeWidth="1.5" />
+            <path d="M10.5 10.5L13 13" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Cari nama balita..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 focus:outline-none"
+          />
+        </div>
+      </div>
+
+      {/* ── Antrian list ──────────────────────────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
         {isLoading ? (
-          <>
-            <Skeleton className="h-16 rounded-lg" />
-            <Skeleton className="h-16 rounded-lg" />
-            <Skeleton className="h-16 rounded-lg" />
-          </>
-        ) : !antrianList || antrianList.length === 0 ? (
-          <div className="text-center py-8 text-sm text-gray-400">
-            Belum ada antrian di sesi ini.
+          <div className="flex justify-center py-10">
+            <Loader2 size={24} className="animate-spin text-gray-300" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-10 text-sm text-gray-400">
+            {antrianList.length === 0 ? 'Belum ada antrian di sesi ini.' : 'Tidak ada hasil pencarian.'}
           </div>
         ) : (
-          Object.entries(grouped).map(([rt, items]) => (
-            <div key={rt} className="space-y-2">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                RT {rt}
-              </h3>
-              {items.map((antrian) => {
-                const usia = ageInMonths(antrian.balita.tanggalLahir)
-                const canAct = antrian.statusAntrian === 'menunggu' || antrian.statusAntrian === 'ditangguhkan'
-                const canTangguhkan = antrian.statusAntrian === 'dipanggil'
+          filtered.map((antrian) => {
+            const status = antrian.statusAntrian
+            const isHadir = status === 'selesai' || status === 'dipanggil'
+            const isBelum = status === 'menunggu' || status === 'ditangguhkan'
+            const isTidakHadir = status === 'tidak_hadir' || status === 'dibatalkan'
+            const usia = ageInMonths(antrian.balita.tanggalLahir)
 
-                return (
-                  <div
-                    key={antrian.id}
-                    className="border rounded-lg px-4 py-3 flex items-center justify-between gap-2"
+            let borderClass = 'border-[#dcfce7]'
+            if (isHadir) borderClass = 'border-[#b9f8cf]'
+            if (isTidakHadir) borderClass = 'border-[#e5e7eb] opacity-60'
+
+            return (
+              <div
+                key={antrian.id}
+                className={`bg-white rounded-[14px] border ${borderClass} px-4 py-3 flex items-center gap-3`}
+              >
+                {/* Number */}
+                <span className="text-[#99a1af] text-sm font-semibold w-6 flex-shrink-0">
+                  {String(antrian.nomorUrut).padStart(2, '0')}
+                </span>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-[#1e2939] font-bold text-sm truncate">
+                    {antrian.balita.namaBalita}
+                  </p>
+                  <p className="text-[#99a1af] text-xs">
+                    {usia} bln · RT {antrian.warga.rt ?? '—'}
+                  </p>
+                </div>
+
+                {/* Action */}
+                {isHadir && (
+                  <span className="bg-[#dcfce7] text-[#008236] text-xs font-semibold px-3 py-1 rounded-full flex-shrink-0">
+                    Hadir ✓
+                  </span>
+                )}
+                {isBelum && (
+                  <button
+                    onClick={() =>
+                      hadirMutation.mutate({
+                        antrianId: antrian.id,
+                        balitaId: antrian.balitaId,
+                        namaBalita: antrian.balita.namaBalita,
+                      })
+                    }
+                    disabled={hadirMutation.isPending}
+                    className="bg-[#f0fdf4] border border-[#b9f8cf] text-[#008236] text-xs font-semibold px-3 py-1.5 rounded-full flex-shrink-0 disabled:opacity-50 active:bg-[#dcfce7]"
                   >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-gray-700 w-7 shrink-0">
-                          {String(antrian.nomorUrut).padStart(2, '0')}
-                        </span>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">{antrian.balita.namaBalita}</p>
-                          <p className="text-xs text-gray-400">{usia} bln</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Badge className={`${STATUS_BADGE[antrian.statusAntrian]} text-xs`}>
-                        {STATUS_LABELS[antrian.statusAntrian]}
-                      </Badge>
-                      {canAct && (
-                        <Button
-                          size="sm"
-                          className="h-7 text-xs bg-green-600 hover:bg-green-700"
-                          onClick={() =>
-                            hadirMutation.mutate({
-                              antrianId: antrian.id,
-                              balitaId: antrian.balitaId,
-                              namaBalita: antrian.balita.namaBalita,
-                            })
-                          }
-                          disabled={hadirMutation.isPending}
-                        >
-                          <UserCheck size={12} className="mr-1" />
-                          Hadir
-                        </Button>
-                      )}
-                      {canTangguhkan && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs border-amber-300 text-amber-700 hover:bg-amber-50"
-                          onClick={() => tangguhkanMutation.mutate(antrian.id)}
-                          disabled={tangguhkanMutation.isPending}
-                        >
-                          <PauseCircle size={12} className="mr-1" />
-                          Tunda
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          ))
+                    {hadirMutation.isPending && hadirMutation.variables?.antrianId === antrian.id ? (
+                      <Loader2 size={12} className="animate-spin" />
+                    ) : (
+                      'Hadir'
+                    )}
+                  </button>
+                )}
+                {isTidakHadir && (
+                  <span className="bg-[#f3f4f6] text-[#6a7282] text-xs font-semibold px-3 py-1 rounded-full flex-shrink-0">
+                    Tidak Hadir
+                  </span>
+                )}
+              </div>
+            )
+          })
         )}
+      </div>
 
-        {/* Go-show section */}
-        <div className="border rounded-lg overflow-hidden">
-          <button
-            type="button"
-            className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-            onClick={() => setShowGoShow(!showGoShow)}
-          >
-            <span className="flex items-center gap-2">
-              <UserPlus size={14} />
-              Daftar Manual (Go-Show)
-            </span>
-            {showGoShow ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </button>
-          {showGoShow && (
-            <div className="px-4 pb-4 space-y-3 border-t pt-3">
-              <div className="space-y-1">
-                <Label className="text-xs">ID Balita</Label>
-                <Input
-                  type="text"
-                  placeholder="UUID balita"
-                  value={goShowBalitaId}
-                  onChange={(e) => setGoShowBalitaId(e.target.value)}
-                  className="h-9 text-sm"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">ID Warga (Orang Tua)</Label>
-                <Input
-                  type="text"
-                  placeholder="UUID warga"
-                  value={goShowWargaId}
-                  onChange={(e) => setGoShowWargaId(e.target.value)}
-                  className="h-9 text-sm"
-                />
-              </div>
-              <Button
-                size="sm"
-                className="w-full"
+      {/* ── Footer ────────────────────────────────────────────────────────── */}
+      <div className="bg-white border-t border-gray-100 px-4 py-3 space-y-2">
+        {/* Go-show form (collapsible) */}
+        {showGoShow && (
+          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-3 mb-2">
+            <p className="text-sm font-semibold text-gray-700">Daftar Manual (Go-Show)</p>
+            <div className="space-y-2">
+              <input
+                type="text"
+                placeholder="UUID Balita"
+                value={goShowBalitaId}
+                onChange={(e) => setGoShowBalitaId(e.target.value)}
+                className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#008236]"
+              />
+              <input
+                type="text"
+                placeholder="UUID Warga (Orang Tua)"
+                value={goShowWargaId}
+                onChange={(e) => setGoShowWargaId(e.target.value)}
+                className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#008236]"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setShowGoShow(false); setGoShowBalitaId(''); setGoShowWargaId('') }}
+                className="flex-1 border border-gray-200 rounded-xl py-2 text-sm font-semibold text-gray-500"
+              >
+                Batal
+              </button>
+              <button
+                disabled={goShowMutation.isPending || !goShowBalitaId.trim() || !goShowWargaId.trim()}
                 onClick={() =>
                   goShowMutation.mutate({
                     slotId: activeSlotId,
@@ -338,16 +384,33 @@ export default function Meja1Page() {
                     wargaId: goShowWargaId,
                   })
                 }
-                disabled={
-                  goShowMutation.isPending ||
-                  !goShowBalitaId.trim() ||
-                  !goShowWargaId.trim()
-                }
+                className="flex-1 bg-[#008236] rounded-xl py-2 text-sm font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2"
               >
+                {goShowMutation.isPending && <Loader2 size={14} className="animate-spin" />}
                 Daftarkan
-              </Button>
+              </button>
             </div>
-          )}
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowGoShow(!showGoShow)}
+            className="flex-1 border border-[#05df72] text-[#008236] rounded-2xl py-3 text-sm font-semibold flex items-center justify-center gap-2"
+          >
+            <UserPlus size={15} />
+            Daftar Manual
+          </button>
+          <button
+            onClick={handleKeluarMeja}
+            disabled={clearActiveMejaMutation.isPending}
+            className="flex-1 bg-[#fef2f2] border border-[#ffc9c9] text-[#e7000b] rounded-2xl py-3 text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {clearActiveMejaMutation.isPending ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : null}
+            Selesai Meja 1
+          </button>
         </div>
       </div>
     </div>

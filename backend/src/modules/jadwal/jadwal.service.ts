@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client'
+import { Prisma, StatusJadwal } from '@prisma/client'
 import { prisma } from '../../config/db'
 import type { CreateJadwalInput } from '../../shared/schemas/jadwal.schema'
 
@@ -33,7 +33,7 @@ export async function createJadwal(data: CreateJadwalInput, puskesmasId: string)
           puskesmasId,
           tanggalPelaksanaan: new Date(data.tanggalPelaksanaan),
           estimasiDurasiMenit: data.estimasiDurasiMenit,
-          statusJadwal: 'aktif',
+          statusJadwal: StatusJadwal.aktif,
         },
       })
 
@@ -112,7 +112,7 @@ export async function getJadwalTersedia(posyanduId: string, bulan: string) {
     where: {
       posyanduId,
       tanggalPelaksanaan: { gte: startDate, lte: endDate },
-      statusJadwal: 'aktif',
+      statusJadwal: StatusJadwal.aktif,
     },
     select: {
       id: true,

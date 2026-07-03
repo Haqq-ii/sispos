@@ -6,6 +6,15 @@ interface ProtectedRouteProps {
   allowedRoles?: RolePengguna[]
 }
 
+function dashboardByRole(role: RolePengguna): string {
+  switch (role) {
+    case 'citizen': return '/citizen/dashboard'
+    case 'kader':
+    case 'ketua_kader': return '/kader/dashboard'
+    case 'puskesmas': return '/puskesmas/dashboard'
+  }
+}
+
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps): JSX.Element {
   const { isAuthenticated, user } = useAuthStore()
 
@@ -15,7 +24,7 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps):
 
   // Defense-in-depth role check — server enforces roles authoritatively via requireRole()
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/login" replace />
+    return <Navigate to={dashboardByRole(user.role)} replace />
   }
 
   return children as JSX.Element

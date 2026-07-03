@@ -56,7 +56,8 @@ export function issueTokens(
   const accessToken = jwt.sign({ userId, role }, env.JWT_SECRET, {
     expiresIn: env.JWT_ACCESS_EXPIRY as jwt.SignOptions['expiresIn'],
   })
-  const refreshToken = jwt.sign({ userId }, env.JWT_REFRESH_SECRET, {
+  // role disimpan di refresh token agar refreshAccessToken bisa regenerate access token dengan role yang benar
+  const refreshToken = jwt.sign({ userId, role }, env.JWT_REFRESH_SECRET, {
     expiresIn: env.JWT_REFRESH_EXPIRY as jwt.SignOptions['expiresIn'],
   })
   return { accessToken, refreshToken }
@@ -289,8 +290,8 @@ export async function login(
 
 // ── refreshAccessToken ────────────────────────────────────────────
 export async function refreshAccessToken(refreshToken: string): Promise<{ accessToken: string }> {
-  const decoded = jwt.verify(refreshToken, env.JWT_REFRESH_SECRET) as { userId: string }
-  const accessToken = jwt.sign({ userId: decoded.userId }, env.JWT_SECRET, {
+  const decoded = jwt.verify(refreshToken, env.JWT_REFRESH_SECRET) as { userId: string; role: string }
+  const accessToken = jwt.sign({ userId: decoded.userId, role: decoded.role }, env.JWT_SECRET, {
     expiresIn: env.JWT_ACCESS_EXPIRY as jwt.SignOptions['expiresIn'],
   })
   return { accessToken }

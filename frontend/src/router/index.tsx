@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from './ProtectedRoute'
+import { useAuthStore } from '@/stores/useAuthStore'
 
 // ── Auth pages ────────────────────────────────────────────────────────────────
 
@@ -32,6 +33,7 @@ const TiketAntrianPage = lazy(
 // ── Kader pages ───────────────────────────────────────────────────────────────
 
 const KaderDashboardPage = lazy(() => import('@/pages/kader/KaderDashboardPage'))
+const PelayananHariHPage = lazy(() => import('@/pages/kader/PelayananHariHPage'))
 const LockScreenPage = lazy(() => import('@/pages/kader/LockScreenPage'))
 const Meja1Page = lazy(() => import('@/pages/kader/meja/Meja1Page'))
 const Meja2Page = lazy(() => import('@/pages/kader/meja/Meja2Page'))
@@ -61,14 +63,26 @@ const LoadingSpinner = () => (
   </div>
 )
 
+function RootRedirect() {
+  const { isAuthenticated, user } = useAuthStore()
+  if (!isAuthenticated || !user) return <Navigate to="/login" replace />
+  switch (user.role) {
+    case 'citizen': return <Navigate to="/citizen/dashboard" replace />
+    case 'kader':
+    case 'ketua_kader': return <Navigate to="/kader/dashboard" replace />
+    case 'puskesmas': return <Navigate to="/puskesmas/dashboard" replace />
+    default: return <Navigate to="/login" replace />
+  }
+}
+
 // ── Router ────────────────────────────────────────────────────────────────────
 
 export function AppRouter() {
   return (
     <Suspense fallback={<LoadingSpinner />}>
       <Routes>
-        {/* Root redirects to login */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        {/* Root redirects to role-specific dashboard if logged in, else login */}
+        <Route path="/" element={<RootRedirect />} />
 
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
@@ -131,6 +145,14 @@ export function AppRouter() {
           element={
             <ProtectedRoute allowedRoles={['kader', 'ketua_kader']}>
               <KaderDashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/kader/pelayanan"
+          element={
+            <ProtectedRoute allowedRoles={['kader', 'ketua_kader']}>
+              <PelayananHariHPage />
             </ProtectedRoute>
           }
         />

@@ -13,7 +13,7 @@
  */
 import pino from 'pino'
 import type { IncomingHttpHeaders } from 'http'
-import type { Prisma } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 import { prisma } from '../../config/db'
 import { env } from '../../config/env'
 import { encrypt } from '../../shared/utils/encrypt'
@@ -132,7 +132,7 @@ export async function createPemeriksaan(
         aksi: 'CREATE_PEMERIKSAAN',
         tabelTerkait: 'pemeriksaan',
         recordId: record.id,
-        dataSebelum: null,
+        dataSebelum: Prisma.JsonNull,
         dataSesudah: {
           beratBadan: data.beratBadan,
           tinggiBadan: data.tinggiBadan ?? null,

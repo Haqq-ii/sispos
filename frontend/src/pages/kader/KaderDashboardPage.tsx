@@ -1,25 +1,13 @@
-/**
- * KaderDashboardPage — Dashboard kader: today's slot + antrian counts + Mulai Pelayanan.
- *
- * On mount: GET /api/kader/active-meja — if Redis has activeMeja set → redirect to /kader/meja/{N}.
- * This is the reload-recovery path: kader reloads browser → this page mounts → detects
- * active meja from Redis → auto-redirects. No manual state needed.
- */
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { LogOut, ClipboardList, Play } from 'lucide-react'
+import { LogOut, ClipboardList, ChevronRight, Play } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useActiveMeja, useMutationSetActiveMeja } from '@/hooks/useActiveMeja'
+import { useActiveMeja } from '@/hooks/useActiveMeja'
 import { useKaderMejaStore } from '@/stores/useKaderMejaStore'
 import { useAuthStore } from '@/stores/useAuthStore'
 import apiClient from '@/lib/axios'
-
-// ── Types ──────────────────────────────────────────────────────────────────────
 
 interface TodaySlot {
   id: string
@@ -41,40 +29,13 @@ interface TodayJadwal {
   slotSesi: TodaySlot[]
 }
 
-const MEJA_LABELS: Record<number, string> = {
-  1: 'Pendaftaran & Kehadiran',
-  2: 'Penimbangan',
-  3: 'Pencatatan',
-  4: 'Konseling',
-  5: 'Selesai',
-}
-
-// ── Helpers ────────────────────────────────────────────────────────────────────
-
-function formatTanggal(isoStr: string): string {
-  try {
-    const d = new Date(isoStr)
-    return new Intl.DateTimeFormat('id-ID', {
-      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-    }).format(d)
-  } catch {
-    return isoStr
-  }
-}
-
-// ── Component ──────────────────────────────────────────────────────────────────
-
 export default function KaderDashboardPage() {
   const navigate = useNavigate()
-  const { clearAuth } = useAuthStore()
+  const { clearAuth, user } = useAuthStore()
   const { setActiveMeja, setLocked } = useKaderMejaStore()
-  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null)
-  const [showMejaSelector, setShowMejaSelector] = useState(false)
 
-  // T-03-03-01 mitigation: check Redis for active meja on mount
   const { data: activeMejaData, isLoading: isLoadingActiveMeja } = useActiveMeja()
 
-  // Get today's jadwal + slots
   const { data: todayJadwal, isLoading: isLoadingJadwal } = useQuery<TodayJadwal | null>({
     queryKey: ['kader', 'today-slots'],
     queryFn: () =>
@@ -82,163 +43,152 @@ export default function KaderDashboardPage() {
     staleTime: 30_000,
   })
 
-  const setActiveMejaMutation = useMutationSetActiveMeja()
-
-  // Reload-recovery: if Redis has activeMeja, redirect immediately
   useEffect(() => {
     if (!isLoadingActiveMeja && activeMejaData) {
       setActiveMeja(activeMejaData.activeMeja, activeMejaData.slotId)
       setLocked(true)
-      navigate(`/kader/meja/${activeMejaData.activeMeja}`, { replace: true })
+      // Always recover to Meja 1 — mejas 3-5 require router state (antrianId/pemeriksaanId)
+      // that isn't persisted across page reloads
+      navigate('/kader/meja/1', { replace: true })
     }
   }, [isLoadingActiveMeja, activeMejaData, navigate, setActiveMeja, setLocked])
 
   const handleLogout = async () => {
-    try {
-      await apiClient.post('/auth/logout')
-    } catch {
-      // ignore
-    }
+    try { await apiClient.post('/auth/logout') } catch {}
     clearAuth()
     navigate('/login', { replace: true })
   }
 
-  const handleMejaSelect = (mejaNumber: number) => {
-    if (!selectedSlotId) return
-    setActiveMejaMutation.mutate(
-      { mejaNumber, slotId: selectedSlotId },
-      {
-        onSuccess: () => {
-          setActiveMeja(mejaNumber, selectedSlotId)
-          setLocked(true)
-          navigate(`/kader/meja/${mejaNumber}`)
-        },
-      }
-    )
-  }
-
-  const handleMulaiPelayanan = (slotId: string) => {
-    setSelectedSlotId(slotId)
-    setShowMejaSelector(true)
-  }
-
+  const totalKuota = todayJadwal?.slotSesi.reduce((s, sl) => s + sl.kuota, 0) ?? 0
+  const totalTerdaftar = todayJadwal?.slotSesi.reduce((s, sl) => s + sl.terisi, 0) ?? 0
+  const totalAntrian = todayJadwal?.slotSesi.reduce((s, sl) => s + sl.totalAntrian, 0) ?? 0
   const isLoading = isLoadingActiveMeja || isLoadingJadwal
 
-  // ── Render ─────────────────────────────────────────────────────────────────
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-white border-b px-4 py-3 flex items-center justify-between">
-        <span className="text-primary font-bold text-sm">SISPOS Kader</span>
-        <span className="text-sm font-semibold">Dashboard</span>
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="p-2 text-gray-500 hover:text-gray-700"
-          aria-label="Keluar"
-        >
-          <LogOut size={18} />
-        </button>
-      </div>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
 
-      <div className="max-w-[480px] mx-auto px-4 py-6 space-y-6">
-        {/* Date */}
-        <p className="text-xs text-gray-500 text-center">
-          {new Intl.DateTimeFormat('id-ID', {
-            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-          }).format(new Date())}
-        </p>
-
-        {/* Jadwal hari ini */}
-        {isLoading ? (
-          <>
-            <Skeleton className="h-10 rounded-lg" />
-            <Skeleton className="h-24 rounded-xl" />
-            <Skeleton className="h-24 rounded-xl" />
-          </>
-        ) : !todayJadwal ? (
-          <Card>
-            <CardContent className="py-8 text-center">
-              <ClipboardList className="mx-auto text-gray-300 mb-3" size={36} />
-              <p className="text-sm text-gray-500">Tidak ada jadwal pelayanan hari ini.</p>
-              <p className="text-xs text-gray-400 mt-1">Hubungi Puskesmas untuk membuat jadwal.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            <div className="text-center">
-              <p className="text-sm font-semibold text-gray-700">
-                Jadwal: {formatTanggal(todayJadwal.tanggalPelaksanaan)}
-              </p>
-              <Badge variant="outline" className="mt-1 text-xs">
-                {todayJadwal.statusJadwal}
-              </Badge>
-            </div>
-
-            {/* Slot sesi list */}
-            <div className="space-y-3">
-              {todayJadwal.slotSesi.map((slot) => (
-                <Card key={slot.id} className="border">
-                  <CardHeader className="pb-2 pt-4 px-4">
-                    <CardTitle className="text-sm font-semibold">{slot.labelSesi}</CardTitle>
-                    <p className="text-xs text-gray-500">{slot.jamMulai} – {slot.jamSelesai} WIB</p>
-                  </CardHeader>
-                  <CardContent className="px-4 pb-4 space-y-3">
-                    <div className="flex gap-4 text-xs text-gray-600">
-                      <span>Terdaftar: <strong>{slot.terisi}</strong>/{slot.kuota}</span>
-                      <span>Antrian aktif: <strong>{slot.totalAntrian}</strong></span>
-                    </div>
-                    <Button
-                      size="sm"
-                      className="w-full"
-                      onClick={() => handleMulaiPelayanan(slot.id)}
-                      disabled={setActiveMejaMutation.isPending}
-                    >
-                      <Play size={14} className="mr-2" />
-                      Mulai Pelayanan
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </>
-        )}
-
-        {/* Meja selector dialog (inline) */}
-        {showMejaSelector && (
-          <div className="fixed inset-0 z-50 bg-black/50 flex items-end justify-center">
-            <div className="bg-white rounded-t-2xl w-full max-w-[480px] p-6 space-y-4">
-              <h2 className="text-base font-bold text-center">Pilih Meja</h2>
-              <p className="text-xs text-gray-500 text-center">
-                Pilih meja untuk memulai pelayanan
-              </p>
-              <div className="grid grid-cols-1 gap-2">
-                {([1, 2, 3, 4, 5] as const).map((n) => (
-                  <Button
-                    key={n}
-                    variant="outline"
-                    className="w-full justify-start"
-                    onClick={() => handleMejaSelect(n)}
-                    disabled={setActiveMejaMutation.isPending}
-                  >
-                    <span className="font-bold mr-2">Meja {n}</span>
-                    <span className="text-xs text-gray-500">— {MEJA_LABELS[n]}</span>
-                  </Button>
-                ))}
-              </div>
-              <Button
-                variant="ghost"
-                className="w-full"
-                onClick={() => {
-                  setShowMejaSelector(false)
-                  setSelectedSlotId(null)
-                }}
-              >
-                Batal
-              </Button>
+      {/* ── Header ──────────────────────────────────────────────────────── */}
+      <div className="bg-[#008236] px-4 pt-12 pb-6">
+        <div className="flex items-start justify-between mb-5">
+          <div>
+            <p className="text-[#7bf1a8] text-xs font-medium mb-0.5">Selamat datang,</p>
+            <p className="text-white font-bold text-xl leading-tight">
+              {user?.namaLengkap ?? 'Kader'}
+            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-[#b9f8cf] text-xs">Kader Posyandu</p>
+              {user?.role === 'ketua_kader' && (
+                <span className="bg-[#ffb900] text-[#7b3306] text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  KETUA
+                </span>
+              )}
             </div>
           </div>
+          <button
+            onClick={handleLogout}
+            className="bg-[rgba(255,255,255,0.15)] rounded-xl p-2.5"
+          >
+            <LogOut size={16} className="text-white" />
+          </button>
+        </div>
+
+        {/* Stats row */}
+        {isLoading ? (
+          <div className="grid grid-cols-3 gap-2">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-[62px] rounded-[14px] bg-white/20" />
+            ))}
+          </div>
+        ) : todayJadwal ? (
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-[rgba(255,255,255,0.15)] rounded-[14px] px-3 py-3">
+              <p className="text-white font-bold text-2xl leading-none">{totalKuota}</p>
+              <p className="text-[#dcfce7] text-[10px] leading-tight mt-1">Total<br/>Kuota</p>
+            </div>
+            <div className="bg-[rgba(255,255,255,0.15)] rounded-[14px] px-3 py-3">
+              <p className="text-white font-bold text-2xl leading-none">{totalTerdaftar}</p>
+              <p className="text-[#b9f8cf] text-[10px] leading-tight mt-1">Hadir<br/>Hari Ini</p>
+            </div>
+            <div className="bg-[rgba(255,255,255,0.15)] rounded-[14px] px-3 py-3">
+              <p className="text-[#ffd230] font-bold text-2xl leading-none">{totalAntrian}</p>
+              <p className="text-[#dcfce7] text-[10px] leading-tight mt-1">Antrian<br/>Aktif</p>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-[rgba(255,255,255,0.12)] rounded-[14px] px-3 py-3 text-center">
+            <p className="text-[#b9f8cf] text-xs">Tidak ada jadwal hari ini</p>
+          </div>
+        )}
+      </div>
+
+      {/* ── Body ───────────────────────────────────────────────────────── */}
+      <div className="flex-1 px-4 py-4 space-y-3">
+        {isLoading ? (
+          <>
+            <Skeleton className="h-28 rounded-2xl" />
+            <Skeleton className="h-16 rounded-2xl" />
+          </>
+        ) : !todayJadwal ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <ClipboardList className="text-gray-300 mb-3" size={48} />
+            <p className="text-sm text-gray-500">Tidak ada jadwal pelayanan hari ini.</p>
+            <p className="text-xs text-gray-400 mt-1">Hubungi Puskesmas untuk membuat jadwal.</p>
+          </div>
+        ) : (
+          <>
+            {/* JADWAL PELAYANAN card */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">
+                Jadwal Pelayanan
+              </p>
+              {todayJadwal.slotSesi.map((slot) => {
+                const pct = slot.kuota > 0 ? Math.round((slot.terisi / slot.kuota) * 100) : 0
+                return (
+                  <div key={slot.id} className="mb-3 last:mb-0">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-800">{slot.labelSesi}</p>
+                        <p className="text-xs text-gray-400">{slot.jamMulai} – {slot.jamSelesai} WIB</p>
+                      </div>
+                      <span className="text-xs text-gray-500 font-medium">
+                        {slot.terisi}/{slot.kuota}
+                      </span>
+                    </div>
+                    <div className="h-2 bg-[#f3f4f6] rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-[#00a63e] rounded-full transition-all"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Mulai Pelayanan per slot */}
+            {todayJadwal.slotSesi.map((slot) => (
+              <button
+                key={slot.id}
+                onClick={() =>
+                  navigate('/kader/pelayanan', {
+                    state: { slotId: slot.id, slotLabel: slot.labelSesi },
+                  })
+                }
+                className="w-full bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-3.5 flex items-center justify-between active:bg-gray-50"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-[#008236] rounded-xl flex items-center justify-center">
+                    <Play size={16} className="text-white fill-white" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-bold text-gray-800">Mulai Pelayanan Hari-H</p>
+                    <p className="text-xs text-gray-500">{slot.labelSesi} · {slot.jamMulai} WIB</p>
+                  </div>
+                </div>
+                <ChevronRight size={18} className="text-gray-400" />
+              </button>
+            ))}
+          </>
         )}
       </div>
     </div>

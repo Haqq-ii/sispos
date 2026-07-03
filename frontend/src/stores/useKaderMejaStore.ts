@@ -19,6 +19,12 @@ interface KaderMejaState {
   activeSlotId: string | null
   /** Active pemeriksaan ID. Set by Meja 2 after creating Pemeriksaan record. */
   activePemeriksaanId: string | null
+  /** Active antrian ID. Set by Meja 1 after marking hadir. Fallback for Meja 2-5. */
+  activeAntrianId: string | null
+  /** Active balita ID. Set by Meja 1 after marking hadir. Fallback for Meja 2-5. */
+  activeBalitaId: string | null
+  /** Active balita name. Set by Meja 1 after marking hadir. */
+  activeNamaBalita: string | null
   /** Lock state. Persisted to localStorage so UI immediately shows locked on reload. */
   isLocked: boolean
 
@@ -26,6 +32,8 @@ interface KaderMejaState {
   setActiveMeja: (meja: number | null, slotId: string | null) => void
   /** Set pemeriksaanId after Meja 2 saves the record. */
   setActivePemeriksaanId: (id: string | null) => void
+  /** Set active antrian/balita after Meja 1 marks hadir. */
+  setActiveAntrian: (antrianId: string, balitaId: string, namaBalita: string) => void
   /** Toggle lock state (true = hide navbar, enter meja mode). */
   setLocked: (locked: boolean) => void
   /** Clear all state including isLocked (kader exits meja). */
@@ -38,6 +46,9 @@ export const useKaderMejaStore = create<KaderMejaState>()(
       activeMeja: null,
       activeSlotId: null,
       activePemeriksaanId: null,
+      activeAntrianId: null,
+      activeBalitaId: null,
+      activeNamaBalita: null,
       isLocked: false,
 
       setActiveMeja: (meja, slotId) =>
@@ -45,6 +56,9 @@ export const useKaderMejaStore = create<KaderMejaState>()(
 
       setActivePemeriksaanId: (id) =>
         set({ activePemeriksaanId: id }),
+
+      setActiveAntrian: (antrianId, balitaId, namaBalita) =>
+        set({ activeAntrianId: antrianId, activeBalitaId: balitaId, activeNamaBalita: namaBalita }),
 
       setLocked: (locked) =>
         set({ isLocked: locked }),
@@ -54,6 +68,9 @@ export const useKaderMejaStore = create<KaderMejaState>()(
           activeMeja: null,
           activeSlotId: null,
           activePemeriksaanId: null,
+          activeAntrianId: null,
+          activeBalitaId: null,
+          activeNamaBalita: null,
           isLocked: false,
         }),
     }),

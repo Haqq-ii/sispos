@@ -173,7 +173,7 @@ export async function generateRekapHarianPdf(slotId: string, kaderId: string): P
   // Fetch slot info for header
   const slot = await prisma.slotSesi.findUnique({
     where: { id: slotId },
-    select: { labelSesi: true, tanggalPelaksanaan: true, jamMulai: true },
+    select: { labelSesi: true, jamMulai: true, jadwal: { select: { tanggalPelaksanaan: true } } },
   })
 
   const pemeriksaanList = await getPemeriksaanList(slotId)
@@ -194,8 +194,8 @@ export async function generateRekapHarianPdf(slotId: string, kaderId: string): P
   })
 
   // ── Header ──────────────────────────────────────────────────────────────
-  const tanggalStr = slot?.tanggalPelaksanaan
-    ? formatTanggal(new Date(slot.tanggalPelaksanaan))
+  const tanggalStr = slot?.jadwal?.tanggalPelaksanaan
+    ? formatTanggal(new Date(slot.jadwal.tanggalPelaksanaan))
     : formatTanggal(new Date())
   const sesiLabel = slot?.labelSesi ?? 'Sesi'
 

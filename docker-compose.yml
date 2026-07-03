@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   # ── Reverse Proxy ─────────────────────────────────────────────
   sispos-nginx:
@@ -47,6 +45,7 @@ services:
     volumes:
       - ./backend/src:/app/src
       - ./prisma:/app/prisma
+      - ./sispos-501005-5ca79d995298.json:/app/gcloud-key.json:ro
     networks:
       - sispos-network
 
