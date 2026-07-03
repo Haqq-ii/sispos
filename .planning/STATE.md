@@ -28,10 +28,10 @@ See: `.planning/PROJECT.md` (updated 2026-06-30)
 ```
 Phase aktif  : Phase 04 — Dashboard & DSS + AI Chatbot
 Last update  : 2026-07-03
-Plans done   : 03-01..07 complete; 04-01 complete (3/3 tasks)
+Plans done   : 03-01..07 complete; 04-01..03 complete
 Phases done  : 3 / 8 (Phase 00 + 01 + 02 complete), Phase 03 pending verification, Phase 04 in progress
-Next command : /gsd-execute-phase 04 (plan 02 — Manajemen Kader + master overrule)
-Stopped at   : Completed Phase 04 Plan 01 — dashboard backend + PuskesmasLayout + PetaStuntingPage
+Next command : /gsd-execute-phase 04 (plan 04 — AI Chatbot Pendaftaran + function calling)
+Stopped at   : Completed Phase 04 Plan 03 — AI chatbot gizi + ChatGiziPage + CitizenDashboard nav cards
 ```
 
 ## Phase History
@@ -128,6 +128,9 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 2026-07-03 | puskesmasId dari req.user!.userId (JWT) di dashboard endpoints | IDOR guard T-04-01-01 + T-04-01-03; tidak pernah dari query params |
 | 2026-07-03 | react-leaflet@4.2.1 pinned (v5 requires React 19) | SISPOS pada React 18.3.1; v5 crash dengan peer dependency error |
 | 2026-07-03 | MapContainer tanpa key prop | Mencegah "Map container is already initialized" error saat bulan filter berubah |
+| 2026-07-03 | WIB timezone rate limit key: Date.now() + 7h (bukan new Date()) | Pitfall 5: UTC midnight ≠ WIB midnight; EXPIREAT ke 17:00 UTC = 00:00 WIB |
+| 2026-07-03 | Type annotation eksplisit h: {role,pesan} di history.map() | TypeScript strict mode; Prisma infer tidak cukup untuk arrow function param |
+| 2026-07-03 | chatGizi graceful degradation sebelum lazy import OpenAI | Cek OPENAI_API_KEY sebelum dynamic import; development tanpa key tetap berjalan |
 
 ## Performance Metrics
 
@@ -150,3 +153,5 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 03 | 05 | ~30 min | 2/2 | 5 |
 | 03 | 06 | ~25 min | 3/3 | 7 |
 | 04 | 01 | ~7 min | 3/3 | 11 |
+| 04 | 02 | ~15 min | 3/3 | 11 |
+| 04 | 03 | ~20 min | 2/2 | 6 |

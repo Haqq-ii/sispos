@@ -260,11 +260,11 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 04-02-PLAN.md — Users backend kader list + master overrule unlock + AuditLog + ManajemenPenggunaPage
+- [x] 04-02-PLAN.md — Users backend kader list + master overrule unlock + AuditLog + ManajemenPenggunaPage ✓ (c30ffb5, 3bef8f8, 23dcf1e)
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 04-03-PLAN.md — AI Chatbot gizi backend (GPT-4o temp 0.6, rate limit Redis 20/hari) + ChatGiziPage + CitizenDashboard link
+- [x] 04-03-PLAN.md — AI Chatbot gizi backend (GPT-4o temp 0.6, rate limit Redis 20/hari) + ChatGiziPage + CitizenDashboard link ✓ (60375e6, 207ecea)
 
 **Wave 4** *(blocked on Wave 3)* [has checkpoint]
 
