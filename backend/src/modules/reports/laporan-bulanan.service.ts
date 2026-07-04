@@ -77,8 +77,7 @@ async function getPosyanduData(puskesmasId: string, startOfMonth: Date, startOfN
             select: {
               antrian: {
                 where: {
-                  statusAntrian: 'selesai',
-                  pemeriksaan: { some: {} }, // Pitfall 4: only antrian with at least one pemeriksaan
+                  pemeriksaan: { some: {} }, // include any antrian that has pemeriksaan (Pitfall 4)
                 },
                 select: {
                   pemeriksaan: {
