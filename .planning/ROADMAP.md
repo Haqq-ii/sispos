@@ -17,7 +17,7 @@
 | 3 | Kader — 5 Meja | 6/7 | In Progress|  |
 | 4 | Dashboard & DSS + AI | Peta stunting Leaflet, manajemen kader, AI chatbot gizi + pendaftaran | DSS-01..02, AI-01..03 | ○ Pending |
 | 5 | Reports & Export | 2/2 | Complete   | 2026-07-04 |
-| 6 | PWA & Offline | Service Worker Workbox, IndexedDB sync Meja 1-5, auto-sync online | PWA-01 | Pending human-verify |
+| 6 | PWA & Offline | Service Worker Workbox, IndexedDB sync Meja 1-5, auto-sync online | PWA-01 | Complete   | 2026-07-04 |
 | 7 | Seed Data Demo | Seed wilayah → seed massal → seed akun demo presentasi | SEED-01..03 | ○ Pending |
 
 ---
@@ -327,7 +327,7 @@ Plans:
 
 - `docs/ROADMAP.md` Wave 6.1
 
-**Plans:** 4/4 plans complete (awaiting human-verify gate for 06-04)
+**Plans:** 4/4 plans complete — PWA-01 VERIFIED 2026-07-04
 
 Plans:
 
@@ -342,7 +342,7 @@ Plans:
 
 **Wave 3** *(wiring + verification — blocked on Wave 2)*
 
-- [x] 06-04-PLAN.md — vite.config.ts Workbox BackgroundSync + App.tsx OfflineBanner + usePwaStore + KaderDashboardPage install button ✓ (958ea18) [awaiting human-verify checkpoint]
+- [x] 06-04-PLAN.md — vite.config.ts Workbox BackgroundSync + App.tsx OfflineBanner + usePwaStore + KaderDashboardPage install button ✓ (958ea18) [human-verify APPROVED — Tests A-D all pass]
 
 ---
 
