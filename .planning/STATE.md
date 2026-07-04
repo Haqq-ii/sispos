@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Executing Phase 06
-last_updated: "2026-07-04T10:25:06Z"
+last_updated: "2026-07-04T10:34:00Z"
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 32
-  completed_plans: 31
+  completed_plans: 32
   percent: 78
 ---
 
@@ -28,10 +28,10 @@ See: `.planning/PROJECT.md` (updated 2026-06-30)
 ```
 Phase aktif  : Phase 06 — PWA & Offline
 Last update  : 2026-07-04
-Plans done   : 06-01 + 06-02 complete (IDB foundation + Meja 1/2 offline intercepts)
+Plans done   : 06-01 + 06-02 + 06-03 complete (IDB foundation + Meja 1/2 + Meja 3/4/5 offline intercepts)
 Phases done  : 5 / 8 (Phase 00 + 01 + 02 + 04 + 05 complete), Phase 03 pending verification, Phase 06 in progress
-Next command : /gsd-execute-phase 06 plan 03 (Meja 3/4/5 offline intercepts)
-Stopped at   : Phase 06 Plan 02 complete — Meja1Page handleHadir+handleTangguhkan offline, Meja2Page doSubmit tempId chain, SyncPendingBadge in both headers — TypeScript clean
+Next command : /gsd-execute-phase 06 plan 04 (Workbox BackgroundSync + App.tsx OfflineBanner + usePwaStore + install button)
+Stopped at   : Phase 06 Plan 03 complete — Meja3Page tanda klinis queue, Meja4Page STT/AI disabled offline with Tooltip, catatan queue, Meja5Page imunisasi+selesai queue — TypeScript clean
 ```
 
 ## Phase History
@@ -144,6 +144,9 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 2026-07-04 | stable ref pattern for 'online' event in useOfflineSync | syncAllRef.current = syncAll in useEffect avoids stale closure without adding syncAll to registration useEffect deps |
 | 2026-07-04 | Tangguhkan button added to Meja1Page isBelum card (tangguhkanMutation had no call site) | Mutation was defined but unconnected; offline intercept plan requires 2 enqueueOperation calls; button wired via handleTangguhkan wrapper |
 | 2026-07-04 | Two generateTempId() calls in Meja2 doSubmit offline branch | One for queue entry id, one for tempPemeriksaanId — must be different UUIDs per plan spec |
+| 2026-07-04 | Meja4 handleSimpanCatatan offline branch navigates to Meja5 immediately | Catatan save is optional before proceeding; offline path mirrors online behavior where navigate is separate from save |
+| 2026-07-04 | handleSelesai offline branch mirrors selesaiMutation.onSuccess store resets directly | Actual PATCH /antrian/:id/selesai (durasiRataAktual + Socket.IO broadcast) deferred to sync; store must be cleared immediately for UX consistency (D-08) |
+| 2026-07-04 | TooltipContent only rendered when !isOnline in Meja4 | Avoids tooltip DOM overhead when online; conditional rendering is valid React pattern with shadcn Tooltip |
 
 ## Performance Metrics
 
@@ -173,3 +176,4 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 05 | 02 | ~3 min | 2/2 | 3 |
 | 06 | 01 | ~20 min | 3/3 | 7 |
 | 06 | 02 | ~5 min | 2/2 | 2 |
+| 06 | 03 | ~5 min | 2/2 | 3 |
