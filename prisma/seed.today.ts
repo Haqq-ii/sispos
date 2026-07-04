@@ -62,7 +62,14 @@ export async function seedToday(prisma: PrismaClient): Promise<void> {
   ]
 
   const existingSlots = await prisma.slotSesi.findMany({ where: { jadwalId: jadwal.id } })
-  if (existingSlots.length === 0) {
+  if (existingSlots.length === 4) {
+    console.log('✓ SlotSesi sudah ada: 4 slot')
+  } else {
+    // Delete any partial slots (0, 1, 2, or 3) and recreate all 4 clean
+    if (existingSlots.length > 0) {
+      await prisma.slotSesi.deleteMany({ where: { jadwalId: jadwal.id } })
+      console.log('✓ Reset', existingSlots.length, 'slot lama')
+    }
     const kuota = Math.floor(60 / estimasiDurasiMenit)  // 6
     await prisma.slotSesi.createMany({
       data: SESI.map((s) => ({
@@ -77,24 +84,6 @@ export async function seedToday(prisma: PrismaClient): Promise<void> {
       })),
     })
     console.log('✓ 4 SlotSesi dibuat')
-  } else if (existingSlots.length === 3) {
-    // Migration from old 3-sesi seed
-    const kuota = Math.floor(60 / estimasiDurasiMenit)
-    await prisma.slotSesi.create({
-      data: {
-        jadwalId: jadwal!.id,
-        nomorSesi: 4,
-        labelSesi: 'Sesi 4 (11:00 - 12:00)',
-        jamMulai: new Date(Date.UTC(1970, 0, 1, 11, 0, 0)),
-        jamSelesai: new Date(Date.UTC(1970, 0, 1, 12, 0, 0)),
-        kuota,
-        terisi: 0,
-        durasiRataAktual: 10,
-      }
-    })
-    console.log('✓ Sesi 4 ditambahkan (migration dari 3-sesi)')
-  } else {
-    console.log('✓ SlotSesi sudah ada:', existingSlots.length, 'slot')
   }
 
   // Ambil semua 4 slot
