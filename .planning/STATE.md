@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-last_updated: "2026-07-04T06:32:03.979Z"
+status: Executing Phase 06
+last_updated: "2026-07-04T10:13:12Z"
 progress:
   total_phases: 8
   completed_phases: 6
-  total_plans: 28
-  completed_plans: 28
-  percent: 75
+  total_plans: 32
+  completed_plans: 30
+  percent: 78
 ---
 
 # SISPOS — GSD State
@@ -21,17 +21,17 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-30)
 
 **Core value:** Countdown antrian adaptif + alur 5 Meja kader end-to-end
-**Current focus:** Phase 05 — reports-export
+**Current focus:** Phase 06 — pwa-offline
 
 ## Current Status
 
 ```
-Phase aktif  : Phase 05 — Reports & Export
+Phase aktif  : Phase 06 — PWA & Offline
 Last update  : 2026-07-04
-Plans done   : 05-01 + 05-02 complete (Phase 05 all plans done)
-Phases done  : 3 / 8 (Phase 00 + 01 + 02 complete), Phase 03-04 pending verification, Phase 05 complete
-Next command : /gsd-execute-phase (next phase)
-Stopped at   : Phase 05 Plan 02 complete — routes wired, LaporanPage functional, TypeScript clean
+Plans done   : 06-01 complete (IDB schema + sync engine + offline UI primitives)
+Phases done  : 5 / 8 (Phase 00 + 01 + 02 + 04 + 05 complete), Phase 03 pending verification, Phase 06 in progress
+Next command : /gsd-execute-phase 06 plan 02 (Meja offline intercepts)
+Stopped at   : Phase 06 Plan 01 complete — idb@8 installed, offline-db.ts, useOfflineStatus, useOfflineSync, OfflineBanner, SyncPendingBadge — TypeScript clean
 ```
 
 ## Phase History
@@ -138,6 +138,10 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 2026-07-04 | pdfkit mock perlu emit 'data' event sebelum 'end' | Buffer.concat([]) = length 0; dummy %PDF bytes diemit di end() agar test length > 0 pass |
 | 2026-07-04 | puskesmasId dari req.user!.userId di laporanBulananHandler | T-05-01 IDOR guard; puskesmasId tidak pernah dari req.query atau req.body |
 | 2026-07-04 | Comment teks tidak boleh mengandung keyword grep acceptance criteria | window.open atau async/await di comment menyebabkan false positive; paraphrase semantik |
+| 2026-07-04 | idb@8 approved via human-verify gate (Task 1) — cross-verified npm registry + jakearchibald/idb + web.dev attribution | Package tagged [ASSUMED] for slopcheck; blocking checkpoint completed before install |
+| 2026-07-04 | generateTempId falls back from crypto.randomUUID() to timestamp+Math.random() for HTTP-only Docker context (A3) | Nginx serves port 80 HTTP; crypto.randomUUID requires secure context; fallback ensures IDB works in dev |
+| 2026-07-04 | syncAll per-item try/catch: non-4xx errors leave item in queue; only 422/409 → logSyncError (D-04) | Prevents one failed item from aborting full batch; network/5xx items retry on next 'online' event |
+| 2026-07-04 | stable ref pattern for 'online' event in useOfflineSync | syncAllRef.current = syncAll in useEffect avoids stale closure without adding syncAll to registration useEffect deps |
 
 ## Performance Metrics
 
@@ -165,3 +169,4 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 04 | 04 | ~15 min | 2/3 + checkpoint | 5 |
 | 05 | 01 | ~9 min | 2/2 | 2 |
 | 05 | 02 | ~3 min | 2/2 | 3 |
+| 06 | 01 | ~20 min | 3/3 | 7 |

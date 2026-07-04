@@ -333,7 +333,7 @@ Plans:
 
 **Wave 1** *(foundation — blocking for Wave 2)*
 
-- [ ] 06-01-PLAN.md — idb@8 install + offline-db.ts (IDB schema) + useOfflineStatus + useOfflineSync (sync engine) + OfflineBanner + SyncPendingBadge [has checkpoint: idb package verify]
+- [x] 06-01-PLAN.md — idb@8 install + offline-db.ts (IDB schema) + useOfflineStatus + useOfflineSync (sync engine) + OfflineBanner + SyncPendingBadge ✓ (2ed4d64, b3c6753)
 
 **Wave 2** *(Meja offline intercepts — 06-02 and 06-03 run in parallel)*
 
