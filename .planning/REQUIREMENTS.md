@@ -69,6 +69,12 @@
 - [ ] **SEED-02**: `prisma/seed.ts` — >100 balita, >10 posyandu, riwayat pemeriksaan 12 bulan, campuran status gizi
 - [ ] **SEED-03**: `prisma/seed.demo.ts` — akun presentasi terhubung ke seed massal; Citizen NIK `3471012345670001` (password `Demo1234!`), Kader HP `081234560001` (PIN `123456`), Puskesmas `demo@puskesmas-mergangsan.go.id` (password `Demo1234!`); antrian aktif hari ini tersedia saat login
 
+### UI Alignment
+
+- [ ] **UI-01**: Semua screen Citizen (Login, Register, Dashboard, Antrian, Chat) tampil visual sesuai Figma file `4DIazKntakgAGXBDYefjbD`; tidak ada spacing/warna/komponen yang berbeda signifikan dari design
+- [ ] **UI-02**: Semua screen Kader (Dashboard, Lock-screen, Meja 1–5, Rekap Harian) dan Puskesmas (Dashboard, Peta Stunting, Manajemen Pengguna, Laporan) align ke Figma
+- [ ] **UI-03**: Fitur yang belum optimal berfungsi baik end-to-end: countdown citizen realtime, grafik Z-Score Meja 3 terbaca, AI Chatbot respon Bahasa Indonesia; tidak ada console error di halaman manapun
+
 ---
 
 ## v2 Requirements (Deferred)

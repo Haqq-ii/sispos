@@ -1,6 +1,6 @@
 # SISPOS — GSD Roadmap
 
-> 8 phases | 28 requirements | Horizontal Layers
+> 9 phases | 28 requirements | Horizontal Layers
 > Tech stack: dikunci (lihat CLAUDE.md)
 > Figma: `4DIazKntakgAGXBDYefjbD` — dipakai mulai Phase 0 untuk semua screen UI
 > Deadline: 6-8 hari dari 2026-06-30 | Phase 0-3 KRITIS untuk laporan progres besok
@@ -19,6 +19,7 @@
 | 5 | Reports & Export | 2/2 | Complete   | 2026-07-04 |
 | 6 | PWA & Offline | Service Worker Workbox, IndexedDB sync Meja 1-5, auto-sync online | PWA-01 | Complete   | 2026-07-04 |
 | 7 | Seed Data Demo | Seed wilayah → seed massal → seed akun demo presentasi | SEED-01..03 | ○ Pending |
+| 8 | UI Figma Alignment | Semua screen semua role align ke Figma + perbaikan fitur yang belum optimal | UI-01..03 | ○ Pending |
 
 ---
 
@@ -384,6 +385,38 @@ Plans:
 
 - `docs/ROADMAP.md` Wave 7.1–7.3
 - CLAUDE.md § Seed Data
+
+---
+
+### Phase 8: UI Figma Alignment
+
+**Goal:** Semua screen (Citizen, Kader, Puskesmas) tampil sesuai Figma file `4DIazKntakgAGXBDYefjbD`; fitur yang belum optimal diperbaiki; aplikasi siap demo ke penguji tanpa cacat visual atau alur yang janggal
+
+**Success Criteria:**
+
+1. Semua halaman Citizen (Login, Register, Dashboard, Antrian, Chat) visual match Figma — tidak ada spacing/warna/komponen yang berbeda signifikan
+2. Semua halaman Kader (Dashboard, Lock-screen, Meja 1–5, Rekap) visual match Figma — layout meja terutama Meja 2 numpad dan Meja 4 STT/AI
+3. Semua halaman Puskesmas (Dashboard, Peta Stunting, Manajemen Pengguna, Laporan) visual match Figma
+4. Fitur-fitur yang belum optimal berfungsi baik: countdown citizen akurat, Socket.IO update realtime, grafik Z-Score Meja 3 terbaca, AI Chatbot respon dalam Bahasa Indonesia
+5. Tidak ada console error di halaman manapun; semua route dapat diakses tanpa crash
+
+**Wave Structure:**
+
+- Wave 8.1 — Audit visual gap: screenshot setiap screen vs Figma, buat daftar perbaikan prioritas
+- Wave 8.2 — Citizen screens: Login, Register, Dashboard, Antrian flow, Chat
+- Wave 8.3 — Kader screens: Dashboard, Lock-screen, Meja 1–5, Rekap Harian
+- Wave 8.4 — Puskesmas screens: Dashboard + Peta, Manajemen Pengguna, Laporan
+- Wave 8.5 — Bug fixes & polish: fitur yang belum optimal, console errors, final QA
+
+**UI hint**: yes (Figma MCP wajib di setiap wave — file key `4DIazKntakgAGXBDYefjbD`)
+
+**Depends on:** Phase 7 (seed data harus ada untuk QA visual dengan data realistis)
+
+**References:**
+
+- Figma file key: `4DIazKntakgAGXBDYefjbD` (semua 3 role, design lengkap)
+- CLAUDE.md § Figma MCP
+- `docs/ROADMAP.md` (screen list per phase)
 
 ---
 
