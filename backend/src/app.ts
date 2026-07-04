@@ -17,6 +17,7 @@ import { immunizationRouter } from './modules/immunization/immunization.routes'
 import { voiceRouter } from './modules/voice/voice.routes'
 import { aiRouter } from './modules/ai/ai.routes'
 import { rekapHarianRouter } from './modules/reports/rekap-harian.routes'
+import { laporanBulananRouter } from './modules/reports/laporan-bulanan.routes'
 import { dashboardRouter } from './modules/dashboard/dashboard.routes'
 import { usersRouter } from './modules/users/users.routes'
 import { auditRouter } from './modules/audit/audit.routes'
@@ -72,6 +73,8 @@ app.use('/api/voice', voiceRouter)
 app.use('/api/ai', aiRouter)
 // Reports: GET /api/reports/rekap-harian?slotId=&format=xlsx|pdf (kader download harian)
 app.use('/api/reports', rekapHarianRouter)
+// Reports: GET /api/reports/laporan-bulanan?bulan=YYYY-MM&format=xlsx|pdf (puskesmas laporan bulanan)
+app.use('/api/reports', laporanBulananRouter)
 // Dashboard: GET /api/dashboard/stunting, GET /api/dashboard/stats (puskesmas scope, JWT IDOR guard)
 app.use('/api/dashboard', dashboardRouter)
 // Users: GET /api/users/kader, PATCH /api/users/kader/:id/unlock (puskesmas only, IDOR guard)
