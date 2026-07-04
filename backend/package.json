@@ -47,6 +47,7 @@
     "vitest": "^4.1.9"
   },
   "prisma": {
-    "schema": "./prisma/schema.prisma"
+    "schema": "./prisma/schema.prisma",
+    "seed": "ts-node --project ./tsconfig.json ./prisma/seed.ts"
   }
 }
