@@ -20,6 +20,10 @@ import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 import { useKaderMejaStore } from '@/stores/useKaderMejaStore'
 import apiClient from '@/lib/axios'
+import { useOfflineStatus } from '@/hooks/useOfflineStatus'
+import { useOfflineSync } from '@/hooks/useOfflineSync'
+import { SyncPendingBadge } from '@/components/offline/SyncPendingBadge'
+import { generateTempId } from '@/lib/offline-db'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -75,6 +79,8 @@ export default function Meja5Page() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const { activeSlotId, setActiveMeja, setActivePemeriksaanId, setLocked, activeAntrianId, activeBalitaId, activeNamaBalita } = useKaderMejaStore()
+  const isOnline = useOfflineStatus()
+  const { enqueueOperation } = useOfflineSync()
 
   const state = location.state as {
     antrianId?: string
@@ -147,6 +153,52 @@ export default function Meja5Page() {
     },
   })
 
+  // ── Offline handlers ──────────────────────────────────────────────────────
+
+  function handleTambahImunisasi() {
+    if (!isOnline) {
+      void enqueueOperation('meja5', {
+        id: generateTempId(),
+        type: 'immunization' as const,
+        data: {
+          balitaId,
+          namaVaksin,
+          dosisKe: parseInt(dosisKe, 10),
+          tanggalInjeksi: new Date().toISOString(),
+        },
+        timestamp: Date.now(),
+      })
+      toast({ description: 'Tersimpan lokal, akan sync saat online' })
+      setShowForm(false)
+      setNamaVaksin('')
+      setDosisKe('1')
+      return
+    }
+    tambahMutation.mutate()
+  }
+
+  function handleSelesai() {
+    if (!isOnline) {
+      void enqueueOperation('meja5', {
+        id: generateTempId(),
+        type: 'selesai' as const,
+        data: {
+          antrianId,
+          slotId: activeSlotId,
+        },
+        timestamp: Date.now(),
+      })
+      toast({ description: 'Tersimpan lokal, akan sync saat online' })
+      // Mirror online success flow: reset state + navigate ke rekap
+      setLocked(false)
+      setActiveMeja(null, null)
+      setActivePemeriksaanId(null)
+      navigate('/kader/rekap', { state: { slotId: activeSlotId }, replace: true })
+      return
+    }
+    selesaiMutation.mutate()
+  }
+
   // Guard: antrianId wajib ada — useEffect handles navigation above
   if (!antrianId) return null
 
@@ -163,12 +215,15 @@ export default function Meja5Page() {
               <p className="text-[#fee685] text-xs">Catat &amp; rekam riwayat imunisasi</p>
             </div>
           </div>
-          <button
-            onClick={() => navigate('/kader/pelayanan', { state: { slotId: activeSlotId, slotLabel: 'Sesi Aktif' } })}
-            className="bg-[rgba(254,154,0,0.6)] border border-[rgba(255,185,0,0.5)] rounded-xl px-3 py-1.5 text-white text-xs font-medium"
-          >
-            Tukar Meja
-          </button>
+          <div className="flex items-center gap-2">
+            <SyncPendingBadge />
+            <button
+              onClick={() => navigate('/kader/pelayanan', { state: { slotId: activeSlotId, slotLabel: 'Sesi Aktif' } })}
+              className="bg-[rgba(254,154,0,0.6)] border border-[rgba(255,185,0,0.5)] rounded-xl px-3 py-1.5 text-white text-xs font-medium"
+            >
+              Tukar Meja
+            </button>
+          </div>
         </div>
       </div>
 
@@ -295,7 +350,7 @@ export default function Meja5Page() {
               </button>
               <button
                 disabled={!namaVaksin || tambahMutation.isPending}
-                onClick={() => tambahMutation.mutate()}
+                onClick={handleTambahImunisasi}
                 className="bg-[#e17100] rounded-xl py-2.5 text-sm font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2"
               >
                 {tambahMutation.isPending && <Loader2 size={14} className="animate-spin" />}
@@ -318,7 +373,7 @@ export default function Meja5Page() {
         <Button
           variant="ghost"
           className="w-full bg-[#fef2f2] border border-[#ffc9c9] text-[#e7000b] font-semibold rounded-2xl h-12 hover:bg-red-50"
-          onClick={() => selesaiMutation.mutate()}
+          onClick={handleSelesai}
           disabled={selesaiMutation.isPending}
         >
           {selesaiMutation.isPending
