@@ -53,7 +53,7 @@ Declared values (multiples of 4 only — Tailwind default scale):
 | 3xl | 64px | — | Not used in this phase |
 
 Exceptions:
-- Offline banner: `py-2.5 px-4` (10px vertical, 16px horizontal) — matches existing filter chip row height
+- Offline banner: `py-3 px-4` (12px vertical, 16px horizontal) — compact single-line banner
 - Touch targets for install button and sync badge: minimum 44px height (mobile PWA requirement)
 - Meja page headers use `pt-10 pb-4` (40px top, 16px bottom) — existing pattern, preserved
 
@@ -63,18 +63,20 @@ Exceptions:
 
 All sizes from existing pages — pre-populated, not re-specified:
 
+Declared weights: **400** (body, tooltip, regular text) and **700** (all headings, labels, badges, install button, offline banner text, section headers). No other weights are used.
+
 | Role | Size | Weight | Line Height | Usage |
 |------|------|--------|-------------|-------|
 | Body | 14px (`text-sm`) | 400 (regular) | 1.5 | Antrian list items, form labels, toast body |
-| Label / Caption | 12px (`text-xs`) | 600 (semibold) | 1.4 | Section headers ("MEJA 4 — Konsultasi"), badge text, offline banner text |
+| Label / Caption | 12px (`text-xs`) | 700 (bold) | 1.4 | Section headers ("MEJA 4 — Konsultasi"), badge text, offline banner text |
 | Subheading | 16px (`text-base`) | 700 (bold) | 1.2 | Card headings, dialog titles |
 | Display / Page heading | 20px (`text-xl`) | 700 (bold) | 1.2 | Dashboard "Selamat datang" name line (existing) |
 
 Phase 6 new text elements:
-- Offline banner text: 12px, weight 600 (`text-xs font-semibold`) — matches existing section header style
+- Offline banner text: 12px, weight 700 (`text-xs font-bold`) — matches section header style
 - Sync pending badge counter: 12px, weight 700 (`text-xs font-bold`) — numeric badge
 - Tooltip text: 12px, weight 400 (`text-xs`) — shadcn Tooltip default
-- Install button label: 14px, weight 600 (`text-sm font-semibold`)
+- Install button label: 14px, weight 700 (`text-sm font-bold`)
 
 ---
 
@@ -121,10 +123,10 @@ Behavior: Renders only when navigator.onLine === false
 
 **Visual spec:**
 - Container: `fixed top-0 left-0 right-0 z-50 bg-orange-600 text-white`
-- Height: `py-2.5 px-4` — auto height to fit single line
+- Height: `py-3 px-4` — auto height to fit single line
 - Content: `flex items-center justify-center gap-2`
 - Icon: `WifiOff` from Lucide, `h-4 w-4 text-orange-200`
-- Text: `"Mode Offline — data tersimpan lokal"` — 12px, weight 600, white
+- Text: `"Mode Offline — data tersimpan lokal"` — 12px, weight 700, white
 - When visible: page body receives `pt-[40px]` offset to prevent content being hidden under banner
 
 **States:**
@@ -288,11 +290,11 @@ No third-party shadcn registries declared. Registry vetting gate: not applicable
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [ ] Dimension 1 Copywriting: pending
+- [ ] Dimension 2 Visuals: pending
+- [ ] Dimension 3 Color: pending
+- [ ] Dimension 4 Typography: pending (revised — weights collapsed to 400 + 700)
+- [ ] Dimension 5 Spacing: pending (revised — py-2.5 replaced with py-3)
+- [ ] Dimension 6 Registry Safety: pending
 
 **Approval:** pending
