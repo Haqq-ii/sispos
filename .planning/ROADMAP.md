@@ -337,7 +337,7 @@ Plans:
 
 **Wave 2** *(Meja offline intercepts — 06-02 and 06-03 run in parallel)*
 
-- [ ] 06-02-PLAN.md — Meja1Page offline hadir/tangguhkan + Meja2Page offline createPemeriksaan with tempId chain
+- [x] 06-02-PLAN.md — Meja1Page offline hadir/tangguhkan + Meja2Page offline createPemeriksaan with tempId chain ✓ (6785add, c759b71)
 - [ ] 06-03-PLAN.md — Meja3Page offline tanda klinis + Meja4Page offline disable STT/AI + catatan + Meja5Page offline imunisasi/selesai
 
 **Wave 3** *(wiring + verification — blocked on Wave 2)*
