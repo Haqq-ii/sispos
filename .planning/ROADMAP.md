@@ -364,6 +364,22 @@ Plans:
 - Wave 7.2 — `prisma/seed.ts` (massal: balita, posyandu, riwayat pemeriksaan)
 - Wave 7.3 — `prisma/seed.demo.ts` (akun presentasi + antrian aktif hari ini)
 
+**Plans:** 3 plans
+
+Plans:
+
+**Wave 1** *(foundation — orchestrator + package.json)*
+
+- [ ] 07-01-PLAN.md — seed.ts orchestrator + seed.wilayah.ts export refactor + backend/package.json prisma.seed entry
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 07-02-PLAN.md — seedMassal() — 3 puskesmas, 15 posyandu with lat/lng, 375+ balita, 12-15 months pemeriksaan history, imunisasi dasar
+
+**Wave 3** *(blocked on Wave 2)* [has checkpoint]
+
+- [ ] 07-03-PLAN.md — seedDemo() + seedToday() update — 2nd balita Sari Dewi + 4 sesi today + Dewi at nomorUrut 3 + human verify
+
 **References:**
 
 - `docs/ROADMAP.md` Wave 7.1–7.3
