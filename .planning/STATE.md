@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Executing Phase 06
-last_updated: "2026-07-04T10:34:00Z"
+last_updated: "2026-07-04T10:39:37Z"
 progress:
   total_phases: 8
   completed_phases: 6
@@ -28,10 +28,10 @@ See: `.planning/PROJECT.md` (updated 2026-06-30)
 ```
 Phase aktif  : Phase 06 — PWA & Offline
 Last update  : 2026-07-04
-Plans done   : 06-01 + 06-02 + 06-03 complete (IDB foundation + Meja 1/2 + Meja 3/4/5 offline intercepts)
-Phases done  : 5 / 8 (Phase 00 + 01 + 02 + 04 + 05 complete), Phase 03 pending verification, Phase 06 in progress
-Next command : /gsd-execute-phase 06 plan 04 (Workbox BackgroundSync + App.tsx OfflineBanner + usePwaStore + install button)
-Stopped at   : Phase 06 Plan 03 complete — Meja3Page tanda klinis queue, Meja4Page STT/AI disabled offline with Tooltip, catatan queue, Meja5Page imunisasi+selesai queue — TypeScript clean
+Plans done   : 06-01 + 06-02 + 06-03 + 06-04 complete (IDB foundation + Meja 1/2 + Meja 3/4/5 offline intercepts + Workbox BackgroundSync + App OfflineBanner + usePwaStore + install button)
+Phases done  : 5 / 8 (Phase 00 + 01 + 02 + 04 + 05 complete), Phase 03 pending verification, Phase 06 complete (pending human-verify checkpoint)
+Next command : Human verify PWA-01 offline flow (Tests A-D: OfflineBanner, Meja 2 queue, auto-sync, Meja 4 offline disable)
+Stopped at   : Phase 06 Plan 04 complete — Workbox BackgroundSync 4 entries, App.tsx OfflineBanner global, usePwaStore PWA install, KaderDashboard "Pasang Aplikasi" button — TypeScript clean — AWAITING human-verify checkpoint
 ```
 
 ## Phase History
@@ -147,6 +147,9 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 2026-07-04 | Meja4 handleSimpanCatatan offline branch navigates to Meja5 immediately | Catatan save is optional before proceeding; offline path mirrors online behavior where navigate is separate from save |
 | 2026-07-04 | handleSelesai offline branch mirrors selesaiMutation.onSuccess store resets directly | Actual PATCH /antrian/:id/selesai (durasiRataAktual + Socket.IO broadcast) deferred to sync; store must be cleared immediately for UX consistency (D-08) |
 | 2026-07-04 | TooltipContent only rendered when !isOnline in Meja4 | Avoids tooltip DOM overhead when online; conditional rendering is valid React pattern with shadcn Tooltip |
+| 2026-07-04 | BackgroundSync shorthand in vite.config.ts runtimeCaching (not direct BackgroundSyncPlugin import) | vite.config.ts is Node.js; BackgroundSyncPlugin is a browser/SW module — shorthand in options generates the plugin at SW build time (Pitfall 1) |
+| 2026-07-04 | BeforeInstallPromptEvent exported from usePwaStore (not defined inline in App.tsx) | Single type definition shared between store and App.tsx; TypeScript strict mode clean |
+| 2026-07-04 | showInstall computed inline in KaderDashboardPage (not in usePwaStore) | window.matchMedia is a side effect — component scope is correct; store should be pure state |
 
 ## Performance Metrics
 
@@ -177,3 +180,4 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 06 | 01 | ~20 min | 3/3 | 7 |
 | 06 | 02 | ~5 min | 2/2 | 2 |
 | 06 | 03 | ~5 min | 2/2 | 3 |
+| 06 | 04 | ~2 min | 1/1 + checkpoint | 4 |
