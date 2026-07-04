@@ -1,7 +1,8 @@
 ---
 phase: 6
 slug: pwa-offline
-status: draft
+status: approved
+reviewed_at: 2026-07-04
 shadcn_initialized: true
 preset: "style: default, baseColor: slate, cssVariables: true"
 created: 2026-07-04
