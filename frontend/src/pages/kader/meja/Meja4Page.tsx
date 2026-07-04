@@ -25,6 +25,11 @@ import { useVoiceRecorder } from '@/hooks/useVoiceRecorder'
 import { usePatchPemeriksaan } from '@/hooks/usePemeriksaan'
 import { useKaderMejaStore } from '@/stores/useKaderMejaStore'
 import apiClient from '@/lib/axios'
+import { useOfflineStatus } from '@/hooks/useOfflineStatus'
+import { useOfflineSync } from '@/hooks/useOfflineSync'
+import { SyncPendingBadge } from '@/components/offline/SyncPendingBadge'
+import { generateTempId } from '@/lib/offline-db'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -126,6 +131,8 @@ function Meja4Content({
   const navigate = useNavigate()
   const { toast } = useToast()
   const { activeSlotId } = useKaderMejaStore()
+  const isOnline = useOfflineStatus()
+  const { enqueueOperation } = useOfflineSync()
 
   // Voice recorder state
   const { isRecording, audioBlob, secondsLeft, startRecording, stopRecording } = useVoiceRecorder()
@@ -205,6 +212,27 @@ function Meja4Content({
       toast({ description: 'Catatan konsultasi kosong.', variant: 'destructive' })
       return
     }
+
+    // Offline branch (D-14) — enqueue ke pemeriksaan_queue saat tidak ada koneksi
+    if (!isOnline) {
+      void enqueueOperation('pemeriksaan', {
+        id: generateTempId(),
+        tempPemeriksaanId: pemeriksaanId,
+        type: 'patch-catatan' as const,
+        data: {
+          catatanKonsultasi: catatanValue,
+          rekomendasiAi: null,   // D-14: null saat disimpan offline tanpa AI
+          catatanSTT: null,       // D-14: null saat disimpan offline tanpa STT
+        },
+        timestamp: Date.now(),
+      })
+      toast({ description: 'Tersimpan lokal, akan sync saat online' })
+      navigate('/kader/meja/5', {
+        state: { antrianId, balitaId, namaBalita, pemeriksaanId },
+      })
+      return
+    }
+
     saveCatatanMutation.mutate(
       { id: pemeriksaanId, catatanKonsultasi: catatanValue },
       {
@@ -245,12 +273,15 @@ function Meja4Content({
             <p className="text-white font-bold text-sm">MEJA 4 — Konsultasi</p>
             <p className="text-[#b9f8cf] text-xs">AI Early Warning + Voice-to-Text aktif · {namaBalita}</p>
           </div>
-          <button
-            onClick={() => navigate('/kader/pelayanan', { state: { slotId: activeSlotId, slotLabel: 'Sesi Aktif' } })}
-            className="bg-[rgba(0,166,62,0.6)] border border-[rgba(0,201,80,0.5)] rounded-xl px-3 py-1.5 text-white text-xs font-medium"
-          >
-            Tukar Meja
-          </button>
+          <div className="flex items-center gap-2">
+            <SyncPendingBadge />
+            <button
+              onClick={() => navigate('/kader/pelayanan', { state: { slotId: activeSlotId, slotLabel: 'Sesi Aktif' } })}
+              className="bg-[rgba(0,166,62,0.6)] border border-[rgba(0,201,80,0.5)] rounded-xl px-3 py-1.5 text-white text-xs font-medium"
+            >
+              Tukar Meja
+            </button>
+          </div>
         </div>
       </div>
 
@@ -264,15 +295,26 @@ function Meja4Content({
           <div className="space-y-3">
             <div className="flex gap-3">
               {!isRecording ? (
-                <button
-                  type="button"
-                  className="flex-1 border border-[#b9f8cf] text-[#008236] rounded-xl py-2.5 text-sm font-medium flex items-center justify-center gap-2"
-                  onClick={() => void startRecording()}
-                  disabled={transcribeMutation.isPending}
-                >
-                  <Mic className="h-4 w-4" />
-                  Mulai Rekam
-                </button>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className={`flex-1 border border-[#b9f8cf] text-[#008236] rounded-xl py-2.5 text-sm font-medium flex items-center justify-center gap-2 ${!isOnline ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        onClick={() => void startRecording()}
+                        disabled={!isOnline || transcribeMutation.isPending}
+                      >
+                        <Mic className="h-4 w-4" />
+                        Mulai Rekam
+                      </button>
+                    </TooltipTrigger>
+                    {!isOnline && (
+                      <TooltipContent side="top">
+                        <p>Tidak tersedia offline</p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
               ) : (
                 <button
                   type="button"
@@ -322,18 +364,29 @@ function Meja4Content({
             AI Early Warning Stunting
           </p>
           <div className="space-y-3">
-            <button
-              type="button"
-              className="w-full bg-indigo-600 text-white rounded-xl py-3 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
-              onClick={() => earlyWarningMutation.mutate()}
-              disabled={earlyWarningMutation.isPending}
-            >
-              {earlyWarningMutation.isPending ? (
-                <><Loader2 className="h-4 w-4 animate-spin" />Memproses...</>
-              ) : (
-                <><Sparkles className="h-4 w-4" />Generate AI Early Warning</>
-              )}
-            </button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className={`w-full bg-indigo-600 text-white rounded-xl py-3 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60 ${!isOnline ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={() => earlyWarningMutation.mutate()}
+                    disabled={!isOnline || earlyWarningMutation.isPending}
+                  >
+                    {earlyWarningMutation.isPending ? (
+                      <><Loader2 className="h-4 w-4 animate-spin" />Memproses...</>
+                    ) : (
+                      <><Sparkles className="h-4 w-4" />Generate AI Early Warning</>
+                    )}
+                  </button>
+                </TooltipTrigger>
+                {!isOnline && (
+                  <TooltipContent side="top">
+                    <p>Tidak tersedia offline</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
 
             {earlyWarningData && (
               <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">

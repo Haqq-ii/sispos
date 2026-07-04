@@ -35,6 +35,10 @@ import { useToast } from '@/hooks/use-toast'
 import { useKaderMejaStore } from '@/stores/useKaderMejaStore'
 import { usePemeriksaanHistory, usePatchPemeriksaan } from '@/hooks/usePemeriksaan'
 import { ZScoreChart, type ZScoreDataPoint } from '@/components/kader/ZScoreChart'
+import { useOfflineStatus } from '@/hooks/useOfflineStatus'
+import { useOfflineSync } from '@/hooks/useOfflineSync'
+import { SyncPendingBadge } from '@/components/offline/SyncPendingBadge'
+import { generateTempId } from '@/lib/offline-db'
 
 // ── Zod v4 schema (frontend) ──────────────────────────────────────────────
 
@@ -121,6 +125,8 @@ function Meja3Content({ antrianId, balitaId, namaBalita, pemeriksaanId }: Meja3C
   const navigate = useNavigate()
   const { toast } = useToast()
   const { activeSlotId } = useKaderMejaStore()
+  const isOnline = useOfflineStatus()
+  const { enqueueOperation } = useOfflineSync()
 
   const [statusGiziOverride, setStatusGiziOverride] = useState<string | null>(null)
 
@@ -162,6 +168,36 @@ function Meja3Content({ antrianId, balitaId, namaBalita, pemeriksaanId }: Meja3C
       edema: values.edema,
       pucat: values.pucat,
       lainnya: values.lainnya ?? null,
+    }
+
+    // Offline branch — enqueue ke pemeriksaan_queue saat tidak ada koneksi
+    if (!isOnline) {
+      void enqueueOperation('pemeriksaan', {
+        id: generateTempId(),
+        tempPemeriksaanId: pemeriksaanId,
+        type: 'patch-tanda-klinis' as const,
+        data: {
+          rambutKemerahan: values.rambutKemerahan,
+          perutBuncit: values.perutBuncit,
+          edema: values.edema,
+          pucat: values.pucat,
+          lainnya: values.lainnya ?? null,
+          statusGiziOverride: statusGiziOverride ?? undefined,
+        },
+        timestamp: Date.now(),
+      })
+      toast({ description: 'Tersimpan lokal, akan sync saat online' })
+      navigate('/kader/meja/4', {
+        state: {
+          antrianId,
+          balitaId,
+          namaBalita,
+          pemeriksaanId,
+          tandaKlinis,
+          statusGizi: statusGiziOverride,
+        },
+      })
+      return
     }
 
     patchMutation.mutate(
@@ -217,12 +253,15 @@ function Meja3Content({ antrianId, balitaId, namaBalita, pemeriksaanId }: Meja3C
             <p className="text-white font-bold text-sm">MEJA 3 — Analisis Z-Score</p>
             <p className="text-[#b9f8cf] text-xs">Grafik pertumbuhan otomatis · {namaBalita}</p>
           </div>
-          <button
-            onClick={() => navigate('/kader/pelayanan', { state: { slotId: activeSlotId, slotLabel: 'Sesi Aktif' } })}
-            className="bg-[rgba(0,166,62,0.6)] border border-[rgba(0,201,80,0.5)] rounded-xl px-3 py-1.5 text-white text-xs font-medium"
-          >
-            Tukar Meja
-          </button>
+          <div className="flex items-center gap-2">
+            <SyncPendingBadge />
+            <button
+              onClick={() => navigate('/kader/pelayanan', { state: { slotId: activeSlotId, slotLabel: 'Sesi Aktif' } })}
+              className="bg-[rgba(0,166,62,0.6)] border border-[rgba(0,201,80,0.5)] rounded-xl px-3 py-1.5 text-white text-xs font-medium"
+            >
+              Tukar Meja
+            </button>
+          </div>
         </div>
       </div>
 
