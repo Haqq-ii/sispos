@@ -12,8 +12,6 @@
 
 import { PrismaClient } from '@prisma/client'
 
-const prisma = new PrismaClient()
-
 // ============================================================
 // Tipe data hierarki
 // ============================================================
@@ -508,7 +506,7 @@ const jatimTree: WilayahTree = {
 // Main function
 // ============================================================
 
-async function main(): Promise<void> {
+export async function seedWilayah(prisma: PrismaClient): Promise<void> {
   console.log('Memulai seed data wilayah lengkap (DI Yogyakarta + Jawa Tengah + Jawa Timur)...')
 
   // Flatten semua data
@@ -558,11 +556,10 @@ async function main(): Promise<void> {
   }
 }
 
-main()
-  .catch((e: unknown) => {
-    console.error('Seed wilayah gagal:', e)
-    process.exit(1)
-  })
-  .finally(async () => {
-    await prisma.$disconnect()
-  })
+// Standalone execution (backward compatibility)
+if (require.main === module) {
+  const standaloneClient = new PrismaClient()
+  seedWilayah(standaloneClient)
+    .catch((e: unknown) => { console.error('Seed wilayah gagal:', e); process.exit(1) })
+    .finally(async () => { await standaloneClient.$disconnect() })
+}
