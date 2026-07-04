@@ -327,6 +327,23 @@ Plans:
 
 - `docs/ROADMAP.md` Wave 6.1
 
+**Plans:** 4 plans
+
+Plans:
+
+**Wave 1** *(foundation — blocking for Wave 2)*
+
+- [ ] 06-01-PLAN.md — idb@8 install + offline-db.ts (IDB schema) + useOfflineStatus + useOfflineSync (sync engine) + OfflineBanner + SyncPendingBadge [has checkpoint: idb package verify]
+
+**Wave 2** *(Meja offline intercepts — 06-02 and 06-03 run in parallel)*
+
+- [ ] 06-02-PLAN.md — Meja1Page offline hadir/tangguhkan + Meja2Page offline createPemeriksaan with tempId chain
+- [ ] 06-03-PLAN.md — Meja3Page offline tanda klinis + Meja4Page offline disable STT/AI + catatan + Meja5Page offline imunisasi/selesai
+
+**Wave 3** *(wiring + verification — blocked on Wave 2)*
+
+- [ ] 06-04-PLAN.md — vite.config.ts Workbox BackgroundSync + App.tsx OfflineBanner + usePwaStore + KaderDashboardPage install button [has checkpoint: end-to-end verify]
+
 ---
 
 ### Phase 7: Seed Data Demo
