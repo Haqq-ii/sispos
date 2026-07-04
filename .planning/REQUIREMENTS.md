@@ -57,7 +57,7 @@
 
 ### Reports & Export
 
-- [ ] **REPORT-01**: Laporan bulanan Puskesmas mengagregasi data pemeriksaan; export Excel (.xlsx) format e-PPGBM standar Kemenkes; export PDF ringkas; dihasilkan via ExcelJS + pdfkit (bukan puppeteer)
+- [x] **REPORT-01**: Laporan bulanan Puskesmas mengagregasi data pemeriksaan; export Excel (.xlsx) format e-PPGBM standar Kemenkes; export PDF ringkas; dihasilkan via ExcelJS + pdfkit (bukan puppeteer)
 
 ### PWA & Offline
 

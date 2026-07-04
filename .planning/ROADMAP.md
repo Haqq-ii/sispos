@@ -16,7 +16,7 @@
 | 2 | Queue System | 6/7 | In Progress|  |
 | 3 | Kader — 5 Meja | 6/7 | In Progress|  |
 | 4 | Dashboard & DSS + AI | Peta stunting Leaflet, manajemen kader, AI chatbot gizi + pendaftaran | DSS-01..02, AI-01..03 | ○ Pending |
-| 5 | Reports & Export | Laporan bulanan e-PPGBM Excel + PDF via ExcelJS + pdfkit | REPORT-01 | ○ Pending |
+| 5 | Reports & Export | 1/2 | In Progress|  |
 | 6 | PWA & Offline | Service Worker Workbox, IndexedDB sync Meja 1-5, auto-sync online | PWA-01 | ○ Pending |
 | 7 | Seed Data Demo | Seed wilayah → seed massal → seed akun demo presentasi | SEED-01..03 | ○ Pending |
 
@@ -294,13 +294,13 @@ Plans:
 - `docs/ROADMAP.md` Wave 5.1
 - Figma frames: `5:16705` (Laporan e-PPGBM)
 
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
 
 **Wave 0** *(test scaffold + service implementation — no dependencies)*
 
-- [ ] 05-01-PLAN.md — Test scaffold (laporan-bulanan.test.ts) + service implementation (ExcelJS 2-sheet + pdfkit + Prisma aggregation query)
+- [x] 05-01-PLAN.md — Test scaffold (laporan-bulanan.test.ts) + service implementation (ExcelJS 2-sheet + pdfkit + Prisma aggregation query)
 
 **Wave 1** *(blocked on Wave 0)*
 
