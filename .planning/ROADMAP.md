@@ -18,7 +18,7 @@
 | 4 | Dashboard & DSS + AI | Peta stunting Leaflet, manajemen kader, AI chatbot gizi + pendaftaran | DSS-01..02, AI-01..03 | ○ Pending |
 | 5 | Reports & Export | 2/2 | Complete   | 2026-07-04 |
 | 6 | PWA & Offline | Service Worker Workbox, IndexedDB sync Meja 1-5, auto-sync online | PWA-01 | Complete   | 2026-07-04 |
-| 7 | Seed Data Demo | Seed wilayah → seed massal → seed akun demo presentasi | SEED-01..03 | ○ Pending |
+| 7 | Seed Data Demo | 2/3 | In Progress|  |
 | 8 | UI Figma Alignment | Semua screen semua role align ke Figma + perbaikan fitur yang belum optimal | UI-01..03 | ○ Pending |
 
 ---
@@ -365,17 +365,17 @@ Plans:
 - Wave 7.2 — `prisma/seed.ts` (massal: balita, posyandu, riwayat pemeriksaan)
 - Wave 7.3 — `prisma/seed.demo.ts` (akun presentasi + antrian aktif hari ini)
 
-**Plans:** 3 plans
+**Plans:** 2/3 plans executed
 
 Plans:
 
 **Wave 1** *(foundation — orchestrator + package.json)*
 
-- [ ] 07-01-PLAN.md — seed.ts orchestrator + seed.wilayah.ts export refactor + backend/package.json prisma.seed entry
+- [x] 07-01-PLAN.md — seed.ts orchestrator + seed.wilayah.ts export refactor + backend/package.json prisma.seed entry
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 07-02-PLAN.md — seedMassal() — 3 puskesmas, 15 posyandu with lat/lng, 375+ balita, 12-15 months pemeriksaan history, imunisasi dasar
+- [x] 07-02-PLAN.md — seedMassal() — 3 puskesmas, 15 posyandu with lat/lng, 375+ balita, 12-15 months pemeriksaan history, imunisasi dasar
 
 **Wave 3** *(blocked on Wave 2)* [has checkpoint]
 

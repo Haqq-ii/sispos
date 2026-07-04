@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan
-last_updated: "2026-07-04T13:24:42.190Z"
+status: Executing Phase 07
+last_updated: "2026-07-04T16:22:51.700Z"
 progress:
-  total_phases: 8
+  total_phases: 9
   completed_phases: 7
-  total_plans: 32
-  completed_plans: 32
-  percent: 88
+  total_plans: 35
+  completed_plans: 34
+  percent: 78
 ---
 
 # SISPOS — GSD State
@@ -21,7 +21,7 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-30)
 
 **Core value:** Countdown antrian adaptif + alur 5 Meja kader end-to-end
-**Current focus:** Phase 06 — pwa-offline
+**Current focus:** Phase 07 — seed-data-demo
 
 ## Current Status
 
@@ -181,3 +181,10 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 06 | 02 | ~5 min | 2/2 | 2 |
 | 06 | 03 | ~5 min | 2/2 | 3 |
 | 06 | 04 | ~2 min | 1/1 + checkpoint | 4 |
+| Phase 07 P02 | ~7 min | 2 tasks | 1 files |
+
+## Decisions
+
+- [Phase ?]: Tasks 1+2 both target seed.massal.ts — single cohesive file creation; both task criteria satisfied in commit 48d32d6
+- [Phase ?]: BCRYPT_ROUNDS=8 in seedMassal for bulk performance (vs ROUNDS=10 in seed.demo.ts)
+- [Phase ?]: balitaRecords accumulator separates warga/balita pass from pemeriksaan/imunisasi pass in seedMassal

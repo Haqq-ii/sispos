@@ -66,7 +66,7 @@
 ### Seed Data
 
 - [ ] **SEED-01**: `prisma/seed.wilayah.ts` — data wilayah DIY + Jateng + Jatim (PERTAMA dijalankan)
-- [ ] **SEED-02**: `prisma/seed.ts` — >100 balita, >10 posyandu, riwayat pemeriksaan 12 bulan, campuran status gizi
+- [x] **SEED-02**: `prisma/seed.ts` — >100 balita, >10 posyandu, riwayat pemeriksaan 12 bulan, campuran status gizi
 - [ ] **SEED-03**: `prisma/seed.demo.ts` — akun presentasi terhubung ke seed massal; Citizen NIK `3471012345670001` (password `Demo1234!`), Kader HP `081234560001` (PIN `123456`), Puskesmas `demo@puskesmas-mergangsan.go.id` (password `Demo1234!`); antrian aktif hari ini tersedia saat login
 
 ### UI Alignment
