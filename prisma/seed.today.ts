@@ -37,7 +37,6 @@ export async function seedToday(prisma: PrismaClient): Promise<void> {
         puskesmasId: puskesmas.id,
         tanggalPelaksanaan: todayStart,
         estimasiDurasiMenit: 10,
-        durasiRataAktual: 10,
         statusJadwal: StatusJadwal.aktif,
       },
     })
@@ -74,6 +73,7 @@ export async function seedToday(prisma: PrismaClient): Promise<void> {
         jamSelesai: new Date(Date.UTC(1970, 0, 1, s.jamSelesaiHour, 0, 0)),
         kuota,
         terisi: 0,
+        durasiRataAktual: 10,
       })),
     })
     console.log('✓ 4 SlotSesi dibuat')
@@ -89,6 +89,7 @@ export async function seedToday(prisma: PrismaClient): Promise<void> {
         jamSelesai: new Date(Date.UTC(1970, 0, 1, 12, 0, 0)),
         kuota,
         terisi: 0,
+        durasiRataAktual: 10,
       }
     })
     console.log('✓ Sesi 4 ditambahkan (migration dari 3-sesi)')
