@@ -67,6 +67,8 @@ export async function seedToday(prisma: PrismaClient): Promise<void> {
   } else {
     // Delete any partial slots (0, 1, 2, or 3) and recreate all 4 clean
     if (existingSlots.length > 0) {
+      const oldSlotIds = existingSlots.map(s => s.id)
+      await prisma.antrian.deleteMany({ where: { slotId: { in: oldSlotIds } } })
       await prisma.slotSesi.deleteMany({ where: { jadwalId: jadwal.id } })
       console.log('✓ Reset', existingSlots.length, 'slot lama')
     }
