@@ -7,6 +7,10 @@
  * - safeCell: formula injection guard (prefix = + - @ with apostrophe)
  *
  * Uses vi.mock for ExcelJS, pdfkit, prisma, pino (no I/O in unit tests).
+ *
+ * IMPORTANT: ExcelJS.Workbook and PDFDocument are called with `new`, so their vi.fn()
+ * implementations MUST use `function` keyword (NOT arrow functions).
+ * Arrow functions cannot be used as constructors and throw "is not a constructor" at runtime.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Mock } from 'vitest'
@@ -39,32 +43,45 @@ vi.mock('pino', () => ({
 }))
 
 // ── Mock ExcelJS ──────────────────────────────────────────────────────────
-// Tracks addWorksheet calls for sheet-count and sheet-name assertions.
+// MUST use `function` keyword — arrow functions cannot be used with `new`.
+// The factory function returns an object, which JavaScript treats as the
+// constructed instance when a constructor explicitly returns an object.
 vi.mock('exceljs', () => {
-  const Workbook = vi.fn(() => ({
-    creator: '',
-    created: null as Date | null,
-    addWorksheet: vi.fn(() => ({
-      columns: [] as unknown[],
-      getRow: vi.fn(() => ({ font: {} as Record<string, unknown>, fill: {} as Record<string, unknown> })),
-      views: [] as unknown[],
-      addRow: vi.fn(),
-    })),
-    xlsx: { writeBuffer: vi.fn(async () => new ArrayBuffer(8)) },
-  }))
+  // Workbook constructor using regular function (required for `new` calls)
+  const Workbook = vi.fn(function MockWorkbook() {
+    return {
+      creator: '' as string,
+      created: null as Date | null,
+      addWorksheet: vi.fn(function MockSheet() {
+        return {
+          columns: [] as unknown[],
+          getRow: vi.fn(() => ({
+            font: {} as Record<string, unknown>,
+            fill: {} as Record<string, unknown>,
+          })),
+          views: [] as unknown[],
+          addRow: vi.fn(),
+        }
+      }),
+      xlsx: { writeBuffer: vi.fn(async () => new ArrayBuffer(8)) },
+    }
+  })
   return { default: { Workbook } }
 })
 
 // ── Mock pdfkit ───────────────────────────────────────────────────────────
-// Emits 'end' synchronously when doc.end() is called so the Promise resolves.
+// MUST use `function` keyword — arrow functions cannot be used with `new`.
+// Emits 'data' then 'end' synchronously so bufferPromise resolves to non-empty Buffer.
 vi.mock('pdfkit', () => {
-  const PDFDocument = vi.fn(() => {
+  const PDFDocument = vi.fn(function MockPDFDocument() {
     const emitter: Record<string, ((...args: unknown[]) => void)[]> = {}
     return {
-      on: vi.fn((event: string, cb: (...args: unknown[]) => void) => {
+      on: vi.fn(function(event: string, cb: (...args: unknown[]) => void) {
         ;(emitter[event] ??= []).push(cb)
       }),
-      end: vi.fn(() => {
+      end: vi.fn(function() {
+        // Emit dummy PDF header bytes so Buffer.concat(chunks).length > 0
+        emitter['data']?.forEach((cb) => cb(Buffer.from([0x25, 0x50, 0x44, 0x46]))) // %PDF
         emitter['end']?.forEach((cb) => cb())
       }),
       fontSize: vi.fn().mockReturnThis(),
@@ -96,7 +113,7 @@ const prismaMock = prisma as unknown as {
 
 const ExcelJSMock = ExcelJS as unknown as { Workbook: Mock }
 
-// ── Helpers ───────────────────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────
 const PUSKESMAS_ID = 'puskesmas-test-id'
 const BULAN = '2026-07'
 
@@ -104,11 +121,8 @@ const BULAN = '2026-07'
 describe('generateLaporanBulananXlsx', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // Default mocks
     prismaMock.puskesmas.findUnique.mockResolvedValue({ namaPuskesmas: 'Puskesmas Test' })
     prismaMock.posyandu.findMany.mockResolvedValue([])
-    // Reset Workbook mock instance tracking
-    ExcelJSMock.Workbook.mockClear()
   })
 
   it('returns a non-empty Buffer for valid puskesmasId and bulan', async () => {
@@ -119,7 +133,7 @@ describe('generateLaporanBulananXlsx', () => {
 
   it('calls addWorksheet exactly twice', async () => {
     await generateLaporanBulananXlsx(PUSKESMAS_ID, BULAN)
-    // Get the mock Workbook instance created by the service
+    // Get the Workbook instance returned by mock.results[0].value
     const workbookInstance = ExcelJSMock.Workbook.mock.results[0].value as {
       addWorksheet: Mock
     }
