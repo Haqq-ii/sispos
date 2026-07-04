@@ -17,8 +17,54 @@ export default defineConfig({
       manifest: false, // Use public/manifest.json directly
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        // CRITICAL: Never cache API responses — network only for /api/*
+        // CRITICAL: Specific BackgroundSync patterns MUST appear BEFORE the catch-all.
+        // Workbox matches first-wins — wrong order silently breaks offline sync (Pitfall 1).
         runtimeCaching: [
+          // Entry 1: Meja 1 — kehadiran hadir
+          {
+            urlPattern: /^\/api\/antrian\/[^/]+\/hadir$/,
+            handler: 'NetworkOnly' as const,
+            options: {
+              backgroundSync: {
+                name: 'kehadiran_queue',
+                options: { maxRetentionTime: 24 * 60 },
+              },
+            },
+          },
+          // Entry 2: Meja 1 — kehadiran tangguhkan
+          {
+            urlPattern: /^\/api\/antrian\/[^/]+\/tangguhkan$/,
+            handler: 'NetworkOnly' as const,
+            options: {
+              backgroundSync: {
+                name: 'kehadiran_queue',
+                options: { maxRetentionTime: 24 * 60 },
+              },
+            },
+          },
+          // Entry 3: Meja 2/3/4 — pemeriksaan create + patch
+          {
+            urlPattern: /^\/api\/growth\/pemeriksaan/,
+            handler: 'NetworkOnly' as const,
+            options: {
+              backgroundSync: {
+                name: 'pemeriksaan_queue',
+                options: { maxRetentionTime: 24 * 60 },
+              },
+            },
+          },
+          // Entry 4: Meja 5 — imunisasi
+          {
+            urlPattern: /^\/api\/immunization/,
+            handler: 'NetworkOnly' as const,
+            options: {
+              backgroundSync: {
+                name: 'meja5_queue',
+                options: { maxRetentionTime: 24 * 60 },
+              },
+            },
+          },
+          // CATCH-ALL: must remain LAST — never cache API responses
           {
             urlPattern: /^\/api\//,
             handler: 'NetworkOnly',

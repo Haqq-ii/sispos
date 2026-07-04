@@ -1,12 +1,14 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { LogOut, ClipboardList, ChevronRight, Play } from 'lucide-react'
+import { LogOut, ClipboardList, ChevronRight, Play, Download } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { useActiveMeja } from '@/hooks/useActiveMeja'
 import { useKaderMejaStore } from '@/stores/useKaderMejaStore'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { usePwaStore } from '@/stores/usePwaStore'
+import { SyncPendingBadge } from '@/components/offline/SyncPendingBadge'
 import apiClient from '@/lib/axios'
 
 interface TodaySlot {
@@ -33,6 +35,8 @@ export default function KaderDashboardPage() {
   const navigate = useNavigate()
   const { clearAuth, user } = useAuthStore()
   const { setActiveMeja, setLocked } = useKaderMejaStore()
+  const { deferredPrompt, triggerInstall } = usePwaStore()
+  const showInstall = deferredPrompt !== null && !window.matchMedia('(display-mode: standalone)').matches
 
   const { data: activeMejaData, isLoading: isLoadingActiveMeja } = useActiveMeja()
 
@@ -83,13 +87,27 @@ export default function KaderDashboardPage() {
                 </span>
               )}
             </div>
+            <div className="mt-2">
+              <SyncPendingBadge />
+            </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="bg-[rgba(255,255,255,0.15)] rounded-xl p-2.5"
-          >
-            <LogOut size={16} className="text-white" />
-          </button>
+          <div className="flex flex-col items-end gap-2">
+            {showInstall && (
+              <button
+                onClick={() => { void triggerInstall() }}
+                className="bg-[rgba(0,166,62,0.6)] border border-[rgba(0,201,80,0.5)] rounded-xl px-3 py-1.5 text-white text-xs font-medium flex items-center gap-1.5 min-h-[44px]"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Pasang Aplikasi
+              </button>
+            )}
+            <button
+              onClick={handleLogout}
+              className="bg-[rgba(255,255,255,0.15)] rounded-xl p-2.5"
+            >
+              <LogOut size={16} className="text-white" />
+            </button>
+          </div>
         </div>
 
         {/* Stats row */}
