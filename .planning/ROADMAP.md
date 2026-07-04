@@ -294,7 +294,7 @@ Plans:
 - `docs/ROADMAP.md` Wave 5.1
 - Figma frames: `5:16705` (Laporan e-PPGBM)
 
-**Plans:** 2/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 
