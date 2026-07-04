@@ -1,10 +1,10 @@
+// DEV/DEMO ONLY — jangan deploy ke produksi
 import bcrypt from 'bcrypt'
 import { PrismaClient } from '@prisma/client'
 
-const prisma = new PrismaClient()
 const ROUNDS = 10
 
-async function main() {
+export async function seedDemo(prisma: PrismaClient): Promise<void> {
   console.log('🌱 Seeding demo accounts...')
 
   const pwHash = await bcrypt.hash('Demo1234!', ROUNDS)
@@ -81,7 +81,7 @@ async function main() {
   })
   console.log('✓ Warga:', warga.namaLengkap, '/', warga.nikIbu)
 
-  // 5. Balita demo
+  // 5. Balita demo ke-1 (Budi Santoso)
   const existingBalita = await prisma.balita.findFirst({ where: { wargaId: warga.id } })
   if (!existingBalita) {
     const balita = await prisma.balita.create({
@@ -93,9 +93,28 @@ async function main() {
         jenisKelamin: 'laki_laki',
       },
     })
-    console.log('✓ Balita:', balita.namaBalita)
+    console.log('✓ Balita 1:', balita.namaBalita)
   } else {
-    console.log('✓ Balita: sudah ada, skip')
+    console.log('✓ Balita 1: sudah ada, skip')
+  }
+
+  // Balita ke-2: Sari Dewi (D-20)
+  const existingBalita2 = await prisma.balita.findFirst({
+    where: { nikBalita: '3471012345670003' }
+  })
+  if (!existingBalita2) {
+    await prisma.balita.create({
+      data: {
+        wargaId: warga.id,
+        nikBalita: '3471012345670003',
+        namaBalita: 'Sari Dewi',
+        tanggalLahir: new Date('2024-10-01'),
+        jenisKelamin: 'perempuan',
+      }
+    })
+    console.log('✓ Balita 2: Sari Dewi')
+  } else {
+    console.log('✓ Balita 2: Sari Dewi (sudah ada, skip)')
   }
 
   console.log('\n✅ Demo seed selesai!')
@@ -106,6 +125,10 @@ async function main() {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
 }
 
-main()
-  .catch((e) => { console.error(e); process.exit(1) })
-  .finally(async () => { await prisma.$disconnect() })
+// Standalone execution (backward compatibility)
+if (require.main === module) {
+  const standaloneClient = new PrismaClient()
+  seedDemo(standaloneClient)
+    .catch((e) => { console.error(e); process.exit(1) })
+    .finally(async () => { await standaloneClient.$disconnect() })
+}
