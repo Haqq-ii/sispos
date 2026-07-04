@@ -16,7 +16,7 @@
 | 2 | Queue System | 6/7 | In Progress|  |
 | 3 | Kader — 5 Meja | 6/7 | In Progress|  |
 | 4 | Dashboard & DSS + AI | Peta stunting Leaflet, manajemen kader, AI chatbot gizi + pendaftaran | DSS-01..02, AI-01..03 | ○ Pending |
-| 5 | Reports & Export | 1/2 | In Progress|  |
+| 5 | Reports & Export | 2/2 | Complete   | 2026-07-04 |
 | 6 | PWA & Offline | Service Worker Workbox, IndexedDB sync Meja 1-5, auto-sync online | PWA-01 | ○ Pending |
 | 7 | Seed Data Demo | Seed wilayah → seed massal → seed akun demo presentasi | SEED-01..03 | ○ Pending |
 
@@ -294,7 +294,7 @@ Plans:
 - `docs/ROADMAP.md` Wave 5.1
 - Figma frames: `5:16705` (Laporan e-PPGBM)
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans executed
 
 Plans:
 
@@ -304,7 +304,7 @@ Plans:
 
 **Wave 1** *(blocked on Wave 0)*
 
-- [ ] 05-02-PLAN.md — Route handler (GET /api/reports/laporan-bulanan) + app.ts wiring + LaporanPage.tsx functional rewrite
+- [x] 05-02-PLAN.md — Route handler (GET /api/reports/laporan-bulanan) + app.ts wiring + LaporanPage.tsx functional rewrite ✓ (aed713f, fd624de)
 
 ---
 

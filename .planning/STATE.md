@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Executing Phase 05
-last_updated: "2026-07-04T01:39:28.133Z"
+last_updated: "2026-07-04T01:45:00Z"
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 28
-  completed_plans: 27
-  percent: 63
+  completed_plans: 28
+  percent: 66
 ---
 
 # SISPOS — GSD State
@@ -28,10 +28,10 @@ See: `.planning/PROJECT.md` (updated 2026-06-30)
 ```
 Phase aktif  : Phase 05 — Reports & Export
 Last update  : 2026-07-04
-Plans done   : 05-01 complete (laporan-bulanan service + tests)
-Phases done  : 3 / 8 (Phase 00 + 01 + 02 complete), Phase 03-04 pending verification, Phase 05 in progress
-Next command : /gsd-execute-phase 05 (plan 02 — laporan-bulanan routes)
-Stopped at   : Phase 05 Plan 01 complete — 8 vitest tests GREEN, TypeScript clean
+Plans done   : 05-01 + 05-02 complete (Phase 05 all plans done)
+Phases done  : 3 / 8 (Phase 00 + 01 + 02 complete), Phase 03-04 pending verification, Phase 05 complete
+Next command : /gsd-execute-phase (next phase)
+Stopped at   : Phase 05 Plan 02 complete — routes wired, LaporanPage functional, TypeScript clean
 ```
 
 ## Phase History
@@ -136,6 +136,8 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 2026-07-03 | type narrowing toolCall.type !== 'function' + as unknown as FunctionToolCall | OpenAI SDK v6 union type ChatCompletionMessageCustomToolCall tidak punya .function |
 | 2026-07-04 | vi.fn() mock harus gunakan function keyword (bukan arrow fn) untuk constructor | Arrow functions tidak bisa dipanggil dengan new; vi.fn(() => ({...})) throw "is not a constructor" di Vitest v4 |
 | 2026-07-04 | pdfkit mock perlu emit 'data' event sebelum 'end' | Buffer.concat([]) = length 0; dummy %PDF bytes diemit di end() agar test length > 0 pass |
+| 2026-07-04 | puskesmasId dari req.user!.userId di laporanBulananHandler | T-05-01 IDOR guard; puskesmasId tidak pernah dari req.query atau req.body |
+| 2026-07-04 | Comment teks tidak boleh mengandung keyword grep acceptance criteria | window.open atau async/await di comment menyebabkan false positive; paraphrase semantik |
 
 ## Performance Metrics
 
@@ -162,3 +164,4 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 04 | 03 | ~20 min | 2/2 | 6 |
 | 04 | 04 | ~15 min | 2/3 + checkpoint | 5 |
 | 05 | 01 | ~9 min | 2/2 | 2 |
+| 05 | 02 | ~3 min | 2/2 | 3 |
