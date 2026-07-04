@@ -327,7 +327,7 @@ Plans:
 
 - `docs/ROADMAP.md` Wave 6.1
 
-**Plans:** 4/4 plans complete — PWA-01 VERIFIED 2026-07-04
+**Plans:** 4/4 plans complete
 
 Plans:
 
