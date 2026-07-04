@@ -8,6 +8,10 @@ import { useKaderSocket } from '@/hooks/useKaderSocket'
 import { useMutationClearActiveMeja } from '@/hooks/useActiveMeja'
 import { useKaderMejaStore } from '@/stores/useKaderMejaStore'
 import apiClient from '@/lib/axios'
+import { useOfflineStatus } from '@/hooks/useOfflineStatus'
+import { useOfflineSync } from '@/hooks/useOfflineSync'
+import { SyncPendingBadge } from '@/components/offline/SyncPendingBadge'
+import { generateTempId } from '@/lib/offline-db'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -84,6 +88,8 @@ function Meja1Content({ activeSlotId, clearActiveMejaMutation, resetStore }: Mej
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const { setActiveAntrian } = useKaderMejaStore()
+  const isOnline = useOfflineStatus()
+  const { enqueueOperation } = useOfflineSync()
 
   const [selectedRt, setSelectedRt] = useState<string>('Semua')
   const [searchQuery, setSearchQuery] = useState('')
@@ -154,6 +160,42 @@ function Meja1Content({ activeSlotId, clearActiveMejaMutation, resetStore }: Mej
       toast({ description: msg, variant: 'destructive' })
     },
   })
+
+  function handleHadir(payload: { antrianId: string; balitaId: string; namaBalita: string }) {
+    if (!isOnline) {
+      void enqueueOperation('kehadiran', {
+        id: generateTempId(),
+        antrianId: payload.antrianId,
+        action: 'hadir' as const,
+        slotId: activeSlotId,
+        balitaId: payload.balitaId,
+        namaBalita: payload.namaBalita,
+        timestamp: Date.now(),
+      })
+      toast({ description: 'Tersimpan lokal, akan sync saat online' })
+      setActiveAntrian(payload.antrianId, payload.balitaId, payload.namaBalita)
+      navigate('/kader/meja/2', {
+        state: { antrianId: payload.antrianId, balitaId: payload.balitaId, namaBalita: payload.namaBalita },
+      })
+      return
+    }
+    hadirMutation.mutate(payload)
+  }
+
+  function handleTangguhkan(antrianId: string) {
+    if (!isOnline) {
+      void enqueueOperation('kehadiran', {
+        id: generateTempId(),
+        antrianId,
+        action: 'tangguhkan' as const,
+        slotId: activeSlotId,
+        timestamp: Date.now(),
+      })
+      toast({ description: 'Tersimpan lokal, akan sync saat online' })
+      return
+    }
+    tangguhkanMutation.mutate(antrianId)
+  }
 
   const handleKeluarMeja = () => {
     clearActiveMejaMutation.mutate()
@@ -232,6 +274,7 @@ function Meja1Content({ activeSlotId, clearActiveMejaMutation, resetStore }: Mej
             {hadirCount}/{total} balita sudah hadir
           </p>
         </div>
+        <SyncPendingBadge />
       </div>
 
       {/* ── Filter chips ──────────────────────────────────────────────────── */}
@@ -317,23 +360,36 @@ function Meja1Content({ activeSlotId, clearActiveMejaMutation, resetStore }: Mej
                   </span>
                 )}
                 {isBelum && (
-                  <button
-                    onClick={() =>
-                      hadirMutation.mutate({
-                        antrianId: antrian.id,
-                        balitaId: antrian.balitaId,
-                        namaBalita: antrian.balita.namaBalita,
-                      })
-                    }
-                    disabled={hadirMutation.isPending}
-                    className="bg-[#f0fdf4] border border-[#b9f8cf] text-[#008236] text-xs font-semibold px-3 py-1.5 rounded-full flex-shrink-0 disabled:opacity-50 active:bg-[#dcfce7]"
-                  >
-                    {hadirMutation.isPending && hadirMutation.variables?.antrianId === antrian.id ? (
-                      <Loader2 size={12} className="animate-spin" />
-                    ) : (
-                      'Hadir'
-                    )}
-                  </button>
+                  <div className="flex gap-1.5 flex-shrink-0">
+                    <button
+                      onClick={() =>
+                        handleHadir({
+                          antrianId: antrian.id,
+                          balitaId: antrian.balitaId,
+                          namaBalita: antrian.balita.namaBalita,
+                        })
+                      }
+                      disabled={hadirMutation.isPending}
+                      className="bg-[#f0fdf4] border border-[#b9f8cf] text-[#008236] text-xs font-semibold px-3 py-1.5 rounded-full disabled:opacity-50 active:bg-[#dcfce7]"
+                    >
+                      {hadirMutation.isPending && hadirMutation.variables?.antrianId === antrian.id ? (
+                        <Loader2 size={12} className="animate-spin" />
+                      ) : (
+                        'Hadir'
+                      )}
+                    </button>
+                    <button
+                      onClick={() => handleTangguhkan(antrian.id)}
+                      disabled={tangguhkanMutation.isPending}
+                      className="bg-[#fff7ed] border border-[#fed7aa] text-[#ea580c] text-xs font-semibold px-3 py-1.5 rounded-full disabled:opacity-50 active:bg-[#ffedd5]"
+                    >
+                      {tangguhkanMutation.isPending && tangguhkanMutation.variables === antrian.id ? (
+                        <Loader2 size={12} className="animate-spin" />
+                      ) : (
+                        'Tangguhkan'
+                      )}
+                    </button>
+                  </div>
                 )}
                 {isTidakHadir && (
                   <span className="bg-[#f3f4f6] text-[#6a7282] text-xs font-semibold px-3 py-1 rounded-full flex-shrink-0">
