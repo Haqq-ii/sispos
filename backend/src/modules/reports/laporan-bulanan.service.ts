@@ -295,14 +295,15 @@ export async function generateLaporanBulananXlsx(puskesmasId: string, bulan: str
 /**
  * generateLaporanBulananPdf — Returns PDF buffer for monthly health report.
  *
- * Layout: A4 landscape, margin 40pt.
- * Content: summary table per posyandu (aggregate counts).
+ * Layout: A4 landscape, margin 30pt, font 7pt.
+ * Content: individual child rows (1 row per pemeriksaan) with pagination.
+ * Columns: No, Nama Anak, Tgl Lahir, JK, Umur(bln), BB, TB, LILA,
+ *          Z BB/U, Z TB/U, Z BB/TB, Status Gizi, Posyandu, Tgl Periksa
  *
  * @param puskesmasId  From req.user!.userId (JWT) — never from client. (T-05-01)
  * @param bulan        YYYY-MM format string.
  */
 export async function generateLaporanBulananPdf(puskesmasId: string, bulan: string): Promise<Buffer> {
-  // 1. Look up puskesmas name
   const puskesmas = await prisma.puskesmas.findUnique({
     where: { id: puskesmasId },
     select: { namaPuskesmas: true },
@@ -312,16 +313,34 @@ export async function generateLaporanBulananPdf(puskesmasId: string, bulan: stri
   }
   const { namaPuskesmas } = puskesmas
 
-  // 2. Compute date range (Pitfall 5: lt startOfNextMonth)
   const { startOfMonth, startOfNextMonth } = parseBulan(bulan)
-
-  // 3. Run nested Prisma query
   const posyanduList = await getPosyanduData(puskesmasId, startOfMonth, startOfNextMonth)
 
-  // 4. Create PDF document
-  const doc = new PDFDocument({ margin: 40, size: 'A4', layout: 'landscape' })
+  // Flatten to individual pemeriksaan rows (same as xlsx)
+  type FlatRow = {
+    namaPosyandu: string
+    tanggalPelaksanaan: Date
+    pem: (typeof posyanduList)[0]['jadwal'][0]['slotSesi'][0]['antrian'][0]['pemeriksaan'][0]
+  }
+  const flatRows: FlatRow[] = []
+  for (const posyandu of posyanduList) {
+    for (const jadwal of posyandu.jadwal) {
+      for (const sesi of jadwal.slotSesi) {
+        for (const antrian of sesi.antrian) {
+          for (const pem of antrian.pemeriksaan) {
+            flatRows.push({ namaPosyandu: posyandu.namaPosyandu, tanggalPelaksanaan: jadwal.tanggalPelaksanaan, pem })
+          }
+        }
+      }
+    }
+  }
 
-  // pdfkit stream collection pattern (identical to rekap-harian.service.ts)
+  // A4 landscape: 841.89 x 595.28pt, margin 30pt → usable width ~781pt
+  const MARGIN = 30
+  const PAGE_BOTTOM = 595.28 - MARGIN - 16 // reserve 16pt for footer
+  const ROW_H = 11 // row height in pt
+
+  const doc = new PDFDocument({ margin: MARGIN, size: 'A4', layout: 'landscape' })
   const chunks: Buffer[] = []
   doc.on('data', (chunk: Buffer) => chunks.push(chunk))
   const bufferPromise = new Promise<Buffer>((resolve, reject) => {
@@ -329,111 +348,113 @@ export async function generateLaporanBulananPdf(puskesmasId: string, bulan: stri
     doc.on('error', reject)
   })
 
-  // ── Header ───────────────────────────────────────────────────────────────
-  doc.fontSize(16).font('Helvetica-Bold').text('Laporan Gizi Balita Bulanan', { align: 'center' })
-  doc.moveDown(0.4)
-  doc
-    .fontSize(10)
-    .font('Helvetica')
-    .text(`Puskesmas: ${namaPuskesmas}   Periode: ${formatTanggalBulan(bulan)}`, { align: 'center' })
-  doc.moveDown(0.8)
-  doc.fontSize(9).font('Helvetica')
+  // Column x positions (left edge) and widths — total ~781pt
+  // No(22) Nama Anak(105) Tgl Lahir(52) JK(18) Umur(28) BB(28) TB(28) LILA(28) ZBB/U(36) ZTB/U(36) ZBB/TB(38) Status(62) Posyandu(90) Tgl Periksa(52)
+  const C = {
+    no:      { x: MARGIN,       w: 22  },
+    nama:    { x: MARGIN + 22,  w: 105 },
+    tglLahir:{ x: MARGIN + 127, w: 52  },
+    jk:      { x: MARGIN + 179, w: 18  },
+    umur:    { x: MARGIN + 197, w: 28  },
+    bb:      { x: MARGIN + 225, w: 28  },
+    tb:      { x: MARGIN + 253, w: 28  },
+    lila:    { x: MARGIN + 281, w: 28  },
+    zBbU:    { x: MARGIN + 309, w: 36  },
+    zTbU:    { x: MARGIN + 345, w: 36  },
+    zBbTb:   { x: MARGIN + 381, w: 38  },
+    status:  { x: MARGIN + 419, w: 62  },
+    posyandu:{ x: MARGIN + 481, w: 90  },
+    tglPeriksa:{ x: MARGIN + 571, w: 52 },
+  }
+  const TABLE_RIGHT = MARGIN + 623
 
-  // ── Table layout ─────────────────────────────────────────────────────────
-  // Landscape A4: usable width ~751pt - 80pt margins = 671pt
-  // Columns: No(20), Posyandu(160), D(40), Buruk(55), Kurang(55), Normal(55), Lebih(65), SP(55), Pendek(55)
-  const cols = {
-    no: 40,
-    posyandu: 65,
-    d: 230,
-    buruk: 275,
-    kurang: 335,
-    normal: 395,
-    lebih: 455,
-    sp: 525,
-    pendek: 580,
+  const drawPageHeader = () => {
+    // Document title block
+    doc.fontSize(13).font('Helvetica-Bold').fillColor('#000000')
+      .text('Laporan Data Pemantauan Gizi Balita (e-PPGBM)', MARGIN, MARGIN, { align: 'center', width: TABLE_RIGHT - MARGIN })
+    doc.fontSize(8).font('Helvetica')
+      .text(`Puskesmas: ${namaPuskesmas}   |   Periode: ${formatTanggalBulan(bulan)}`, MARGIN, MARGIN + 17, { align: 'center', width: TABLE_RIGHT - MARGIN })
+
+    const hY = MARGIN + 33
+    doc.fontSize(7).font('Helvetica-Bold').fillColor('#000000')
+    const headers: [keyof typeof C, string][] = [
+      ['no', 'No'], ['nama', 'Nama Anak'], ['tglLahir', 'Tgl Lahir'],
+      ['jk', 'JK'], ['umur', 'Umur\n(bln)'], ['bb', 'BB\n(kg)'],
+      ['tb', 'TB\n(cm)'], ['lila', 'LILA\n(cm)'], ['zBbU', 'Z\nBB/U'],
+      ['zTbU', 'Z\nTB/U'], ['zBbTb', 'Z\nBB/TB'], ['status', 'Status\nGizi'],
+      ['posyandu', 'Posyandu'], ['tglPeriksa', 'Tgl\nPeriksa'],
+    ]
+    for (const [key, label] of headers) {
+      doc.text(label, C[key].x, hY, { width: C[key].w, lineBreak: true, align: 'center' })
+    }
+    // Header underline
+    const lineY = hY + 16
+    doc.moveTo(MARGIN, lineY).lineTo(TABLE_RIGHT, lineY).strokeColor('#333333').lineWidth(0.8).stroke()
+    // Return Y position for first data row
+    return lineY + 3
   }
 
-  // Table header row
-  doc.fontSize(9).font('Helvetica-Bold')
-  const headerY = doc.y
-  doc.text('No', cols.no, headerY, { width: 20, lineBreak: false })
-  doc.text('Posyandu', cols.posyandu, headerY, { width: 160, lineBreak: false })
-  doc.text('D', cols.d, headerY, { width: 40, lineBreak: false })
-  doc.text('Buruk', cols.buruk, headerY, { width: 55, lineBreak: false })
-  doc.text('Kurang', cols.kurang, headerY, { width: 55, lineBreak: false })
-  doc.text('Normal', cols.normal, headerY, { width: 55, lineBreak: false })
-  doc.text('Lebih/Obes', cols.lebih, headerY, { width: 65, lineBreak: false })
-  doc.text('SP', cols.sp, headerY, { width: 50, lineBreak: false })
-  doc.text('Pendek', cols.pendek, headerY, { width: 55, lineBreak: false })
-  doc.moveDown(0.4)
+  let currentY = drawPageHeader()
+  doc.fontSize(7).font('Helvetica').fillColor('#000000')
 
-  // Divider
-  doc
-    .moveTo(cols.no, doc.y)
-    .lineTo(cols.pendek + 55, doc.y)
-    .strokeColor('#cccccc')
-    .lineWidth(0.5)
-    .stroke()
-  doc.moveDown(0.3)
-
-  // ── Table rows ────────────────────────────────────────────────────────────
-  doc.fontSize(8).font('Helvetica')
-
-  if (posyanduList.length === 0) {
-    doc.moveDown(0.5)
-    doc.fontSize(9).text('Tidak ada data posyandu untuk periode ini.', { align: 'center' })
+  if (flatRows.length === 0) {
+    doc.fontSize(9).text('Tidak ada data pemeriksaan untuk periode ini.', MARGIN, currentY + 10, { align: 'center', width: TABLE_RIGHT - MARGIN })
   } else {
     let rowNo = 1
-    for (const posyandu of posyanduList) {
-      let diperiksa = 0, buruk = 0, kurang = 0, normal = 0
-      let lebihObesi = 0, sangatPendek = 0, pendek = 0
-
-      for (const jadwal of posyandu.jadwal) {
-        for (const sesi of jadwal.slotSesi) {
-          for (const antrian of sesi.antrian) {
-            for (const pem of antrian.pemeriksaan) {
-              diperiksa++
-              const status = pem.statusGiziOverride ?? pem.statusGizi ?? ''
-              if (status === 'buruk') buruk++
-              else if (status === 'kurang') kurang++
-              else if (status === 'normal') normal++
-              else if (status === 'lebih' || status === 'obesitas') lebihObesi++
-              else if (status === 'sangat_pendek') sangatPendek++
-              else if (status === 'pendek') pendek++
-            }
-          }
-        }
+    for (const row of flatRows) {
+      // Pagination: add new page + redraw header when near bottom
+      if (currentY + ROW_H > PAGE_BOTTOM) {
+        doc.addPage()
+        currentY = drawPageHeader()
+        doc.fontSize(7).font('Helvetica').fillColor('#000000')
       }
 
-      const rowY = doc.y
-      const nama = posyandu.namaPosyandu.length > 24
-        ? posyandu.namaPosyandu.substring(0, 24) + '…'
-        : posyandu.namaPosyandu
+      const { pem } = row
+      const usiaB = ageInMonths(new Date(pem.balita.tanggalLahir), new Date(pem.tanggalPemeriksaan))
+      const jk = pem.balita.jenisKelamin === 'laki_laki' ? 'L' : 'P'
+      const statusEfektif = (pem.statusGiziOverride ?? pem.statusGizi ?? '').replace('_', ' ')
+      const fz = (v: number | null) => v !== null ? Number(v.toFixed(1)).toString() : '-'
+      const fn = (v: number | null) => v !== null ? v.toString() : '-'
+      const trunc = (s: string, max: number) => s.length > max ? s.slice(0, max - 1) + '…' : s
 
-      doc.text(String(rowNo++), cols.no, rowY, { width: 20, lineBreak: false })
-      doc.text(nama, cols.posyandu, rowY, { width: 160, lineBreak: false })
-      doc.text(String(diperiksa), cols.d, rowY, { width: 40, lineBreak: false })
-      doc.text(String(buruk), cols.buruk, rowY, { width: 55, lineBreak: false })
-      doc.text(String(kurang), cols.kurang, rowY, { width: 55, lineBreak: false })
-      doc.text(String(normal), cols.normal, rowY, { width: 55, lineBreak: false })
-      doc.text(String(lebihObesi), cols.lebih, rowY, { width: 65, lineBreak: false })
-      doc.text(String(sangatPendek), cols.sp, rowY, { width: 50, lineBreak: false })
-      doc.text(String(pendek), cols.pendek, rowY, { width: 55, lineBreak: false })
-      doc.moveDown(0.3)
+      const cells: [keyof typeof C, string][] = [
+        ['no',         String(rowNo++)],
+        ['nama',       trunc(pem.balita.namaBalita, 20)],
+        ['tglLahir',   formatTanggal(new Date(pem.balita.tanggalLahir))],
+        ['jk',         jk],
+        ['umur',       String(usiaB)],
+        ['bb',         fn(pem.beratBadan)],
+        ['tb',         fn(pem.tinggiBadan)],
+        ['lila',       fn(pem.lingkarLengan)],
+        ['zBbU',       fz(pem.zScoreBbU)],
+        ['zTbU',       fz(pem.zScoreTbU)],
+        ['zBbTb',      fz(pem.zScoreBbTb)],
+        ['status',     trunc(statusEfektif, 12)],
+        ['posyandu',   trunc(row.namaPosyandu, 18)],
+        ['tglPeriksa', formatTanggal(new Date(pem.tanggalPemeriksaan))],
+      ]
+
+      for (const [key, val] of cells) {
+        doc.text(val, C[key].x, currentY, { width: C[key].w, lineBreak: false, align: 'left' })
+      }
+
+      // Alternating row background (draw before text — too late here, so use light divider instead)
+      currentY += ROW_H
+      doc.moveTo(MARGIN, currentY - 1).lineTo(TABLE_RIGHT, currentY - 1).strokeColor('#eeeeee').lineWidth(0.3).stroke()
     }
+
+    // Total row
+    currentY += 2
+    doc.fontSize(7).font('Helvetica-Bold')
+      .text(`Total: ${flatRows.length} pemeriksaan`, MARGIN, currentY)
   }
 
-  // ── Footer ────────────────────────────────────────────────────────────────
-  doc.moveDown(0.5)
-  doc
-    .fontSize(8)
-    .fillColor('#888888')
-    .text(`Dicetak oleh SISPOS pada ${formatTanggal(new Date())}`, { align: 'right' })
+  // Footer on last page
+  doc.fontSize(7).font('Helvetica').fillColor('#888888')
+    .text(`Dicetak oleh SISPOS pada ${formatTanggal(new Date())}`, MARGIN, PAGE_BOTTOM + 2, { align: 'right', width: TABLE_RIGHT - MARGIN })
 
   doc.end()
-
   const buffer = await bufferPromise
-  logger.debug({ puskesmasId, bulan }, 'Laporan bulanan PDF generated')
+  logger.debug({ puskesmasId, bulan, rows: flatRows.length }, 'Laporan bulanan PDF generated')
   return buffer
 }
