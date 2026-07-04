@@ -161,7 +161,7 @@ function Meja3Content({ antrianId, balitaId, namaBalita, pemeriksaanId }: Meja3C
   const patchMutation = usePatchPemeriksaan()
 
   // Submit: simpan tanda klinis + statusGiziOverride ke PATCH endpoint
-  function handleSubmit(values: TandaKlinisInput) {
+  async function handleSubmit(values: TandaKlinisInput) {
     const tandaKlinis = {
       rambutKemerahan: values.rambutKemerahan,
       perutBuncit: values.perutBuncit,
@@ -172,31 +172,36 @@ function Meja3Content({ antrianId, balitaId, namaBalita, pemeriksaanId }: Meja3C
 
     // Offline branch — enqueue ke pemeriksaan_queue saat tidak ada koneksi
     if (!isOnline) {
-      void enqueueOperation('pemeriksaan', {
-        id: generateTempId(),
-        tempPemeriksaanId: pemeriksaanId,
-        type: 'patch-tanda-klinis' as const,
-        data: {
-          rambutKemerahan: values.rambutKemerahan,
-          perutBuncit: values.perutBuncit,
-          edema: values.edema,
-          pucat: values.pucat,
-          lainnya: values.lainnya ?? null,
-          statusGiziOverride: statusGiziOverride ?? undefined,
-        },
-        timestamp: Date.now(),
-      })
-      toast({ description: 'Tersimpan lokal, akan sync saat online' })
-      navigate('/kader/meja/4', {
-        state: {
-          antrianId,
-          balitaId,
-          namaBalita,
-          pemeriksaanId,
-          tandaKlinis,
-          statusGizi: statusGiziOverride,
-        },
-      })
+      try {
+        await enqueueOperation('pemeriksaan', {
+          id: generateTempId(),
+          tempPemeriksaanId: pemeriksaanId,
+          type: 'patch-tanda-klinis' as const,
+          data: {
+            rambutKemerahan: values.rambutKemerahan,
+            perutBuncit: values.perutBuncit,
+            edema: values.edema,
+            pucat: values.pucat,
+            lainnya: values.lainnya ?? null,
+            statusGiziOverride: statusGiziOverride ?? undefined,
+          },
+          timestamp: Date.now(),
+        })
+        toast({ description: 'Tersimpan lokal, akan sync saat online' })
+        navigate('/kader/meja/4', {
+          state: {
+            antrianId,
+            balitaId,
+            namaBalita,
+            pemeriksaanId,
+            tandaKlinis,
+            statusGizi: statusGiziOverride,
+          },
+        })
+      } catch {
+        // WR-03: IDB unavailable or quota exceeded — warn kader
+        toast({ description: 'Gagal simpan offline — coba lagi', variant: 'destructive' })
+      }
       return
     }
 

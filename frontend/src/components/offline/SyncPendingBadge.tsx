@@ -5,11 +5,16 @@
  * Placed in Meja page headers to give kader visibility of offline data awaiting sync.
  *
  * Copy: "{N} pending" (per UI-SPEC §2 Copywriting Contract).
+ *
+ * NOTE: Uses useOfflinePendingCount (NOT useOfflineSync) to avoid creating an extra
+ * 'online' sync listener in every Meja page that already calls useOfflineSync directly.
+ * Each useOfflineSync instance registers its own listener; two concurrent syncAll() runs
+ * per page would cause duplicate API writes (CR-02).
  */
-import { useOfflineSync } from '@/hooks/useOfflineSync'
+import { useOfflinePendingCount } from '@/hooks/useOfflinePendingCount'
 
 export function SyncPendingBadge() {
-  const { pendingCount } = useOfflineSync()
+  const pendingCount = useOfflinePendingCount()
 
   if (pendingCount === 0) return null
 

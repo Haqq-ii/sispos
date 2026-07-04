@@ -198,7 +198,7 @@ function Meja2Content({
 
   // ── Submit ──────────────────────────────────────────────────────────────────
 
-  function doSubmit(konfirmasiBiologis: boolean) {
+  async function doSubmit(konfirmasiBiologis: boolean) {
     if (!balitaId) {
       toast({
         description: 'Data balita tidak tersedia. Kembali ke Meja 1 dan pilih balita.',
@@ -210,25 +210,30 @@ function Meja2Content({
     // Offline branch (Pitfall 3 — avoids Z-Score result blocking navigation)
     if (!isOnline) {
       const tempPemeriksaanId = generateTempId()
-      void enqueueOperation('pemeriksaan', {
-        id: generateTempId(),
-        tempPemeriksaanId,
-        type: 'create' as const,
-        data: {
-          balitaId,
-          antrianId,
-          beratBadan: bbValue,
-          tinggiBadan: tbStr !== '' && tbValue > 0 ? tbValue : undefined,
-          konfirmasiBiologis,
-        },
-        timestamp: Date.now(),
-      })
-      setActivePemeriksaanId(tempPemeriksaanId)
-      toast({ description: 'Tersimpan lokal, akan sync saat online' })
-      setShowKonfirmasi(false)
-      navigate('/kader/meja/3', {
-        state: { antrianId, balitaId, namaBalita, pemeriksaanId: tempPemeriksaanId },
-      })
+      try {
+        await enqueueOperation('pemeriksaan', {
+          id: generateTempId(),
+          tempPemeriksaanId,
+          type: 'create' as const,
+          data: {
+            balitaId,
+            antrianId,
+            beratBadan: bbValue,
+            tinggiBadan: tbStr !== '' && tbValue > 0 ? tbValue : undefined,
+            konfirmasiBiologis,
+          },
+          timestamp: Date.now(),
+        })
+        setActivePemeriksaanId(tempPemeriksaanId)
+        toast({ description: 'Tersimpan lokal, akan sync saat online' })
+        setShowKonfirmasi(false)
+        navigate('/kader/meja/3', {
+          state: { antrianId, balitaId, namaBalita, pemeriksaanId: tempPemeriksaanId },
+        })
+      } catch {
+        // WR-03: IDB unavailable or quota exceeded — warn kader before proceeding
+        toast({ description: 'Gagal simpan offline — coba lagi', variant: 'destructive' })
+      }
       return
     }
 

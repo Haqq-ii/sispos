@@ -141,7 +141,10 @@ export default function Meja5Page() {
       return (response.data as { data: SelesaiResult }).data
     },
     onSuccess: async () => {
-      try { await apiClient.delete('/kader/active-meja') } catch {}
+      try { await apiClient.delete('/kader/active-meja') } catch (e) {
+        // WR-07: Best-effort cleanup — active-meja cleared locally regardless
+        if (import.meta.env.DEV) console.warn('[Meja5] Failed to clear active-meja:', e)
+      }
       setLocked(false)
       setActiveMeja(null, null)
       setActivePemeriksaanId(null)
@@ -155,45 +158,61 @@ export default function Meja5Page() {
 
   // ── Offline handlers ──────────────────────────────────────────────────────
 
-  function handleTambahImunisasi() {
+  async function handleTambahImunisasi() {
+    // WR-05: Guard balitaId — null propagates to immunization API (422) or offline queue
+    if (!balitaId) {
+      toast({ description: 'Data balita tidak ditemukan. Kembali ke Meja 1.', variant: 'destructive' })
+      return
+    }
+
     if (!isOnline) {
-      void enqueueOperation('meja5', {
-        id: generateTempId(),
-        type: 'immunization' as const,
-        data: {
-          balitaId,
-          namaVaksin,
-          dosisKe: parseInt(dosisKe, 10),
-          tanggalInjeksi: new Date().toISOString(),
-        },
-        timestamp: Date.now(),
-      })
-      toast({ description: 'Tersimpan lokal, akan sync saat online' })
-      setShowForm(false)
-      setNamaVaksin('')
-      setDosisKe('1')
+      try {
+        await enqueueOperation('meja5', {
+          id: generateTempId(),
+          type: 'immunization' as const,
+          data: {
+            balitaId,
+            namaVaksin,
+            dosisKe: parseInt(dosisKe, 10),
+            tanggalInjeksi: new Date().toISOString(),
+          },
+          timestamp: Date.now(),
+        })
+        toast({ description: 'Tersimpan lokal, akan sync saat online' })
+        setShowForm(false)
+        setNamaVaksin('')
+        setDosisKe('1')
+      } catch {
+        // WR-03: IDB unavailable or quota exceeded — warn kader
+        toast({ description: 'Gagal simpan offline — coba lagi', variant: 'destructive' })
+      }
       return
     }
     tambahMutation.mutate()
   }
 
-  function handleSelesai() {
+  async function handleSelesai() {
     if (!isOnline) {
-      void enqueueOperation('meja5', {
-        id: generateTempId(),
-        type: 'selesai' as const,
-        data: {
-          antrianId,
-          slotId: activeSlotId,
-        },
-        timestamp: Date.now(),
-      })
-      toast({ description: 'Tersimpan lokal, akan sync saat online' })
-      // Mirror online success flow: reset state + navigate ke rekap
-      setLocked(false)
-      setActiveMeja(null, null)
-      setActivePemeriksaanId(null)
-      navigate('/kader/rekap', { state: { slotId: activeSlotId }, replace: true })
+      try {
+        await enqueueOperation('meja5', {
+          id: generateTempId(),
+          type: 'selesai' as const,
+          data: {
+            antrianId,
+            slotId: activeSlotId,
+          },
+          timestamp: Date.now(),
+        })
+        toast({ description: 'Tersimpan lokal, akan sync saat online' })
+        // Mirror online success flow: reset state + navigate ke rekap
+        setLocked(false)
+        setActiveMeja(null, null)
+        setActivePemeriksaanId(null)
+        navigate('/kader/rekap', { state: { slotId: activeSlotId }, replace: true })
+      } catch {
+        // WR-03: IDB unavailable or quota exceeded — warn kader
+        toast({ description: 'Gagal simpan offline — coba lagi', variant: 'destructive' })
+      }
       return
     }
     selesaiMutation.mutate()
@@ -349,7 +368,7 @@ export default function Meja5Page() {
                 Batal
               </button>
               <button
-                disabled={!namaVaksin || tambahMutation.isPending}
+                disabled={!namaVaksin || !balitaId || tambahMutation.isPending}
                 onClick={handleTambahImunisasi}
                 className="bg-[#e17100] rounded-xl py-2.5 text-sm font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2"
               >

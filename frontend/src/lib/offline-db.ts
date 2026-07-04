@@ -98,6 +98,9 @@ export function getOfflineDB(): Promise<IDBPDatabase<SisposOfflineDB>> {
           s.createIndex('by_timestamp', 'timestamp')
         }
       },
+    }).catch((err) => {
+      dbPromise = null // Reset so the next call retries (private browsing, quota, blocked storage)
+      return Promise.reject(err)
     })
   }
   return dbPromise

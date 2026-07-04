@@ -36,7 +36,10 @@ export default function KaderDashboardPage() {
   const { clearAuth, user } = useAuthStore()
   const { setActiveMeja, setLocked } = useKaderMejaStore()
   const { deferredPrompt, triggerInstall } = usePwaStore()
-  const showInstall = deferredPrompt !== null && !window.matchMedia('(display-mode: standalone)').matches
+  // WR-08: window.matchMedia is undefined in JSDOM and some legacy browsers — use optional chaining
+  const showInstall =
+    deferredPrompt !== null &&
+    !(window.matchMedia?.('(display-mode: standalone)')?.matches ?? false)
 
   const { data: activeMejaData, isLoading: isLoadingActiveMeja } = useActiveMeja()
 
@@ -58,7 +61,10 @@ export default function KaderDashboardPage() {
   }, [isLoadingActiveMeja, activeMejaData, navigate, setActiveMeja, setLocked])
 
   const handleLogout = async () => {
-    try { await apiClient.post('/auth/logout') } catch {}
+    try { await apiClient.post('/auth/logout') } catch (e) {
+      // WR-07: Best-effort logout — local auth cleared regardless; log in dev for visibility
+      if (import.meta.env.DEV) console.warn('[KaderDashboard] Logout API call failed:', e)
+    }
     clearAuth()
     navigate('/login', { replace: true })
   }

@@ -31,10 +31,16 @@ export const usePwaStore = create<PwaState>((set, get) => ({
   async triggerInstall() {
     const { deferredPrompt, setDeferredPrompt } = get()
     if (!deferredPrompt) return
-    await deferredPrompt.prompt()
-    const result = await deferredPrompt.userChoice
-    if (result.outcome === 'accepted') {
-      setDeferredPrompt(null)
+    try {
+      // CR-05 + WR-06: wrap prompt() in try/finally so the consumed event is ALWAYS
+      // cleared, regardless of outcome ('accepted' OR 'dismissed') or whether prompt()
+      // itself throws (e.g. called without a user gesture in some browsers).
+      await deferredPrompt.prompt()
+      await deferredPrompt.userChoice
+    } catch (err) {
+      if (import.meta.env.DEV) console.warn('[usePwaStore] triggerInstall failed:', err)
+    } finally {
+      setDeferredPrompt(null) // Always clear — event is consumed regardless of outcome
     }
   },
 }))

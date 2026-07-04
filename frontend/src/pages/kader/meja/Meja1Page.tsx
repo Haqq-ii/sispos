@@ -161,37 +161,47 @@ function Meja1Content({ activeSlotId, clearActiveMejaMutation, resetStore }: Mej
     },
   })
 
-  function handleHadir(payload: { antrianId: string; balitaId: string; namaBalita: string }) {
+  async function handleHadir(payload: { antrianId: string; balitaId: string; namaBalita: string }) {
     if (!isOnline) {
-      void enqueueOperation('kehadiran', {
-        id: generateTempId(),
-        antrianId: payload.antrianId,
-        action: 'hadir' as const,
-        slotId: activeSlotId,
-        balitaId: payload.balitaId,
-        namaBalita: payload.namaBalita,
-        timestamp: Date.now(),
-      })
-      toast({ description: 'Tersimpan lokal, akan sync saat online' })
-      setActiveAntrian(payload.antrianId, payload.balitaId, payload.namaBalita)
-      navigate('/kader/meja/2', {
-        state: { antrianId: payload.antrianId, balitaId: payload.balitaId, namaBalita: payload.namaBalita },
-      })
+      try {
+        await enqueueOperation('kehadiran', {
+          id: generateTempId(),
+          antrianId: payload.antrianId,
+          action: 'hadir' as const,
+          slotId: activeSlotId,
+          balitaId: payload.balitaId,
+          namaBalita: payload.namaBalita,
+          timestamp: Date.now(),
+        })
+        toast({ description: 'Tersimpan lokal, akan sync saat online' })
+        setActiveAntrian(payload.antrianId, payload.balitaId, payload.namaBalita)
+        navigate('/kader/meja/2', {
+          state: { antrianId: payload.antrianId, balitaId: payload.balitaId, namaBalita: payload.namaBalita },
+        })
+      } catch {
+        // WR-03: enqueue failed — IDB unavailable or quota exceeded; warn kader
+        toast({ description: 'Gagal simpan offline — coba lagi', variant: 'destructive' })
+      }
       return
     }
     hadirMutation.mutate(payload)
   }
 
-  function handleTangguhkan(antrianId: string) {
+  async function handleTangguhkan(antrianId: string) {
     if (!isOnline) {
-      void enqueueOperation('kehadiran', {
-        id: generateTempId(),
-        antrianId,
-        action: 'tangguhkan' as const,
-        slotId: activeSlotId,
-        timestamp: Date.now(),
-      })
-      toast({ description: 'Tersimpan lokal, akan sync saat online' })
+      try {
+        await enqueueOperation('kehadiran', {
+          id: generateTempId(),
+          antrianId,
+          action: 'tangguhkan' as const,
+          slotId: activeSlotId,
+          timestamp: Date.now(),
+        })
+        toast({ description: 'Tersimpan lokal, akan sync saat online' })
+      } catch {
+        // WR-03: enqueue failed — warn kader
+        toast({ description: 'Gagal simpan offline — coba lagi', variant: 'destructive' })
+      }
       return
     }
     tangguhkanMutation.mutate(antrianId)

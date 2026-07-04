@@ -207,7 +207,7 @@ function Meja4Content({
 
   const saveCatatanMutation = usePatchPemeriksaan()
 
-  function handleSimpanCatatan() {
+  async function handleSimpanCatatan() {
     if (!catatanValue.trim()) {
       toast({ description: 'Catatan konsultasi kosong.', variant: 'destructive' })
       return
@@ -215,21 +215,26 @@ function Meja4Content({
 
     // Offline branch (D-14) — enqueue ke pemeriksaan_queue saat tidak ada koneksi
     if (!isOnline) {
-      void enqueueOperation('pemeriksaan', {
-        id: generateTempId(),
-        tempPemeriksaanId: pemeriksaanId,
-        type: 'patch-catatan' as const,
-        data: {
-          catatanKonsultasi: catatanValue,
-          rekomendasiAi: null,   // D-14: null saat disimpan offline tanpa AI
-          catatanSTT: null,       // D-14: null saat disimpan offline tanpa STT
-        },
-        timestamp: Date.now(),
-      })
-      toast({ description: 'Tersimpan lokal, akan sync saat online' })
-      navigate('/kader/meja/5', {
-        state: { antrianId, balitaId, namaBalita, pemeriksaanId },
-      })
+      try {
+        await enqueueOperation('pemeriksaan', {
+          id: generateTempId(),
+          tempPemeriksaanId: pemeriksaanId,
+          type: 'patch-catatan' as const,
+          data: {
+            catatanKonsultasi: catatanValue,
+            rekomendasiAi: null,   // D-14: null saat disimpan offline tanpa AI
+            catatanSTT: null,       // D-14: null saat disimpan offline tanpa STT
+          },
+          timestamp: Date.now(),
+        })
+        toast({ description: 'Tersimpan lokal, akan sync saat online' })
+        navigate('/kader/meja/5', {
+          state: { antrianId, balitaId, namaBalita, pemeriksaanId },
+        })
+      } catch {
+        // WR-03: IDB unavailable or quota exceeded — warn kader
+        toast({ description: 'Gagal simpan offline — coba lagi', variant: 'destructive' })
+      }
       return
     }
 
