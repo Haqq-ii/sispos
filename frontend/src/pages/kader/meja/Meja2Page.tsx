@@ -28,6 +28,10 @@ import { useMutationClearActiveMeja } from '@/hooks/useActiveMeja'
 import { useKaderMejaStore } from '@/stores/useKaderMejaStore'
 import { useCreatePemeriksaan, type PemeriksaanRecord } from '@/hooks/usePemeriksaan'
 import apiClient from '@/lib/axios'
+import { useOfflineStatus } from '@/hooks/useOfflineStatus'
+import { useOfflineSync } from '@/hooks/useOfflineSync'
+import { SyncPendingBadge } from '@/components/offline/SyncPendingBadge'
+import { generateTempId } from '@/lib/offline-db'
 
 // ── Antrian item type (subset dari Meja 1) ────────────────────────────────────
 
@@ -131,6 +135,8 @@ function Meja2Content({
   const location = useLocation()
   const { toast } = useToast()
   const { activeAntrianId, activeBalitaId, activeNamaBalita, setActiveAntrian } = useKaderMejaStore()
+  const isOnline = useOfflineStatus()
+  const { enqueueOperation } = useOfflineSync()
 
   const routeState = location.state as {
     antrianId?: string
@@ -197,6 +203,31 @@ function Meja2Content({
       toast({
         description: 'Data balita tidak tersedia. Kembali ke Meja 1 dan pilih balita.',
         variant: 'destructive',
+      })
+      return
+    }
+
+    // Offline branch (Pitfall 3 — avoids Z-Score result blocking navigation)
+    if (!isOnline) {
+      const tempPemeriksaanId = generateTempId()
+      void enqueueOperation('pemeriksaan', {
+        id: generateTempId(),
+        tempPemeriksaanId,
+        type: 'create' as const,
+        data: {
+          balitaId,
+          antrianId,
+          beratBadan: bbValue,
+          tinggiBadan: tbStr !== '' && tbValue > 0 ? tbValue : undefined,
+          konfirmasiBiologis,
+        },
+        timestamp: Date.now(),
+      })
+      setActivePemeriksaanId(tempPemeriksaanId)
+      toast({ description: 'Tersimpan lokal, akan sync saat online' })
+      setShowKonfirmasi(false)
+      navigate('/kader/meja/3', {
+        state: { antrianId, balitaId, namaBalita, pemeriksaanId: tempPemeriksaanId },
       })
       return
     }
@@ -288,6 +319,7 @@ function Meja2Content({
             Tukar Meja
           </button>
         </div>
+        <SyncPendingBadge />
       </div>
 
       {/* ── Sub-header: balita ────────────────────────────────────────────── */}
