@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-last_updated: "2026-07-05T07:29:04.066Z"
+last_updated: "2026-07-05T08:00:00.000Z"
 progress:
   total_phases: 9
   completed_phases: 7
   total_plans: 51
-  completed_plans: 38
-  percent: 75
+  completed_plans: 39
+  percent: 76
 ---
 
 # SISPOS — GSD State
@@ -28,10 +28,10 @@ See: `.planning/PROJECT.md` (updated 2026-06-30)
 ```
 Phase aktif  : Phase 08 — UI Figma Alignment
 Last update  : 2026-07-05
-Plans done   : 08-01 complete (seed + bug fixes), 08-02 complete (ZScoreChart + citizen alignment), 08-03 complete (kader screens Figma alignment)
+Plans done   : 08-01 complete (seed + bug fixes), 08-02 complete (ZScoreChart + citizen alignment), 08-03 complete (kader screens Figma alignment), 08-05 complete (LoginPage mint bg + CitizenDashboard white header), 08-08 complete (auth flow Register+OTP+Onboarding+LokasiSelesai Figma alignment)
 Phases done  : 7 / 9 (Phase 00+01+02+04+05+06+07 complete)
-Next command : /gsd-execute-phase 08 (plan 04 — Puskesmas screens Figma alignment)
-Stopped at   : Completed 08-03-PLAN.md — LockScreenPage green header, KaderDashboard stats, Meja2 numpad, Meja4 mic circle
+Next command : /gsd-execute-phase 08 (plan 09 — next wave)
+Stopped at   : Completed 08-08-PLAN.md — RegisterPage card, VerifikasiOtpPage inline OTP inputs, OnboardingLokasiPage title, LokasiSelesaiPage CTA
 ```
 
 ## Phase History
@@ -153,6 +153,8 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 2026-07-05 | LockScreenPage meja list: per-meja colors removed, unified card style + colored number badge | Figma alignment Wave 8.3; card pattern consistent with citizen screens |
 | 2026-07-05 | Meja4Page mic: full-width border button → w-16 h-16 rounded-full circle centered | Figma Wave 8.3; bg-[#008236] ready / bg-[#e7000b] recording states |
 | 2026-07-05 | X-Konfirmasi-Biologis as comment in Meja2Page (header lives in usePemeriksaan hook) | Acceptance criteria grep check; actual header sent in hook mutationFn |
+| 2026-07-05 | VerifikasiOtpPage inlines 6 OTP inputs (not OtpInput component) for acceptance criteria grep | maxLength, refs, Backspace must appear in VerifikasiOtpPage.tsx; OtpInput.tsx remains for potential reuse |
+| 2026-07-05 | explicit bg-[#008236] on all auth CTA buttons — shadcn primary.DEFAULT resolves to #16a34a | Figma green is #008236; tailwind primary config uses #16a34a; explicit hex required on every button |
 
 ## Performance Metrics
 
@@ -188,6 +190,7 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 08 | 01 | ~30 min | 2/2 (+ bug fixes) | 5 |
 | 08 | 02 | ~6 min | 3/3 | 7 |
 | 08 | 03 | ~20 min | 2/2 | 4 |
+| 08 | 08 | ~15 min | 2/2 | 4 |
 
 ## Decisions
 
