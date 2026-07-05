@@ -1,9 +1,18 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 
 import { useMutationSetActiveMeja } from '@/hooks/useActiveMeja'
 import { useKaderMejaStore } from '@/stores/useKaderMejaStore'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 
 const MEJA_INFO = [
   {
@@ -42,6 +51,8 @@ export default function PelayananHariHPage() {
   const state = location.state as { slotId?: string; slotLabel?: string } | null
   const slotId = state?.slotId
   const slotLabel = state?.slotLabel ?? 'Sesi Pelayanan'
+
+  const [pendingMeja, setPendingMeja] = useState<number | null>(null)
 
   useEffect(() => {
     if (!slotId) navigate('/kader/dashboard', { replace: true })
@@ -97,7 +108,7 @@ export default function PelayananHariHPage() {
         {MEJA_INFO.map(({ n, nama, deskripsi }) => (
           <button
             key={n}
-            onClick={() => handleMejaSelect(n)}
+            onClick={() => setPendingMeja(n)}
             disabled={setActiveMejaMutation.isPending}
             className="w-full bg-white rounded-[14px] border border-gray-100 shadow-sm px-4 py-3.5 flex items-center gap-3 text-left active:bg-gray-50 disabled:opacity-60 transition-colors"
           >
@@ -121,6 +132,40 @@ export default function PelayananHariHPage() {
           </button>
         ))}
       </div>
+
+      {/* ── Konfirmasi Pilih Meja Dialog ────────────────────────────────────── */}
+      <Dialog
+        open={pendingMeja !== null}
+        onOpenChange={(o) => { if (!o) setPendingMeja(null) }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Konfirmasi Pilih Meja</DialogTitle>
+            <DialogDescription>
+              Kamu akan masuk ke Meja {pendingMeja} —{' '}
+              {MEJA_INFO.find((m) => m.n === pendingMeja)?.nama}.
+              Layar akan terkunci. Lanjutkan?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingMeja(null)}>
+              Batal
+            </Button>
+            <Button
+              className="bg-[#008236] hover:bg-[#00a63e] text-white"
+              onClick={() => {
+                if (pendingMeja !== null) {
+                  handleMejaSelect(pendingMeja)
+                  setPendingMeja(null)
+                }
+              }}
+              disabled={setActiveMejaMutation.isPending}
+            >
+              Lanjutkan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
