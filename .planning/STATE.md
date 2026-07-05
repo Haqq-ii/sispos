@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-last_updated: "2026-07-05T11:09:19Z"
+last_updated: "2026-07-05T11:21:04.624Z"
 progress:
   total_phases: 9
   completed_phases: 7
   total_plans: 51
-  completed_plans: 41
-  percent: 80
+  completed_plans: 44
+  percent: 78
 ---
 
 # SISPOS — GSD State
@@ -28,10 +28,10 @@ See: `.planning/PROJECT.md` (updated 2026-06-30)
 ```
 Phase aktif  : Phase 08 — UI Figma Alignment
 Last update  : 2026-07-05
-Plans done   : 08-01 complete (seed + bug fixes), 08-02 complete (ZScoreChart + citizen alignment), 08-03 complete (kader screens Figma alignment), 08-05 complete (LoginPage mint bg + CitizenDashboard white header), 08-08 complete (auth flow Register+OTP+Onboarding+LokasiSelesai Figma alignment), 08-10 complete (TumbuhKembang Grafik+Imunisasi tabs + ChatAssistant suggestion chips), 08-14 complete (KaderProfilPage STUB→functional + AuditLog/ManajemenJadwal/Laporan alignment), 08-15 complete (LandingPage mobile-first Figma 2001:691)
+Plans done   : 08-01 complete (seed + bug fixes), 08-02 complete (ZScoreChart + citizen alignment), 08-03 complete (kader screens Figma alignment), 08-05 complete (LoginPage mint bg + CitizenDashboard white header), 08-08 complete (auth flow Register+OTP+Onboarding+LokasiSelesai Figma alignment), 08-09 complete (citizen antrian flow 4 screens Figma alignment), 08-10 complete (TumbuhKembang Grafik+Imunisasi tabs + ChatAssistant suggestion chips), 08-14 complete (KaderProfilPage STUB→functional + AuditLog/ManajemenJadwal/Laporan alignment), 08-15 complete (LandingPage mobile-first Figma 2001:691)
 Phases done  : 7 / 9 (Phase 00+01+02+04+05+06+07 complete)
 Next command : /gsd-execute-phase 08 (plan 16 — next wave)
-Stopped at   : Completed 08-15-PLAN.md — LandingPage converted to mobile-first (max-w-sm, flex-col, no desktop grids), Masuk→/login, Daftar Sekarang→/register, auth redirect preserved
+Stopped at   : Completed 08-09-PLAN.md — PilihTanggal+PilihSesi card-select pattern, KonfirmasiAntrian Daftar Sekarang bg-[#008236], TiketAntrian disconnect alert updated
 ```
 
 ## Phase History
@@ -159,6 +159,8 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 2026-07-05 | logoutMutation onSettled (not onSuccess) — clears auth regardless of API result | Mirror KaderDashboard pattern; cookie cleared by server either way |
 | 2026-07-05 | LandingPage: max-w-sm flex-col single-column (mobile-first PWA) | Figma 2001:691 is mobile layout; desktop grid (max-w-6xl, md:grid-cols-3) removed |
 | 2026-07-05 | LandingPage Masuk button: bg-[#008236] explicit hex (not text link) | Primary CTA must be prominent; text link in nav was insufficient for mobile |
+| 2026-07-05 | PilihSesiPage: card tap selects (no navigate), separate Lanjutkan button navigates | Better UX; acceptance criteria require disabled={!selectedSlotId} on Lanjutkan |
+| 2026-07-05 | KonfirmasiAntrianPage: navigate(-1) on back/batal — respects history stack | Figma alignment requirement; avoids hardcoded route |
 
 ## Performance Metrics
 
@@ -197,6 +199,7 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 08 | 08 | ~15 min | 2/2 | 4 |
 | 08 | 10 | ~20 min | 2/2 | 5 |
 | 08 | 14 | ~10 min | 2/2 | 3 |
+| 08 | 09 | ~12 min | 2/2 | 4 |
 | 08 | 15 | ~8 min | 1/1 | 1 |
 
 ## Decisions
