@@ -17,6 +17,7 @@ import { PrismaClient } from '@prisma/client'
 import { seedWilayah } from './seed.wilayah'
 import { seedMassal } from './seed.massal'
 import { seedDemo } from './seed.demo'
+import { seedMawar } from './seed.mawar'
 import { seedToday } from './seed.today'
 
 const prisma = new PrismaClient()
@@ -25,19 +26,23 @@ async function main() {
   console.log('🌱 SISPOS Full Seed — mulai...')
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
 
-  console.log('\n[1/4] Seed Wilayah (DIY + Jateng + Jatim)...')
+  console.log('\n[1/5] Seed Wilayah (DIY + Jateng + Jatim)...')
   await seedWilayah(prisma)
   console.log('✓ Seed Wilayah selesai.')
 
-  console.log('\n[2/4] Seed Massal (Posyandu, Warga, Balita, Pemeriksaan, Imunisasi)...')
+  console.log('\n[2/5] Seed Massal (Posyandu, Warga, Balita, Pemeriksaan, Imunisasi)...')
   await seedMassal(prisma)
   console.log('✓ Seed Massal selesai.')
 
-  console.log('\n[3/4] Seed Demo (Akun demo, Balita ke-2)...')
+  console.log('\n[3/5] Seed Demo (Akun demo, Balita ke-2)...')
   await seedDemo(prisma)
   console.log('✓ Seed Demo selesai.')
 
-  console.log('\n[4/4] Seed Today (Jadwal, SlotSesi, Antrian hari ini)...')
+  console.log('\n[4/5] Seed Mawar (Riwayat pemeriksaan demo + 15 keluarga Posyandu Mawar)...')
+  await seedMawar(prisma)
+  console.log('✓ Seed Mawar selesai.')
+
+  console.log('\n[5/5] Seed Today (Jadwal, SlotSesi, Antrian hari ini)...')
   await seedToday(prisma)
   console.log('✓ Seed Today selesai.')
 

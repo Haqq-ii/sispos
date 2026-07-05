@@ -92,16 +92,36 @@ export default function Meja5Page() {
     pemeriksaanId?: string
   } | null
 
-  const antrianId = state?.antrianId ?? activeAntrianId ?? undefined
-  const balitaId = state?.balitaId ?? activeBalitaId ?? null
-  const namaBalita = state?.namaBalita ?? activeNamaBalita ?? 'Balita'
+  // Two-step: step 1 = select balita, step 2 = imunisasi UI
+  const [selectedAntrianId, setSelectedAntrianId] = useState<string | undefined>(undefined)
+  const [selectedBalitaId, setSelectedBalitaId] = useState<string | null>(null)
+  const [selectedNama, setSelectedNama] = useState('')
 
-  // Guard via useEffect — avoids synchronous navigate() during render
+  // Keep legacy aliases for existing code below
+  const antrianId = selectedAntrianId
+  const balitaId = selectedBalitaId
+  const namaBalita = selectedNama
+
+  // Guard: require activeSlotId
   useEffect(() => {
-    if (!antrianId) {
+    if (!activeSlotId) {
       navigate('/kader/dashboard', { replace: true })
     }
-  }, [antrianId, navigate])
+  }, [activeSlotId, navigate])
+
+  // Step 1: hadirList query
+  const { data: antrianList = [], isLoading: hadirListLoading } = useQuery<Array<{
+    id: string; nomorUrut: number; statusAntrian: string; balitaId: string;
+    balita: { namaBalita: string }
+  }>>({
+    queryKey: ['antrian', 'kader', activeSlotId],
+    queryFn: () =>
+      apiClient.get(`/kader/slot/${activeSlotId}/antrian`).then((r) => r.data.data),
+    enabled: !selectedAntrianId && !!activeSlotId,
+  })
+  const hadirList = antrianList.filter(
+    (a) => a.statusAntrian === 'dipanggil' || a.statusAntrian === 'selesai',
+  )
 
   // ── All hooks before any return ────────────────────────────────────────────
   const [showForm, setShowForm] = useState(false)
@@ -221,10 +241,76 @@ export default function Meja5Page() {
     selesaiMutation.mutate()
   }
 
-  // Guard: antrianId wajib ada — useEffect handles navigation above
-  if (!antrianId) return null
+  // Guard: activeSlotId wajib ada — useEffect handles navigation above
+  if (!activeSlotId) return null
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Step 1: select balita ──────────────────────────────────────────────────
+  if (!selectedAntrianId) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <div className="bg-[#e17100] px-4 pt-10 pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Syringe size={16} className="text-white" />
+              <div>
+                <p className="text-white font-bold text-sm">MEJA 5 — Imunisasi</p>
+                <p className="text-[#fee685] text-xs">Pilih balita untuk imunisasi</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <SyncPendingBadge />
+              <button onClick={() => setShowTukarMeja(true)} className="bg-[rgba(254,154,0,0.6)] border border-[rgba(255,185,0,0.5)] rounded-xl px-3 py-1.5 text-white text-xs font-medium">
+                Tukar Meja
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          <p className="text-sm font-semibold text-gray-700 mb-3">Pilih balita untuk imunisasi:</p>
+          {hadirListLoading ? (
+            <div className="flex justify-center py-10"><Loader2 size={24} className="animate-spin text-gray-300" /></div>
+          ) : hadirList.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-amber-200 p-4 text-center">
+              <p className="text-sm text-amber-700 font-semibold mb-1">Belum ada balita hadir</p>
+              <p className="text-xs text-gray-400">Tandai kehadiran di Meja 1 terlebih dahulu.</p>
+            </div>
+          ) : (
+            hadirList.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setSelectedAntrianId(item.id)
+                  setSelectedBalitaId(item.balitaId)
+                  setSelectedNama(item.balita.namaBalita)
+                }}
+                className="w-full bg-white border border-gray-100 rounded-2xl px-4 py-3 flex items-center justify-between shadow-sm active:bg-gray-50 text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-[#99a1af] text-xs font-semibold w-6">{String(item.nomorUrut).padStart(2, '0')}</span>
+                  <p className="font-bold text-[#1e2939] text-sm">{item.balita.namaBalita}</p>
+                </div>
+                <CheckCircle size={16} className="text-gray-300 flex-shrink-0" />
+              </button>
+            ))
+          )}
+        </div>
+
+        <div className="bg-white border-t border-gray-100 p-4">
+          <Button
+            variant="ghost"
+            className="w-full bg-[#fef2f2] border border-[#ffc9c9] text-[#e7000b] font-semibold rounded-2xl h-12 hover:bg-red-50"
+            onClick={() => navigate('/kader/dashboard', { replace: true })}
+          >
+            <LogOut size={16} className="mr-2" />Selesai Meja 5
+          </Button>
+        </div>
+        <TukarMejaModal open={showTukarMeja} onClose={() => setShowTukarMeja(false)} slotId={activeSlotId ?? ''} />
+      </div>
+    )
+  }
+
+  // ── Step 2: imunisasi for selected balita ──────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header — orange sesuai Figma */}

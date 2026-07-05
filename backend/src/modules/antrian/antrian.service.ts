@@ -245,7 +245,7 @@ export async function getAntrianSaya(wargaId: string) {
   const startOfToday = new Date()
   startOfToday.setUTCHours(0, 0, 0, 0)
 
-  return prisma.antrian.findFirst({
+  const antrian = await prisma.antrian.findFirst({
     where: {
       wargaId,
       statusAntrian: { in: ['menunggu', 'dipanggil'] },
@@ -264,6 +264,29 @@ export async function getAntrianSaya(wargaId: string) {
       },
     },
   })
+
+  if (!antrian) return null
+
+  const [dipanggilRow, sisaAntrian] = await Promise.all([
+    prisma.antrian.findFirst({
+      where: { slotId: antrian.slotId, statusAntrian: 'dipanggil' },
+      orderBy: { nomorUrut: 'asc' },
+      select: { nomorUrut: true },
+    }),
+    prisma.antrian.count({
+      where: {
+        slotId: antrian.slotId,
+        statusAntrian: 'menunggu',
+        nomorUrut: { lt: antrian.nomorUrut },
+      },
+    }),
+  ])
+
+  return {
+    ...antrian,
+    nomorAktif: dipanggilRow?.nomorUrut ?? 0,
+    sisaAntrian,
+  }
 }
 
 /**

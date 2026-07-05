@@ -390,9 +390,13 @@ export async function getRiwayatForCitizen(wargaId: string): Promise<
   {
     id: string
     createdAt: string
+    tanggalPemeriksaan: string | null
     beratBadan: number
     tinggiBadan: number
     zScore: number
+    zScoreBbU: number | null
+    zScoreTbU: number | null
+    zScoreBbTb: number | null
     statusGizi: string
   }[]
 > {
@@ -405,6 +409,8 @@ export async function getRiwayatForCitizen(wargaId: string): Promise<
       beratBadan: true,
       tinggiBadan: true,
       zScoreBbU: true,
+      zScoreTbU: true,
+      zScoreBbTb: true,
       statusGizi: true,
       statusGiziOverride: true,
     },
@@ -414,9 +420,13 @@ export async function getRiwayatForCitizen(wargaId: string): Promise<
   return records.map((r) => ({
     id: r.id,
     createdAt: r.createdAt.toISOString(),
+    tanggalPemeriksaan: r.tanggalPemeriksaan ? r.tanggalPemeriksaan.toISOString() : null,
     beratBadan: r.beratBadan ?? 0,
     tinggiBadan: r.tinggiBadan ?? 0,
     zScore: r.zScoreBbU ?? 0,
+    zScoreBbU: r.zScoreBbU ?? null,
+    zScoreTbU: r.zScoreTbU ?? null,
+    zScoreBbTb: r.zScoreBbTb ?? null,
     statusGizi: (r.statusGiziOverride ?? r.statusGizi ?? 'normal') as string,
   }))
 }

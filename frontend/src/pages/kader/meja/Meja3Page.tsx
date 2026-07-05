@@ -1,72 +1,39 @@
 /**
- * Meja3Page — Meja 3: Pencatatan Klinis
+ * Meja3Page — Meja 3: Analisis Z-Score (Figma Make two-step flow)
  *
- * Features:
- * - Z-Score trend chart (recharts) — BB/U, TB/U, BB/TB seluruh riwayat balita
- * - Tanda klinis checkbox form: rambutKemerahan, perutBuncit, edema, pucat + lainnya
- * - Status gizi override select (opsional)
- * - PATCH /api/growth/pemeriksaan/:id → simpan tanda klinis + statusGiziOverride
- * - Navigate ke Meja 4 dengan state { antrianId, balitaId, namaBalita, pemeriksaanId, tandaKlinis, statusGizi }
- * - "Lewati" → navigate ke Meja 4 tanpa menyimpan (tanda klinis opsional)
+ * Step 1: Select hadir balita from antrian list
+ * Step 2: Z-Score status card + grid (BB/TB/ZScore) + ZScoreChart trend + interpretation table
+ *         "Selesai Meja 3" → handleKeluarMeja (clear active meja + navigate dashboard)
  *
- * State source: router state dari Meja2Page (antrianId, balitaId, namaBalita, pemeriksaanId)
- * Fallback: useKaderMejaStore.activePemeriksaanId
- *
- * Note: Checkbox menggunakan native HTML input[type=checkbox] + Tailwind karena
- * @radix-ui/react-checkbox tidak tersedia di package.json (pola: InlineProgress plan 03-02).
+ * Guard: activeSlotId required (from store)
+ * State source: router state from Meja2Page (balitaId auto-selected if present)
  */
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { Loader2 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { CheckCircle, AlertTriangle, ChevronRight, Loader2 } from 'lucide-react'
 
-import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
+import { useMutationClearActiveMeja } from '@/hooks/useActiveMeja'
 import { useKaderMejaStore } from '@/stores/useKaderMejaStore'
-import { usePemeriksaanHistory, usePatchPemeriksaan } from '@/hooks/usePemeriksaan'
+import { usePemeriksaanHistory } from '@/hooks/usePemeriksaan'
 import { ZScoreChart, type ZScoreDataPoint } from '@/components/kader/ZScoreChart'
-import { useOfflineStatus } from '@/hooks/useOfflineStatus'
-import { useOfflineSync } from '@/hooks/useOfflineSync'
 import { SyncPendingBadge } from '@/components/offline/SyncPendingBadge'
-import { generateTempId } from '@/lib/offline-db'
 import { TukarMejaModal } from '@/components/kader/TukarMejaModal'
+import apiClient from '@/lib/axios'
 
-// ── Zod v4 schema (frontend) ──────────────────────────────────────────────
+// ── Types ──────────────────────────────────────────────────────────────────
 
-// Zod v4 frontend schema — TIDAK gunakan .default() agar zodResolver inference tidak mismatch
-// (pola dari Meja2Schema yang menggunakan .min() bukan .positive())
-const TandaKlinisSchema = z.object({
-  rambutKemerahan: z.boolean(),
-  perutBuncit: z.boolean(),
-  edema: z.boolean(),
-  pucat: z.boolean(),
-  lainnya: z.string().optional(),
-})
+interface AntrianItem {
+  id: string
+  nomorUrut: number
+  statusAntrian: string
+  balitaId: string
+  balita: { namaBalita: string; tanggalLahir: string }
+  warga?: { namaIbu?: string; rt?: string | null }
+}
 
-type TandaKlinisInput = z.infer<typeof TandaKlinisSchema>
-
-// Status gizi enum untuk select
-const STATUS_GIZI_OPTIONS = [
-  { value: 'normal', label: 'Normal' },
-  { value: 'kurang', label: 'Kurang' },
-  { value: 'buruk', label: 'Buruk' },
-  { value: 'lebih', label: 'Lebih' },
-  { value: 'obesitas', label: 'Obesitas' },
-  { value: 'pendek', label: 'Pendek' },
-  { value: 'sangat_pendek', label: 'Sangat Pendek' },
-] as const
-
-// ── Helper — format tanggal ke DD/MM/YY ──────────────────────────────────
+// ── Helpers ────────────────────────────────────────────────────────────────
 
 function formatTanggal(dateStr: string): string {
   const d = new Date(dateStr)
@@ -76,66 +43,87 @@ function formatTanggal(dateStr: string): string {
   return `${dd}/${mm}/${yy}`
 }
 
-// ── Main Component ─────────────────────────────────────────────────────────
+function getStatusRow(z: number | null): 'lebih' | 'normal' | 'kurang' | 'buruk' | null {
+  if (z === null) return null
+  if (z > 2) return 'lebih'
+  if (z >= -2) return 'normal'
+  if (z >= -3) return 'kurang'
+  return 'buruk'
+}
+
+const INTERPRETATION_ROWS = [
+  { key: 'lebih', label: '> +2 SD', desc: 'Lebih', color: 'text-orange-600', bg: 'bg-orange-50' },
+  { key: 'normal', label: '-2 s/d +2 SD', desc: 'Normal', color: 'text-green-700', bg: 'bg-green-50' },
+  { key: 'kurang', label: '-3 s/d -2 SD', desc: 'Kurang', color: 'text-amber-700', bg: 'bg-amber-50' },
+  { key: 'buruk', label: '< -3 SD', desc: 'Buruk / Stunting', color: 'text-red-700', bg: 'bg-red-50' },
+] as const
+
+// ── Guard wrapper ──────────────────────────────────────────────────────────
 
 export default function Meja3Page() {
   const navigate = useNavigate()
+  const { activeSlotId, activeBalitaId, activeAntrianId, activeNamaBalita } = useKaderMejaStore()
+  const clearActiveMejaMutation = useMutationClearActiveMeja()
+  const { reset: resetStore } = useKaderMejaStore()
   const location = useLocation()
-  const { toast } = useToast()
-  const { activePemeriksaanId, activeAntrianId, activeBalitaId, activeNamaBalita } = useKaderMejaStore()
 
-  // Router state dari Meja2Page navigate call
+  useEffect(() => {
+    if (!activeSlotId) navigate('/kader/dashboard', { replace: true })
+  }, [activeSlotId, navigate])
+
+  if (!activeSlotId) return null
+
   const routerState = location.state as {
-    antrianId?: string
     balitaId?: string
+    antrianId?: string
     namaBalita?: string
     pemeriksaanId?: string
   } | null
 
-  const antrianId = routerState?.antrianId ?? activeAntrianId ?? undefined
-  const balitaId = routerState?.balitaId ?? activeBalitaId ?? undefined
-  const namaBalita = routerState?.namaBalita ?? activeNamaBalita ?? 'Balita'
-  const pemeriksaanId = routerState?.pemeriksaanId ?? activePemeriksaanId
-
-  useEffect(() => {
-    if (!balitaId || !pemeriksaanId) navigate('/kader/dashboard', { replace: true })
-  }, [balitaId, pemeriksaanId, navigate])
-
-  if (!balitaId || !pemeriksaanId) return null
-
   return (
     <Meja3Content
-      antrianId={antrianId}
-      balitaId={balitaId}
-      namaBalita={namaBalita}
-      pemeriksaanId={pemeriksaanId}
+      activeSlotId={activeSlotId}
+      initialBalitaId={null}
+      initialNama={routerState?.namaBalita ?? activeNamaBalita ?? ''}
+      clearActiveMejaMutation={clearActiveMejaMutation}
+      resetStore={resetStore}
     />
   )
 }
 
-// ── Inner component (setelah guard passed) ────────────────────────────────
+// ── Inner component ────────────────────────────────────────────────────────
 
 interface Meja3ContentProps {
-  antrianId: string | undefined
-  balitaId: string
-  namaBalita: string
-  pemeriksaanId: string
+  activeSlotId: string
+  initialBalitaId: string | null
+  initialNama: string
+  clearActiveMejaMutation: ReturnType<typeof useMutationClearActiveMeja>
+  resetStore: () => void
 }
 
-function Meja3Content({ antrianId, balitaId, namaBalita, pemeriksaanId }: Meja3ContentProps) {
+function Meja3Content({ activeSlotId, initialBalitaId, initialNama, clearActiveMejaMutation, resetStore }: Meja3ContentProps) {
   const navigate = useNavigate()
   const { toast } = useToast()
-  const { activeSlotId } = useKaderMejaStore()
-  const isOnline = useOfflineStatus()
-  const { enqueueOperation } = useOfflineSync()
 
   const [showTukarMeja, setShowTukarMeja] = useState(false)
-  const [statusGiziOverride, setStatusGiziOverride] = useState<string | null>(null)
+  const [selectedBalitaId, setSelectedBalitaId] = useState<string | null>(initialBalitaId)
+  const [selectedNama, setSelectedNama] = useState(initialNama)
 
-  // Riwayat pemeriksaan untuk grafik Z-Score
-  const { data: history = [], isLoading: historyLoading } = usePemeriksaanHistory(balitaId)
+  // Step 1: antrian hadir list
+  const { data: antrianList = [], isLoading: listLoading } = useQuery<AntrianItem[]>({
+    queryKey: ['antrian', 'kader', activeSlotId],
+    queryFn: () =>
+      apiClient.get(`/kader/slot/${activeSlotId}/antrian`).then((r) => r.data.data as AntrianItem[]),
+    enabled: !selectedBalitaId,
+  })
+  const hadirList = antrianList.filter(
+    (a) => a.statusAntrian === 'dipanggil' || a.statusAntrian === 'selesai',
+  )
 
-  // Transform ke format ZScoreDataPoint
+  // Step 2: Z-Score history for selected balita
+  const { data: history = [], isLoading: historyLoading } = usePemeriksaanHistory(selectedBalitaId)
+  const latestRecord = history.length > 0 ? history[history.length - 1] : null
+
   const chartData: ZScoreDataPoint[] = history.map((p) => ({
     tanggal: formatTanggal(p.tanggalPemeriksaan),
     bbU: p.zScoreBbU,
@@ -143,122 +131,129 @@ function Meja3Content({ antrianId, balitaId, namaBalita, pemeriksaanId }: Meja3C
     bbTb: p.zScoreBbTb,
   }))
 
-  // Ambil statusGizi dari record terakhir sebagai default untuk override select
-  const latestRecord = history.length > 0 ? history[history.length - 1] : null
-  const currentStatusGizi = latestRecord?.statusGiziOverride ?? latestRecord?.statusGizi ?? null
+  const activeStatus = getStatusRow(latestRecord?.zScoreBbU ?? null)
+  const isNormal = activeStatus === 'normal' || activeStatus === null
+  const statusGizi = latestRecord?.statusGizi ?? latestRecord?.statusGiziOverride
 
-  // Tanda klinis form
-  const form = useForm<TandaKlinisInput>({
-    resolver: zodResolver(TandaKlinisSchema),
-    defaultValues: {
-      rambutKemerahan: false,
-      perutBuncit: false,
-      edema: false,
-      pucat: false,
-      lainnya: '',
-    },
-  })
-
-  // PATCH mutation
-  const patchMutation = usePatchPemeriksaan()
-
-  // Submit: simpan tanda klinis + statusGiziOverride ke PATCH endpoint
-  async function handleSubmit(values: TandaKlinisInput) {
-    const tandaKlinis = {
-      rambutKemerahan: values.rambutKemerahan,
-      perutBuncit: values.perutBuncit,
-      edema: values.edema,
-      pucat: values.pucat,
-      lainnya: values.lainnya ?? null,
-    }
-
-    // Offline branch — enqueue ke pemeriksaan_queue saat tidak ada koneksi
-    if (!isOnline) {
-      try {
-        await enqueueOperation('pemeriksaan', {
-          id: generateTempId(),
-          tempPemeriksaanId: pemeriksaanId,
-          type: 'patch-tanda-klinis' as const,
-          data: {
-            rambutKemerahan: values.rambutKemerahan,
-            perutBuncit: values.perutBuncit,
-            edema: values.edema,
-            pucat: values.pucat,
-            lainnya: values.lainnya ?? null,
-            statusGiziOverride: statusGiziOverride ?? undefined,
-          },
-          timestamp: Date.now(),
-        })
-        toast({ description: 'Tersimpan lokal, akan sync saat online' })
-        navigate('/kader/meja/4', {
-          state: {
-            antrianId,
-            balitaId,
-            namaBalita,
-            pemeriksaanId,
-            tandaKlinis,
-            statusGizi: statusGiziOverride,
-          },
-        })
-      } catch {
-        // WR-03: IDB unavailable or quota exceeded — warn kader
-        toast({ description: 'Gagal simpan offline — coba lagi', variant: 'destructive' })
-      }
-      return
-    }
-
-    patchMutation.mutate(
-      {
-        id: pemeriksaanId,
-        tandaKlinis,
-        statusGiziOverride: statusGiziOverride,
+  const handleKeluarMeja = () => {
+    clearActiveMejaMutation.mutate(undefined, {
+      onSuccess: () => {
+        resetStore()
+        navigate('/kader/dashboard', { replace: true })
       },
-      {
-        onSuccess: (result) => {
-          navigate('/kader/meja/4', {
-            state: {
-              antrianId,
-              balitaId,
-              namaBalita,
-              pemeriksaanId,
-              tandaKlinis,
-              statusGizi: result.statusGiziOverride ?? result.statusGizi ?? currentStatusGizi,
-            },
-          })
-        },
-        onError: () => {
-          toast({
-            description: 'Gagal menyimpan tanda klinis. Silakan coba lagi.',
-            variant: 'destructive',
-          })
-        },
-      }
-    )
-  }
-
-  // Lewati: navigate ke Meja 4 tanpa menyimpan (tanda klinis opsional)
-  function handleSkip() {
-    navigate('/kader/meja/4', {
-      state: {
-        antrianId,
-        balitaId,
-        namaBalita,
-        pemeriksaanId,
-        tandaKlinis: null,
-        statusGizi: currentStatusGizi,
+      onError: () => {
+        toast({ description: 'Gagal keluar meja. Coba lagi.', variant: 'destructive' })
       },
     })
   }
 
+  // ── Header ─────────────────────────────────────────────────────────────
+
+  const Header = (
+    <div className="bg-[#008236] px-4 pt-10 pb-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-white font-bold text-sm">MEJA 3 — Analisis Z-Score</p>
+          <p className="text-[#b9f8cf] text-xs">
+            {selectedBalitaId ? selectedNama : 'Pilih balita'}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <SyncPendingBadge />
+          <button
+            onClick={() => setShowTukarMeja(true)}
+            className="bg-[rgba(0,166,62,0.6)] border border-[rgba(0,201,80,0.5)] rounded-xl px-3 py-1.5 text-white text-xs font-medium"
+          >
+            Tukar Meja
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+
+  // ── Step 1: select balita ───────────────────────────────────────────────
+
+  if (!selectedBalitaId) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        {Header}
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          <p className="text-sm font-semibold text-gray-700 mb-3">
+            Pilih balita untuk analisis Z-Score:
+          </p>
+
+          {listLoading ? (
+            <div className="flex justify-center py-10">
+              <Loader2 size={24} className="animate-spin text-gray-300" />
+            </div>
+          ) : hadirList.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-amber-200 p-4 text-center">
+              <p className="text-sm text-amber-700 font-semibold mb-1">Belum ada balita hadir</p>
+              <p className="text-xs text-gray-400">Tandai kehadiran di Meja 1 terlebih dahulu.</p>
+            </div>
+          ) : (
+            hadirList.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setSelectedBalitaId(item.balitaId)
+                  setSelectedNama(item.balita.namaBalita)
+                }}
+                className="w-full bg-white border border-gray-100 rounded-2xl px-4 py-3 flex items-center justify-between shadow-sm active:bg-gray-50 text-left"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[#99a1af] text-xs font-semibold w-6">
+                      {String(item.nomorUrut).padStart(2, '0')}
+                    </span>
+                    <p className="font-bold text-[#1e2939] text-sm">{item.balita.namaBalita}</p>
+                  </div>
+                  {item.warga?.namaIbu && (
+                    <p className="text-xs text-gray-400 mt-0.5 ml-8">Ibu: {item.warga.namaIbu}</p>
+                  )}
+                </div>
+                <ChevronRight size={16} className="text-gray-400 flex-shrink-0" />
+              </button>
+            ))
+          )}
+        </div>
+
+        {/* Selesai Meja 3 */}
+        <div className="bg-white border-t border-gray-100 px-4 py-3">
+          <button
+            onClick={handleKeluarMeja}
+            disabled={clearActiveMejaMutation.isPending}
+            className="w-full bg-[#fef2f2] border border-[#ffc9c9] text-[#e7000b] rounded-2xl py-3 text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {clearActiveMejaMutation.isPending && <Loader2 size={14} className="animate-spin" />}
+            Selesai Meja 3
+          </button>
+        </div>
+        <TukarMejaModal open={showTukarMeja} onClose={() => setShowTukarMeja(false)} slotId={activeSlotId} />
+      </div>
+    )
+  }
+
+  // ── Step 2: Z-Score detail ──────────────────────────────────────────────
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
 
-      {/* ── Header ────────────────────────────────────────────────────────── */}
+      {/* Header with back button */}
       <div className="bg-[#008236] px-4 pt-10 pb-4">
         <div className="flex items-center justify-between">
-          <div>
-            <p className="text-white font-bold text-sm">MEJA 3 — Analisis Z-Score</p>
-            <p className="text-[#b9f8cf] text-xs">Grafik pertumbuhan otomatis · {namaBalita}</p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSelectedBalitaId(null)}
+              className="bg-[rgba(0,166,62,0.5)] rounded-xl p-2"
+            >
+              <ChevronRight size={16} className="text-white rotate-180" />
+            </button>
+            <div>
+              <p className="text-white font-bold text-sm">MEJA 3 — Analisis Z-Score</p>
+              <p className="text-[#b9f8cf] text-xs">{selectedNama}</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <SyncPendingBadge />
@@ -272,20 +267,72 @@ function Meja3Content({ antrianId, balitaId, namaBalita, pemeriksaanId }: Meja3C
         </div>
       </div>
 
-      {/* ── Body ──────────────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
 
-        {/* Z-Score Chart */}
+        {/* Z-Score status card */}
+        {historyLoading ? (
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 h-24 flex items-center justify-center">
+            <Loader2 size={20} className="animate-spin text-gray-300" />
+          </div>
+        ) : (
+          <div
+            className={`rounded-2xl p-4 flex items-center gap-3 ${isNormal ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}
+          >
+            {isNormal
+              ? <CheckCircle size={24} className="text-green-600 flex-shrink-0" />
+              : <AlertTriangle size={24} className="text-amber-600 flex-shrink-0" />
+            }
+            <div>
+              <p className={`font-bold text-sm ${isNormal ? 'text-green-800' : 'text-amber-800'}`}>
+                {statusGizi
+                  ? statusGizi.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+                  : activeStatus === 'normal' ? 'Normal' : 'Perlu Perhatian'}
+              </p>
+              <p className={`text-xs ${isNormal ? 'text-green-600' : 'text-amber-600'}`}>
+                Hasil analisis Z-Score WHO 2006
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* BB / TB / Z-Score grid */}
+        {latestRecord && (
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-white rounded-xl border border-gray-100 p-3 text-center shadow-sm">
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Z-Score</p>
+              <p className="font-bold text-[#1e2939] text-base">
+                {latestRecord.zScoreBbU != null ? latestRecord.zScoreBbU.toFixed(1) : '—'}
+              </p>
+              <p className="text-[10px] text-gray-400">BB/U</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-100 p-3 text-center shadow-sm">
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Berat</p>
+              <p className="font-bold text-[#1e2939] text-base">
+                {latestRecord.beratBadan != null ? latestRecord.beratBadan : '—'}
+              </p>
+              <p className="text-[10px] text-gray-400">kg</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-100 p-3 text-center shadow-sm">
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Tinggi</p>
+              <p className="font-bold text-[#1e2939] text-base">
+                {latestRecord.tinggiBadan != null ? latestRecord.tinggiBadan : '—'}
+              </p>
+              <p className="text-[10px] text-gray-400">cm</p>
+            </div>
+          </div>
+        )}
+
+        {/* Z-Score trend chart */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-            Tren Z-Score — {namaBalita}
+            Tren Z-Score — {selectedNama}
           </p>
           {historyLoading ? (
-            <div className="h-[240px] flex items-center justify-center text-gray-400 text-sm">
+            <div className="h-[200px] flex items-center justify-center text-gray-400 text-sm">
               Memuat data...
             </div>
           ) : chartData.length === 0 ? (
-            <div className="h-[240px] flex items-center justify-center text-gray-400 text-sm">
+            <div className="h-[120px] flex items-center justify-center text-gray-400 text-sm">
               Belum ada riwayat pemeriksaan
             </div>
           ) : (
@@ -293,114 +340,53 @@ function Meja3Content({ antrianId, balitaId, namaBalita, pemeriksaanId }: Meja3C
           )}
         </div>
 
-        {/* Tanda Klinis Form */}
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-3">
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-              Tanda Klinis (opsional)
+        {/* Interpretation table */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-50">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Interpretasi Z-Score (BB/U)
             </p>
-            <div className="space-y-3">
-              {([
-                { key: 'rambutKemerahan', label: 'Rambut Kemerahan/Kusam' },
-                { key: 'perutBuncit', label: 'Perut Buncit' },
-                { key: 'edema', label: 'Edema (bengkak kaki/tangan)' },
-                { key: 'pucat', label: 'Pucat/Anemia' },
-              ] as const).map(({ key, label }) => (
-                <div key={key} className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    id={key}
-                    className="h-4 w-4 rounded border-gray-300 text-[#008236] focus:ring-[#008236]"
-                    {...form.register(key)}
-                  />
-                  <Label htmlFor={key} className="text-sm text-gray-700 cursor-pointer font-normal">
-                    {label}
-                  </Label>
-                </div>
-              ))}
-              <div className="pt-1">
-                <Label htmlFor="lainnya" className="text-xs text-gray-500 mb-1 block">
-                  Tanda klinis lainnya:
-                </Label>
-                <Input
-                  id="lainnya"
-                  placeholder="Tuliskan jika ada..."
-                  className="text-sm h-9"
-                  {...form.register('lainnya')}
-                />
-              </div>
-            </div>
           </div>
-
-          {/* Status Gizi Override */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-              Override Status Gizi{' '}
-              <span className="font-normal normal-case text-gray-400">(opsional)</span>
-            </p>
-            <p className="text-xs text-gray-400 mb-3">
-              Hanya isi jika berbeda dari hasil otomatis ({currentStatusGizi ?? 'belum tersedia'})
-            </p>
-            <Select
-              value={statusGiziOverride ?? ''}
-              onValueChange={(val) => setStatusGiziOverride(val || null)}
-            >
-              <SelectTrigger className="w-full text-sm">
-                <SelectValue placeholder="Pilih override status gizi..." />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_GIZI_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {statusGiziOverride && (
-              <button
-                type="button"
-                className="mt-1.5 text-xs text-gray-400 hover:text-gray-600"
-                onClick={() => setStatusGiziOverride(null)}
+          {INTERPRETATION_ROWS.map((row) => {
+            const isActiveRow = row.key === activeStatus
+            return (
+              <div
+                key={row.key}
+                className={[
+                  'flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0',
+                  isActiveRow ? row.bg : '',
+                ].join(' ')}
               >
-                Hapus override
-              </button>
-            )}
-          </div>
+                <div>
+                  <p className={`text-sm font-semibold ${isActiveRow ? row.color : 'text-gray-700'}`}>
+                    {row.desc}
+                  </p>
+                  <p className={`text-xs ${isActiveRow ? row.color : 'text-gray-400'}`}>
+                    {row.label}
+                  </p>
+                </div>
+                {isActiveRow && (
+                  <CheckCircle size={16} className={row.color} />
+                )}
+              </div>
+            )
+          })}
+        </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={handleSkip}
-              disabled={patchMutation.isPending}
-              className="flex-1 border border-[#05df72] text-[#008236] rounded-2xl py-3.5 text-sm font-semibold"
-            >
-              Lewati
-            </button>
-            <button
-              type="submit"
-              disabled={patchMutation.isPending}
-              className="flex-1 bg-[#008236] text-white rounded-2xl py-3.5 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
-            >
-              {patchMutation.isPending ? (
-                <><Loader2 className="h-4 w-4 animate-spin" />Menyimpan...</>
-              ) : (
-                'Simpan & Lanjut'
-              )}
-            </button>
-          </div>
-
-          {/* Selesai Meja 3 */}
-          <button
-            type="button"
-            onClick={() => navigate('/kader/dashboard', { replace: true })}
-            className="w-full bg-[#fef2f2] border border-[#ffc9c9] text-[#e7000b] rounded-2xl py-3 text-sm font-semibold"
-          >
-            Selesai Meja 3
-          </button>
-        </form>
       </div>
-      <TukarMejaModal open={showTukarMeja} onClose={() => setShowTukarMeja(false)} slotId={activeSlotId ?? ''} />
+
+      {/* Selesai Meja 3 */}
+      <div className="bg-white border-t border-gray-100 px-4 py-3">
+        <button
+          onClick={handleKeluarMeja}
+          disabled={clearActiveMejaMutation.isPending}
+          className="w-full bg-[#fef2f2] border border-[#ffc9c9] text-[#e7000b] rounded-2xl py-3 text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {clearActiveMejaMutation.isPending && <Loader2 size={14} className="animate-spin" />}
+          Selesai Meja 3
+        </button>
+      </div>
+      <TukarMejaModal open={showTukarMeja} onClose={() => setShowTukarMeja(false)} slotId={activeSlotId} />
     </div>
   )
 }

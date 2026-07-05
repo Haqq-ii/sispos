@@ -35,7 +35,8 @@ export const aiRouter = Router()
 // ── Request Schema ────────────────────────────────────────────────────────
 
 const EarlyWarningRequestSchema = z.object({
-  pemeriksaanId: z.string().uuid({ message: 'pemeriksaanId wajib berupa UUID yang valid' }),
+  pemeriksaanId: z.string().uuid({ message: 'pemeriksaanId harus berupa UUID yang valid' }).optional(),
+  balitaId: z.string().uuid({ message: 'balitaId harus berupa UUID yang valid' }).optional(),
   tandaKlinis: z
     .object({
       rambutKemerahan: z.boolean(),
@@ -67,10 +68,37 @@ async function earlyWarningHandler(req: AuthRequest, res: Response): Promise<voi
     return
   }
 
-  const { pemeriksaanId, tandaKlinis } = parsed.data
+  const { pemeriksaanId: pemeriksaanIdReq, balitaId: balitaIdReq, tandaKlinis } = parsed.data
   const kaderId = req.user!.userId
 
   try {
+    // Resolve pemeriksaanId: dari request langsung, atau auto-fetch terbaru untuk balitaId
+    let pemeriksaanId = pemeriksaanIdReq
+    if (!pemeriksaanId) {
+      if (!balitaIdReq) {
+        res.status(400).json({
+          success: false,
+          error: 'VALIDASI_GAGAL',
+          message: 'Wajib menyertakan pemeriksaanId atau balitaId',
+        })
+        return
+      }
+      const latest = await prisma.pemeriksaan.findFirst({
+        where: { balitaId: balitaIdReq },
+        orderBy: { tanggalPemeriksaan: 'desc' },
+        select: { id: true },
+      })
+      if (!latest) {
+        res.status(404).json({
+          success: false,
+          error: 'PEMERIKSAAN_TIDAK_DITEMUKAN',
+          message: 'Tidak ada riwayat pemeriksaan untuk balita ini.',
+        })
+        return
+      }
+      pemeriksaanId = latest.id
+    }
+
     // 1. Fetch pemeriksaan dengan balita dan antrian chain (untuk IDOR guard)
     const pemeriksaan = await prisma.pemeriksaan.findUnique({
       where: { id: pemeriksaanId },

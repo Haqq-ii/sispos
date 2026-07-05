@@ -1,81 +1,117 @@
 {
   "version": "1.0",
-  "timestamp": "2026-07-05T07:29:43.234Z",
+  "timestamp": "2026-07-06T00:00:00.000Z",
   "phase": "08",
   "phase_name": "ui-figma-alignment",
   "phase_dir": ".planning/phases/08-ui-figma-alignment",
-  "plan": 5,
-  "task": 1,
-  "total_tasks": 16,
-  "status": "paused",
+  "status": "paused_with_bugs",
   "completed_tasks": [
-    {"id": 1, "name": "08-01: Seed pipeline + backend bug fixes", "status": "done", "commit": "committed"},
-    {"id": 2, "name": "08-02: ZScoreChart + citizen token tweaks", "status": "done", "commit": "committed"},
-    {"id": 3, "name": "08-03: LockScreen + KaderDash + Meja2/4 token adjustments", "status": "done", "commit": "committed"},
-    {"id": 4, "name": "08-04: PetaStunting mobile-first + Puskesmas screens", "status": "done", "commit": "committed"},
-    {"id": 5, "name": "08-05 Task 1 (old): FamilyAccountPage + ProfilSayaPage", "status": "done", "commit": "4aaf69e"},
-    {"id": 6, "name": "PLANNING: Created 10 new plans (08-07 corrected + 08-08 through 08-16)", "status": "done", "commit": "5458a4b"}
+    {"id": 1, "name": "08-01: Seed pipeline + backend bug fixes", "status": "done"},
+    {"id": 2, "name": "08-02: getCitizenGrowthRiwayat + ZScoreChart + citizen tokens", "status": "done"},
+    {"id": 3, "name": "08-03: LockScreen + KaderDash + Meja2/4 tokens", "status": "done"},
+    {"id": 4, "name": "08-04: PetaStunting mobile-first + Puskesmas screens", "status": "done"},
+    {"id": 5, "name": "08-05: LoginPage mint bg + CitizenDashboard white header", "status": "done"},
+    {"id": 6, "name": "08-06: KaderDashboard stats API + BarChart+PieChart+Tabs (Figma 27:2531)", "status": "done"},
+    {"id": 7, "name": "08-07: verify-ketua-pin backend + TukarMejaModal fullscreen + Meja1-5 wired (Tasks 1-3)", "status": "partial", "note": "Task 4 human checkpoint pending"},
+    {"id": 8, "name": "08-08: Auth flow Register+OTP+Onboarding+LokasiSelesai alignment", "status": "done"},
+    {"id": 9, "name": "08-09: Antrian flow 4 screens (PilihTanggal+PilihSesi+Konfirmasi+TiketAntrian)", "status": "done"},
+    {"id": 10, "name": "08-10: TumbuhKembang Grafik+Imunisasi tabs + ChatAssistant suggestion chips", "status": "done"},
+    {"id": 11, "name": "08-14: KaderProfilPage functional + AuditLog/ManajemenJadwal/Laporan alignment", "status": "done"},
+    {"id": 12, "name": "08-15: LandingPage mobile-first (Figma 2001:691)", "status": "done"},
+    {"id": 13, "name": "seed.mawar.ts: 15 keluarga Posyandu Mawar + Budi/Sari WHO trajectory (633 pemeriksaan)", "status": "done"}
   ],
   "remaining_tasks": [
-    {"id": 7, "name": "EXECUTE 08-05: LoginPage mint bg + CitizenDashboard white greeting", "status": "not_started"},
-    {"id": 8, "name": "EXECUTE 08-06: Backend kader dashboard stats + KaderDashboard recharts", "status": "not_started"},
-    {"id": 9, "name": "EXECUTE 08-07: verify-ketua-pin backend + TukarMejaModal fullscreen + Meja1-5 wire + QA", "status": "not_started"},
-    {"id": 10, "name": "EXECUTE 08-08: Auth flow alignment (Kader Login, Register, OTP, Lokasi)", "status": "not_started"},
-    {"id": 11, "name": "EXECUTE 08-09: Antrian flow mobile alignment (Pilih Tanggal, Sesi, Konfirmasi, Cetak)", "status": "not_started"},
-    {"id": 12, "name": "EXECUTE 08-10: TumbuhKembang real tabs + ChatAssistant alignment", "status": "not_started"},
-    {"id": 13, "name": "EXECUTE 08-11: Meja 1 alignment + Daftar Manual", "status": "not_started"},
-    {"id": 14, "name": "EXECUTE 08-12: Meja 2 + Meja 3 alignment", "status": "not_started"},
-    {"id": 15, "name": "EXECUTE 08-13: Meja 4 + Meja 5 alignment (CRITICAL: Selesai Pelayanan)", "status": "not_started"},
-    {"id": 16, "name": "EXECUTE 08-14: KaderProfil + AuditLog + ManajemenJadwal + Laporan audit", "status": "not_started"},
-    {"id": 17, "name": "EXECUTE 08-15: Landing page mobile", "status": "not_started"},
-    {"id": 18, "name": "EXECUTE 08-16: Final QA checkpoint", "status": "not_started"}
+    {"id": 14, "name": "CHECKPOINT 08-07 Task 4: human visual verify 08-05 through 08-07 screens", "status": "blocking_checkpoint"},
+    {"id": 15, "name": "FIX BUG-1+2: growth.service.ts getRiwayatForCitizen missing tanggalPemeriksaan+zScoreTbU+zScoreBbTb", "status": "not_started", "priority": "critical"},
+    {"id": 16, "name": "FIX BUG-1+2: TumbuhKembangPage grafikData mapping wrong field names", "status": "not_started", "priority": "critical"},
+    {"id": 17, "name": "FIX BUG-3: Meja3Page initialBalitaId should always be null (not from store)", "status": "not_started", "priority": "critical"},
+    {"id": 18, "name": "FIX BUG-3: Meja4Page selectedBalitaId initial state should be null (not from store)", "status": "not_started", "priority": "critical"},
+    {"id": 19, "name": "FIX BUG-3: Meja5Page selectedAntrianId + selectedBalitaId initial state should be null (not from store)", "status": "not_started", "priority": "critical"},
+    {"id": 20, "name": "FIX BUG-4: Meja4Page save catatan onSuccess must setSelectedBalitaId(null) to return to Step 1", "status": "not_started", "priority": "high"},
+    {"id": 21, "name": "FIX BUG-5: ai.routes.ts pemeriksaanId optional OR Meja4 auto-fetch latest pemeriksaan on balita select", "status": "not_started", "priority": "high"},
+    {"id": 22, "name": "FIX BUG-6+7: CitizenDashboard aktif dilayani/sisa antrian hardcoded '--'; nomorAktif hardcoded 0", "status": "not_started", "priority": "high"},
+    {"id": 23, "name": "FIX BUG-6+7: antrian.service.ts /antrian/saya must return nomorAktif + sisaAntrian", "status": "not_started", "priority": "high"},
+    {"id": 24, "name": "EXECUTE 08-11: PelayananHariHPage confirmation modal + Meja 1 alignment + Daftar Manual", "status": "not_started"},
+    {"id": 25, "name": "EXECUTE 08-12: Meja 2 + Meja 3 alignment", "status": "not_started"},
+    {"id": 26, "name": "EXECUTE 08-13: Meja 4 + Meja 5 + Imunisasi sub-screens alignment", "status": "not_started"},
+    {"id": 27, "name": "EXECUTE 08-16: Final QA lint + human visual verify", "status": "not_started"},
+    {"id": 28, "name": "FIX BUG-8: Family account (large feature — separate session)", "status": "deferred"}
+  ],
+  "bugs_found": [
+    {
+      "id": "BUG-1",
+      "title": "Z-score tidak muncul di TumbuhKembangPage chart",
+      "file": "frontend/src/pages/citizen/TumbuhKembangPage.tsx",
+      "detail": "grafikData maps record.zScoreBbU ?? null — but API returns zScore not zScoreBbU → all null → chart empty",
+      "fix": "Change to record.zScoreBbU ?? record.zScore"
+    },
+    {
+      "id": "BUG-2",
+      "title": "Data terbalik — terbaru harusnya di atas",
+      "file": "backend/src/modules/growth/growth.service.ts",
+      "line": 389,
+      "detail": "getRiwayatForCitizen: select missing tanggalPemeriksaan, zScoreTbU, zScoreBbTb; mapped return only has id/createdAt/beratBadan/tinggiBadan/zScore/statusGizi; tanggalPemeriksaan not passed through so TumbuhKembangPage falls back to createdAt (seed date) for all records",
+      "fix": "Add tanggalPemeriksaan, zScoreTbU, zScoreBbTb to select + return mapping"
+    },
+    {
+      "id": "BUG-3",
+      "title": "Meja 3/4/5 skip daftar balita — langsung ke input",
+      "files": [
+        "frontend/src/pages/kader/meja/Meja3Page.tsx:87",
+        "frontend/src/pages/kader/meja/Meja4Page.tsx:95",
+        "frontend/src/pages/kader/meja/Meja5Page.tsx:99"
+      ],
+      "detail": "All three pages initialize selectedBalitaId from routerState?.balitaId ?? activeBalitaId ?? null — pre-selects from store and skips Step 1 (balita picker)",
+      "fix": "Change initial state to null always in all three pages"
+    },
+    {
+      "id": "BUG-4",
+      "title": "Meja 4 setelah simpan tidak kembali ke daftar anak",
+      "file": "frontend/src/pages/kader/meja/Meja4Page.tsx:196",
+      "detail": "onSuccess of save catatan only shows toast, does not setSelectedBalitaId(null) → stays in Step 2 (input view) after save",
+      "fix": "Add setSelectedBalitaId(null) in save catatan onSuccess callback"
+    },
+    {
+      "id": "BUG-5",
+      "title": "AI Early Warning gagal generate",
+      "file": "backend/src/modules/ai/ai.routes.ts:38",
+      "detail": "EarlyWarningRequestSchema = z.object({ pemeriksaanId: z.string().uuid() }) — required UUID. Meja4 sends pemeriksaanId: selectedPemeriksaanId which can be null (when kader navigates to Meja4 directly without coming from Meja2) → 400 error",
+      "fix": "Option A: make pemeriksaanId optional in schema + auto-fetch latest pemeriksaan for balita in handler. Option B: Meja4 auto-fetch latest pemeriksaanId when balita is selected (useQuery). Prefer Option A."
+    },
+    {
+      "id": "BUG-6",
+      "title": "Kader dashboard aktif dilayani dan sisa antrian tampilkan '--'",
+      "file": "frontend/src/pages/citizen/CitizenDashboardPage.tsx:234",
+      "detail": "Lines 234-239 hardcode 'Aktif Dilayani' value as literal '--' and 'Sisa Antrian' as literal '--'. AntrianAktif interface has no nomorAktif or sisaAntrian fields.",
+      "fix": "Add nomorAktif + sisaAntrian to AntrianAktif interface + /antrian/saya backend response"
+    },
+    {
+      "id": "BUG-7",
+      "title": "Estimasi waktu dilayani tidak berkurang meski posisi dipanggil",
+      "file": "frontend/src/pages/citizen/CitizenDashboardPage.tsx:147",
+      "detail": "computeCountdown called with nomorAktif: 0 hardcoded → estimasi never changes regardless of real queue position. AntrianAktif.nomorAktif not available.",
+      "fix": "Backend /antrian/saya must include nomorAktif in response; frontend use real value"
+    },
+    {
+      "id": "BUG-8",
+      "title": "Family account belum ada",
+      "detail": "Family account feature not implemented. Large feature — needs separate session planning.",
+      "priority": "deferred"
+    }
   ],
   "blockers": [],
   "human_actions_pending": [
     {
       "action": "Human verify checkpoint in 08-07 Task 4: verify all screens 08-05 through 08-07 visually",
-      "context": "Mandatory QA checkpoint — executor will pause and wait for human approval before continuing",
+      "context": "Mandatory QA checkpoint — must be done before continuing 08-11 through 08-16",
       "blocking": true
     },
     {
-      "action": "Human verify checkpoint in 08-16: final full QA of all 16 screens",
+      "action": "Human verify checkpoint in 08-16: final full QA of all screens",
       "context": "Final gate before Phase 08 can be marked complete",
       "blocking": true
     }
   ],
-  "decisions": [
-    {
-      "decision": "TukarMejaModal is FULLSCREEN (fixed inset-0 z-50), NOT shadcn Dialog",
-      "rationale": "Figma spec confirmed — modal menutup seluruh layar, tidak bisa di-dismiss tanpa PIN",
-      "phase": "08"
-    },
-    {
-      "decision": "Max 3 percobaan PIN Tukar Meja (NOT 10 like kader lockout)",
-      "rationale": "Figma spec: 3x → disabled → Master Overrule by Puskesmas via ManajemenPengguna",
-      "phase": "08"
-    },
-    {
-      "decision": "On Tukar Meja PIN success: navigate to /kader/pelayanan (PelayananGateway) NOT LockScreenPage",
-      "rationale": "Figma spec: kembali ke PelayananGateway → pilih meja baru",
-      "phase": "08"
-    },
-    {
-      "decision": "PelayananHariHPage needs confirmation modal before entering meja",
-      "rationale": "Figma spec: tap meja → modal konfirmasi → Confirm → setActiveMeja + navigate",
-      "phase": "08"
-    },
-    {
-      "decision": "Demo PIN ketua kader: 654321",
-      "rationale": "User-confirmed from Figma spec; different from kader login PIN (123456)",
-      "phase": "08"
-    },
-    {
-      "decision": "ALL 96 Figma frames audited — 16 plans created to cover all unique mobile screens",
-      "rationale": "User requested zero frames skipped, all buttons functional",
-      "phase": "08"
-    }
-  ],
-  "uncommitted_files": [".planning/STATE.md"],
-  "next_action": "/gsd-execute-phase 08 — starts at 08-05 (Login pixel-perfect + CitizenDashboard)",
-  "context_notes": "Full re-plan session. User provided Figma spec for PelayananHariH workflow. Audited all 96 Figma frames — found 20+ screens not covered. Planner created 10 new plans (08-07 corrected + 08-08 through 08-16). Each plan mandates Figma MCP get_screenshot before any JSX. Every button must have working handler. Key screens: Login mint bg, CitizenDashboard NO green header, KaderDashboard bar+donut charts, Meja pages full alignment. Figma file key: 4DIazKntakgAGXBDYefjbD, single page named 'sispos'."
+  "next_action": "Fix bugs 1-7 first (critical for demo), then continue /gsd-execute-phase 08 for remaining plans (08-11, 08-12, 08-13, 08-16)",
+  "context_notes": "Session 2026-07-06: seed.mawar.ts created and run successfully (633 pemeriksaan, 15 families, Budi+Sari WHO trajectories). User reported 8 bugs post-demo-test. All 8 analyzed, none fixed yet (context ran out). Bugs 1-7 must be fixed before demo. Bug 8 (family account) deferred. Most plans executed: 08-05,06,07(partial),08,09,10,14,15. Remaining: 08-07 Task4 checkpoint + 08-11,12,13,16."
 }
