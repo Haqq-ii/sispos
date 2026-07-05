@@ -1,14 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { LockKeyhole, Loader2 } from 'lucide-react'
 
-import { OtpInput } from '@/components/auth/OtpInput'
 import { Button } from '@/components/ui/button'
 import { useOtpCountdown } from '@/hooks/useOtpCountdown'
 import { useAuthStore } from '@/stores/useAuthStore'
 import apiClient from '@/lib/axios'
 import type { AuthUser } from '@/stores/useAuthStore'
+import { cn } from '@/lib/utils'
 
 interface VerifyOtpResponse {
   success: boolean
@@ -37,6 +37,9 @@ export default function VerifikasiOtpPage() {
   const [resendCount, setResendCount] = useState(0)
   const [isResending, setIsResending] = useState(false)
 
+  /** Refs array untuk focus management 6 digit OTP */
+  const digitRefs = useRef<(HTMLInputElement | null)[]>([])
+
   const { seconds, isExpired, reset: resetCountdown } = useOtpCountdown(60)
 
   // Baca nomor HP dari sessionStorage
@@ -49,6 +52,11 @@ export default function VerifikasiOtpPage() {
       navigate('/register', { replace: true })
     }
   }, [nomorPonsel, navigate])
+
+  // Auto-focus digit pertama saat mount
+  useEffect(() => {
+    digitRefs.current[0]?.focus()
+  }, [])
 
   const verifyMutation = useMutation({
     mutationFn: (kodeOtp: string) =>
@@ -71,22 +79,51 @@ export default function VerifikasiOtpPage() {
       }
       // Reset digit boxes saat error
       setDigits(['', '', '', '', '', ''])
+      digitRefs.current[0]?.focus()
     },
   })
 
-  const handleOtpChange = (index: number, digit: string) => {
+  const handleDigitChange = (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
     setOtpError(null)
+    // Hanya ambil satu digit numerik terakhir
+    const digit = e.target.value.replace(/\D/g, '').slice(-1)
     setDigits((prev) => {
       const updated = [...prev]
-      updated[index] = digit
+      updated[idx] = digit
       return updated
     })
+    // Auto-advance ke input berikutnya
+    if (digit && idx < 5) {
+      digitRefs.current[idx + 1]?.focus()
+    }
+    // Auto-submit saat semua digit terisi
+    const updated = [...digits]
+    updated[idx] = digit
+    if (updated.every((d) => d !== '') && !verifyMutation.isPending) {
+      setTimeout(() => {
+        verifyMutation.mutate(updated.join(''))
+      }, 300)
+    }
   }
 
-  const handleOtpComplete = () => {
-    const code = digits.join('')
-    if (code.length === 6 && !verifyMutation.isPending) {
-      verifyMutation.mutate(code)
+  const handleKeyDown = (idx: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Backspace pada kotak kosong → pindah ke kotak sebelumnya
+    if (e.key === 'Backspace' && !digits[idx] && idx > 0) {
+      digitRefs.current[idx - 1]?.focus()
+    }
+  }
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault()
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
+    const updated = Array.from({ length: 6 }, (_, i) => pasted[i] ?? '')
+    setDigits(updated)
+    const lastFilled = Math.min(pasted.length - 1, 5)
+    digitRefs.current[lastFilled]?.focus()
+    if (pasted.length >= 6 && !verifyMutation.isPending) {
+      setTimeout(() => {
+        verifyMutation.mutate(updated.join(''))
+      }, 300)
     }
   }
 
@@ -106,6 +143,7 @@ export default function VerifikasiOtpPage() {
       resetCountdown()
       setResendCount((prev) => prev + 1)
       setDigits(['', '', '', '', '', ''])
+      digitRefs.current[0]?.focus()
     } catch {
       setOtpError('Gagal mengirim ulang OTP. Coba lagi.')
     } finally {
@@ -117,31 +155,50 @@ export default function VerifikasiOtpPage() {
   const isLoading = verifyMutation.isPending
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white px-4">
+    <div className="min-h-screen flex items-center justify-center bg-[#f9fafb] px-4">
       <div className="w-full max-w-[360px] space-y-8">
         {/* Ikon */}
         <div className="flex flex-col items-center space-y-4">
           <div className="bg-green-100 rounded-full p-4">
-            <LockKeyhole size={64} className="text-primary" />
+            <LockKeyhole size={64} className="text-[#008236]" />
           </div>
           <div className="text-center space-y-2">
-            <h1 className="text-2xl font-bold leading-tight">Verifikasi OTP</h1>
-            <p className="text-sm text-gray-500">
+            <h1 className="text-2xl font-bold leading-tight text-[#1e2939]">Verifikasi OTP</h1>
+            <p className="text-sm text-[#99a1af]">
               Kode 6 digit dikirim ke WhatsApp{' '}
-              <span className="font-bold text-foreground">{maskedPhone}</span>
+              <span className="font-bold text-[#1e2939]">{maskedPhone}</span>
             </p>
           </div>
         </div>
 
-        {/* OTP Input */}
-        <div className="flex justify-center">
-          <OtpInput
-            value={digits}
-            onChange={handleOtpChange}
-            onComplete={handleOtpComplete}
-            disabled={isLoading}
-            error={!!otpError}
-          />
+        {/* OTP Input — 6 digit terpisah dengan auto-advance */}
+        <div className="flex justify-center gap-2" role="group" aria-label="Kode OTP 6 digit">
+          {Array.from({ length: 6 }).map((_, idx) => (
+            <input
+              key={idx}
+              ref={(el) => {
+                digitRefs.current[idx] = el
+              }}
+              type="text"
+              inputMode="numeric"
+              maxLength={1}
+              value={digits[idx] ?? ''}
+              onChange={(e) => handleDigitChange(idx, e)}
+              onKeyDown={(e) => handleKeyDown(idx, e)}
+              onPaste={handlePaste}
+              disabled={isLoading}
+              aria-label={`Digit ke-${idx + 1}`}
+              className={cn(
+                'w-10 h-12 text-center text-xl font-bold',
+                'border border-[#e5e7eb] rounded-xl',
+                'focus:border-[#008236] focus:outline-none focus:ring-2 focus:ring-[#008236]',
+                'transition-colors',
+                digits[idx] ? 'bg-green-50 text-[#1e2939]' : 'bg-white',
+                otpError && 'border-destructive',
+                isLoading && 'opacity-50 cursor-not-allowed'
+              )}
+            />
+          ))}
         </div>
 
         {/* Error message */}
@@ -154,7 +211,7 @@ export default function VerifikasiOtpPage() {
         {/* CTA */}
         <Button
           type="button"
-          className="w-full min-h-[44px]"
+          className="w-full min-h-[44px] bg-[#008236] text-white hover:bg-[#006a2b] rounded-[14px]"
           disabled={!allFilled || isLoading}
           aria-busy={isLoading}
           onClick={handleManualVerify}
@@ -172,11 +229,11 @@ export default function VerifikasiOtpPage() {
         {/* Countdown / Resend */}
         <div className="text-center">
           {!isExpired ? (
-            <p className="text-sm text-gray-500">
-              Kirim ulang dalam <span className="font-bold">{seconds}</span> detik
+            <p className="text-sm text-[#99a1af]">
+              Kirim ulang dalam <span className="font-bold text-[#1e2939]">{seconds}</span> detik
             </p>
           ) : resendCount >= MAX_RESEND ? (
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-[#99a1af]">
               Batas pengiriman tercapai. Hubungi admin.
             </p>
           ) : (
@@ -184,7 +241,7 @@ export default function VerifikasiOtpPage() {
               type="button"
               onClick={() => void handleResend()}
               disabled={isResending}
-              className="text-sm text-primary underline disabled:opacity-50"
+              className="text-sm text-[#008236] underline disabled:opacity-50"
             >
               {isResending ? (
                 <span className="flex items-center gap-1 justify-center">

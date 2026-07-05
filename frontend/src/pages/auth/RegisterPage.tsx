@@ -137,12 +137,12 @@ export default function RegisterPage() {
 
         {/* Title */}
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold leading-tight">Buat Akun Baru</h1>
+          <h1 className="text-2xl font-bold leading-tight text-[#1e2939]">Daftar Akun Baru</h1>
           <p className="text-sm text-gray-500">Daftarkan diri sebagai Warga Posyandu</p>
         </div>
 
         {/* Form card */}
-        <div className="bg-green-50 rounded-lg shadow-sm p-6">
+        <div className="bg-white rounded-2xl border border-[#f3f4f6] shadow-sm px-6 py-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
               {/* NIK Ibu */}
@@ -312,7 +312,7 @@ export default function RegisterPage() {
               {/* CTA */}
               <Button
                 type="submit"
-                className="w-full min-h-[44px]"
+                className="w-full min-h-[44px] bg-[#008236] text-white hover:bg-[#006a2b] rounded-[14px]"
                 disabled={isLoading}
                 aria-busy={isLoading}
               >
