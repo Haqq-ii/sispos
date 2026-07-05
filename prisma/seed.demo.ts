@@ -60,6 +60,23 @@ export async function seedDemo(prisma: PrismaClient): Promise<void> {
   })
   console.log('✓ Kader:', kader.namaLengkap, '/', kader.nomorPonsel)
 
+  // 3b. Ketua Kader (isKetua: true, PIN: 654321)
+  // Demo PIN ketua kader: 654321 — digunakan di TukarMejaModal untuk verifikasi
+  const ketuaPinHash = await bcrypt.hash('654321', ROUNDS)
+  const ketuaKader = await prisma.kader.upsert({
+    where: { nomorPonsel: '081234560002' },
+    update: { pinHash: ketuaPinHash, gagalLogin: 0, terkunciSampai: null, isKetua: true },
+    create: {
+      posyanduId: posyandu.id,
+      namaLengkap: 'Ketua Demo Posyandu',
+      nomorPonsel: '081234560002',
+      pinHash: ketuaPinHash,
+      isKetua: true,
+      isAktif: true,
+    },
+  })
+  console.log('✓ Ketua Kader:', ketuaKader.namaLengkap, '/', ketuaKader.nomorPonsel, '(PIN: 654321)')
+
   // 4. Warga (Citizen)
   const warga = await prisma.warga.upsert({
     where: { nikIbu: '3471012345670001' },
@@ -119,9 +136,10 @@ export async function seedDemo(prisma: PrismaClient): Promise<void> {
 
   console.log('\n✅ Demo seed selesai!')
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-  console.log('Citizen:   NIK 3471012345670001 / Demo1234!')
-  console.log('Kader:     HP  081234560001     / PIN 123456')
-  console.log('Puskesmas: demo@puskesmas-mergangsan.go.id / Demo1234!')
+  console.log('Citizen:      NIK 3471012345670001 / Demo1234!')
+  console.log('Kader:        HP  081234560001     / PIN 123456')
+  console.log('Ketua Kader:  HP  081234560002     / PIN 654321')
+  console.log('Puskesmas:    demo@puskesmas-mergangsan.go.id / Demo1234!')
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
 }
 

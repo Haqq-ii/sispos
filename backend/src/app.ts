@@ -20,6 +20,7 @@ import { rekapHarianRouter } from './modules/reports/rekap-harian.routes'
 import { laporanBulananRouter } from './modules/reports/laporan-bulanan.routes'
 import { dashboardRouter } from './modules/dashboard/dashboard.routes'
 import { usersRouter } from './modules/users/users.routes'
+import { kaderRouter } from './modules/users/kader.routes'
 import { auditRouter } from './modules/audit/audit.routes'
 import { authMiddleware } from './shared/middleware/auth.middleware'
 import { getSesiListHandler } from './modules/jadwal/jadwal.controller'
@@ -79,6 +80,8 @@ app.use('/api/reports', laporanBulananRouter)
 app.use('/api/dashboard', dashboardRouter)
 // Users: GET /api/users/kader, PATCH /api/users/kader/:id/unlock (puskesmas only, IDOR guard)
 app.use('/api/users', usersRouter)
+// Kader self-service: POST /api/kader/verify-ketua-pin (kader + ketua_kader only)
+app.use('/api/kader', kaderRouter)
 // Audit Log: GET /api/audit-log?page=1&limit=20 (puskesmas only, scoped by kaderIds)
 app.use('/api/audit-log', auditRouter)
 // Alias: GET /api/sesi?jadwalId=... (path eksplisit per artifacts spec; juga tersedia di /api/jadwal/sesi)
