@@ -64,27 +64,27 @@ export default function ManajemenPenggunaPage() {
   })
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
+    <div className="min-h-full bg-[#f9fafb] pb-8">
+      {/* Green Header */}
+      <div className="bg-[#008236] px-4 pt-10 pb-6">
         <Link
           to="/puskesmas/dashboard"
-          className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+          className="inline-flex items-center gap-1.5 text-[#b9f8cf] text-xs mb-3"
         >
-          <ArrowLeft className="h-5 w-5 text-gray-600" />
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Kembali
         </Link>
-        <div>
-          <h1 className="text-base font-semibold text-gray-900">Manajemen Kader</h1>
-          <p className="text-xs text-gray-500">Kelola status dan akses kader posyandu</p>
-        </div>
+        <p className="text-[#7bf1a8] text-xs font-medium mb-0.5">Puskesmas</p>
+        <p className="text-white font-bold text-xl leading-tight">Manajemen Kader</p>
+        <p className="text-[#b9f8cf] text-xs mt-1">Kelola status dan akses kader posyandu</p>
       </div>
 
-      <div className="p-4 space-y-3 max-w-2xl mx-auto">
+      <div className="px-4 mt-4 space-y-3">
         {/* Loading state */}
         {isLoading && (
           <div className="space-y-3">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="bg-white rounded-xl border border-gray-100 p-4">
+              <div key={i} className="bg-white rounded-2xl border border-[#f3f4f6] shadow-sm p-4">
                 <Skeleton className="h-4 w-40 mb-2" />
                 <Skeleton className="h-3 w-28 mb-1" />
                 <Skeleton className="h-3 w-32" />
@@ -95,7 +95,7 @@ export default function ManajemenPenggunaPage() {
 
         {/* Error state */}
         {isError && !isLoading && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-center">
             <p className="text-red-600 text-sm font-medium">Gagal memuat daftar kader.</p>
             <p className="text-red-500 text-xs mt-1">Periksa koneksi dan coba lagi.</p>
           </div>
@@ -103,10 +103,10 @@ export default function ManajemenPenggunaPage() {
 
         {/* Empty state */}
         {!isLoading && !isError && kaderList?.length === 0 && (
-          <div className="bg-white rounded-xl border border-gray-100 p-8 text-center">
-            <UserCheck className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500 text-sm">Belum ada kader terdaftar</p>
-            <p className="text-gray-400 text-xs mt-1">
+          <div className="bg-white rounded-2xl border border-[#f3f4f6] shadow-sm p-8 text-center">
+            <UserCheck className="h-10 w-10 text-[#99a1af] mx-auto mb-3" />
+            <p className="text-[#1e2939] text-sm font-semibold">Belum ada kader terdaftar</p>
+            <p className="text-[#99a1af] text-xs mt-1">
               Kader yang terdaftar di posyandu Anda akan muncul di sini.
             </p>
           </div>
@@ -115,8 +115,8 @@ export default function ManajemenPenggunaPage() {
         {/* Kader list */}
         {!isLoading && !isError && kaderList && kaderList.length > 0 && (
           <div className="space-y-3">
-            <p className="text-xs text-gray-500 font-medium">
-              {kaderList.length} kader terdaftar
+            <p className="text-xs text-[#99a1af] font-semibold tracking-wider">
+              {kaderList.length} KADER TERDAFTAR
             </p>
 
             {kaderList.map((kader) => {
@@ -128,15 +128,15 @@ export default function ManajemenPenggunaPage() {
               return (
                 <div
                   key={kader.id}
-                  className={`bg-white rounded-xl border p-4 transition-colors ${
-                    locked ? 'border-red-200 bg-red-50/30' : 'border-gray-100'
+                  className={`bg-white rounded-2xl border shadow-sm p-4 transition-colors ${
+                    locked ? 'border-red-200 bg-red-50/30' : 'border-[#f3f4f6]'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     {/* Info kader */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-sm text-gray-900 truncate">
+                        <span className="font-semibold text-sm text-[#1e2939] truncate">
                           {kader.namaLengkap}
                         </span>
 
@@ -160,9 +160,9 @@ export default function ManajemenPenggunaPage() {
                         )}
                       </div>
 
-                      <p className="text-xs text-gray-500 mt-0.5">{kader.nomorPonsel}</p>
+                      <p className="text-xs text-[#99a1af] mt-0.5">{kader.nomorPonsel}</p>
 
-                      <p className="text-xs text-gray-400 italic mt-0.5">
+                      <p className="text-xs text-[#99a1af] italic mt-0.5">
                         {kader.posyandu.namaPosyandu}
                       </p>
 
