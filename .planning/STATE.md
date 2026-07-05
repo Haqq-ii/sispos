@@ -31,7 +31,7 @@ Last update  : 2026-07-05
 Plans done   : 08-01 complete (seed + bug fixes), 08-02 complete (ZScoreChart + citizen alignment), 08-03 complete (kader screens Figma alignment), 08-05 complete (LoginPage mint bg + CitizenDashboard white header), 08-06 complete (KaderDashboard stats API + BarChart+PieChart+Tabs Figma 27:2531), 08-08 complete (auth flow Register+OTP+Onboarding+LokasiSelesai Figma alignment), 08-09 complete (citizen antrian flow 4 screens Figma alignment), 08-10 complete (TumbuhKembang Grafik+Imunisasi tabs + ChatAssistant suggestion chips), 08-14 complete (KaderProfilPage STUB→functional + AuditLog/ManajemenJadwal/Laporan alignment), 08-15 complete (LandingPage mobile-first Figma 2001:691)
 Phases done  : 7 / 9 (Phase 00+01+02+04+05+06+07 complete)
 Next command : /gsd-execute-phase 08 (plans 08-06, 08-07, 08-11, 08-12, 08-13, 08-16 remaining)
-Stopped at   : Session 2026-07-05 — completed 08-06 (KaderDashboard stats API + charts); remaining: TukarMeja PIN (08-07), Meja 1-5 (08-11→08-13), Final QA (08-16)
+Stopped at   : Session 2026-07-05 — completed 08-07 Tasks 1-3 (backend verify-ketua-pin + TukarMejaModal + Meja 1-5 wired); CHECKPOINT at Task 4: human visual verification required
 ```
 
 ## Phase History
@@ -164,6 +164,10 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 2026-07-05 | getKaderDashboardStats uses Promise.all for Steps B-G (paralel setelah posyanduId resolved) | Mengurangi latency endpoint — semua query DB berjalan paralel |
 | 2026-07-05 | peringatanRisiko fetch 20 → dedup ke 10 unique balita | take 10 langsung tidak menjamin 10 balita unik jika ada multiple pemeriksaan per balita |
 | 2026-07-05 | KaderDashboardPage stats row dipindah dari header ke body | Figma 27:2531: stats row ada di body (white card), bukan di dalam green header |
+| 2026-07-05 | [08-07] verifyKetuaPin di kader.service.ts baru (bukan queue-kader.service.ts) — kaderRouter di /api/kader | Acceptance criteria eksplisit menyebut kader.service.ts; file baru lebih bersih dari perspektif modul |
+| 2026-07-05 | [08-07] Ketua Kader seed menggunakan nomorPonsel bukan nomorHp | Prisma schema Kader model menggunakan nomorPonsel (bukan nomorHp yang disebut di plan spec) |
+| 2026-07-05 | [08-07] TukarMejaModal tidak ada backdrop click atau Escape handler | Figma spec: fullscreen overlay, akses hanya via PIN benar atau tombol Batal |
+| 2026-07-05 | [08-07] Meja3/4 pakai slotId??'' sebagai fallback di TukarMejaModal | activeSlotId dari useKaderMejaStore bisa null; guard wrapper memastikan tidak null, tapi TypeScript butuh fallback |
 
 ## Performance Metrics
 
