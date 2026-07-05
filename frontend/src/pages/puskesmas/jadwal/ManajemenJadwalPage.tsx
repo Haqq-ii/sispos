@@ -49,7 +49,7 @@ export default function ManajemenJadwalPage() {
           {/* Primary action — top-right on desktop, full-width on mobile */}
           <Button
             onClick={() => setDialogOpen(true)}
-            className="min-h-[44px] sm:w-auto w-full"
+            className="min-h-[44px] sm:w-auto w-full bg-[#008236] hover:bg-[#00a63e] text-white font-semibold rounded-[14px] py-2.5 px-4"
           >
             Buat Jadwal Baru
           </Button>
@@ -73,7 +73,10 @@ export default function ManajemenJadwalPage() {
             <p className="text-sm text-gray-400 mb-6">
               Buat jadwal pertama untuk memulai pelayanan.
             </p>
-            <Button onClick={() => setDialogOpen(true)} className="min-h-[44px]">
+            <Button
+              onClick={() => setDialogOpen(true)}
+              className="min-h-[44px] bg-[#008236] hover:bg-[#00a63e] text-white font-semibold rounded-[14px]"
+            >
               Buat Jadwal Baru
             </Button>
           </div>
