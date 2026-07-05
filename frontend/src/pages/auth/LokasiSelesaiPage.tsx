@@ -42,39 +42,39 @@ export default function LokasiSelesaiPage() {
     .join(', ')
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center bg-white px-4">
+    <div className="min-h-screen flex flex-col justify-center items-center bg-[#f9fafb] px-4">
       <div className="w-full max-w-[360px] space-y-8 text-center">
         {/* Ikon sukses */}
         <div className="flex justify-center">
-          <CheckCircle size={64} strokeWidth={1.5} className="text-primary" />
+          <CheckCircle size={80} strokeWidth={1.5} className="text-[#008236]" />
         </div>
 
         {/* Judul + body */}
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold leading-tight">Lokasi Tersimpan!</h1>
-          <p className="text-sm text-gray-500 leading-relaxed">
-            Selamat datang di SISPOS. Akun Anda sudah aktif.
+          <h1 className="text-2xl font-bold leading-tight text-[#1e2939]">Lokasi Tersimpan!</h1>
+          <p className="text-sm text-[#99a1af] leading-relaxed">
+            Selamat datang di SISPOS. Akun Anda sudah aktif dan siap digunakan.
           </p>
         </div>
 
         {/* Ringkasan lokasi */}
         {lokasiText ? (
-          <div className="bg-green-50 rounded-lg p-4">
-            <p className="text-sm font-bold text-foreground">{lokasiText}</p>
+          <div className="bg-green-50 rounded-xl p-4 border border-green-100">
+            <p className="text-sm font-bold text-[#1e2939]">{lokasiText}</p>
           </div>
         ) : null}
 
-        {/* CTA */}
+        {/* CTA — navigasi ke /citizen/dashboard */}
         <Button
           type="button"
-          className="w-full min-h-[44px]"
+          className="w-full min-h-[44px] bg-[#008236] text-white hover:bg-[#006a2b] rounded-[14px]"
           onClick={handleStart}
         >
           Mulai Gunakan SISPOS
         </Button>
 
         {/* Auto-redirect caption */}
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-[#99a1af]">
           Diarahkan otomatis dalam {countdown} detik...
         </p>
       </div>

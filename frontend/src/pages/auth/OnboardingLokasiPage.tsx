@@ -78,19 +78,19 @@ export default function OnboardingLokasiPage() {
   const isLoading = saveMutation.isPending
 
   return (
-    <div className="min-h-screen flex items-start justify-center bg-white px-4 py-8">
+    <div className="min-h-screen flex items-start justify-center bg-[#f9fafb] px-4 py-8">
       <div className="w-full max-w-[400px] space-y-6">
         {/* Ikon + judul */}
         <div className="flex flex-col items-center space-y-4">
           <div className="bg-green-100 rounded-full p-4">
-            <MapPin size={48} className="text-primary" />
+            <MapPin size={48} className="text-[#008236]" />
           </div>
           <div className="text-center space-y-1">
-            <h1 className="text-2xl font-bold leading-tight">Atur Lokasi Anda</h1>
-            <p className="text-sm text-gray-500 leading-relaxed">
-              Pilih wilayah tempat tinggal Anda agar kami bisa menampilkan Posyandu terdekat
+            <h1 className="text-2xl font-bold leading-tight text-[#1e2939]">Pilih Lokasi Posyandu</h1>
+            <p className="text-sm text-[#99a1af] leading-relaxed">
+              Pilih Posyandu terdekat untuk mendapatkan layanan kesehatan balita
             </p>
-            <p className="text-xs text-gray-400">Langkah 3 dari 3</p>
+            <p className="text-xs text-[#99a1af]">Langkah 3 dari 3</p>
           </div>
         </div>
 
@@ -142,7 +142,7 @@ export default function OnboardingLokasiPage() {
         {/* CTA Simpan */}
         <Button
           type="button"
-          className="w-full min-h-[44px]"
+          className="w-full min-h-[44px] bg-[#008236] text-white hover:bg-[#006a2b] rounded-[14px]"
           disabled={!allCascadeSelected || isLoading}
           aria-busy={isLoading}
           onClick={handleSubmit}
