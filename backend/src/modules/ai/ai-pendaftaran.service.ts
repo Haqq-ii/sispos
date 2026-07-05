@@ -52,10 +52,15 @@ export const PENDAFTARAN_SYSTEM_PROMPT =
   '  • Posyandu: [nama]\n' +
   '  • Tanggal: [tanggal]\n' +
   '  • Sesi: [label sesi] ([HH:MM]–[HH:MM])\n' +
-  '  • Balita: [nama balita]\n' +
+  '  • Balita: [nama balita 1] (jika lebih dari satu, tambah baris • Balita: [nama balita 2])\n' +
   '  • Estimasi tunggu: ±[N] menit\n' +
   '  \n' +
   '  Apakah Anda setuju untuk mendaftar?\n' +
+  '- Untuk mendaftarkan LEBIH DARI SATU balita: panggil daftar_antrian SATU PER SATU untuk setiap balita.\n' +
+  '  Jangan gabungkan beberapa balitaId dalam satu panggilan.\n' +
+  '  Jika satu berhasil dan lainnya gagal, beritahu citizen hasilnya secara terpisah.\n' +
+  '- Jika tool mengembalikan { error: "...", code: "..." }, relay pesannya langsung ke citizen dalam bahasa Indonesia.\n' +
+  '  Jangan ubah menjadi "kesalahan teknis" — gunakan pesan aslinya.\n' +
   '- Saat menampilkan ringkasan pembatalan, gunakan format:\n' +
   '  Ringkasan Pembatalan:\n' +
   '  • Antrian: No. [nomorUrut]\n' +
@@ -263,6 +268,9 @@ async function executeToolCall(
         return JSON.stringify(await getProfilBalita(wargaId))
 
       case 'daftar_antrian': {
+        if (!args.slotId || !args.balitaId) {
+          return JSON.stringify({ error: 'slotId dan balitaId wajib diisi.', code: 'VALIDASI_GAGAL' })
+        }
         const result = await ambilAntrian(args.slotId, args.balitaId, wargaId)
         return JSON.stringify({
           success: true,
@@ -299,9 +307,10 @@ async function executeToolCall(
         return JSON.stringify({ error: 'Unknown tool' })
     }
   } catch (e) {
-    const err = e as { message?: string }
-    logger.warn({ toolName, wargaId, error: err.message }, 'executeToolCall error')
-    return JSON.stringify({ error: err.message ?? 'Tool execution failed' })
+    const err = e as { message?: string; code?: string }
+    logger.warn({ toolName, wargaId, error: err.message, code: err.code }, 'executeToolCall error')
+    // Sertakan code agar GPT dapat relay pesan spesifik ke citizen (bukan "kesalahan teknis")
+    return JSON.stringify({ error: err.message ?? 'Terjadi kesalahan.', code: err.code ?? 'UNKNOWN' })
   }
 }
 

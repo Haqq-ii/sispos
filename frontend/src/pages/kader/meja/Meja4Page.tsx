@@ -37,6 +37,7 @@ interface AntrianItem {
   balitaId: string
   balita: { namaBalita: string }
   warga?: { namaIbu?: string }
+  pemeriksaan?: Array<{ id: string; beratBadan: number | null }>
 }
 
 interface TandaKlinis {
@@ -265,7 +266,13 @@ export default function Meja4Page() {
             hadirList.map((item) => (
               <button
                 key={item.id}
-                onClick={() => { setSelectedBalitaId(item.balitaId); setSelectedNama(item.balita.namaBalita); setSelectedPemeriksaanId(null) }}
+                onClick={() => {
+                  setSelectedBalitaId(item.balitaId)
+                  setSelectedNama(item.balita.namaBalita)
+                  // Set pemeriksaanId dari data server (getSlotAntrian includes pemeriksaan[])
+                  const serverPemId = item.pemeriksaan?.find((p) => p.beratBadan !== null)?.id ?? null
+                  setSelectedPemeriksaanId(serverPemId)
+                }}
                 className="w-full bg-white border border-gray-100 rounded-2xl px-4 py-3 flex items-center justify-between shadow-sm active:bg-gray-50 text-left"
               >
                 <div>

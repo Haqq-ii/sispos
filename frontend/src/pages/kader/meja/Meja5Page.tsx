@@ -151,7 +151,7 @@ export default function Meja5Page() {
       setNamaVaksin('')
       setDosisKe('1')
       toast({ title: 'Imunisasi dicatat', description: `${namaVaksin} dosis ${dosisKe} berhasil disimpan.` })
-      handleKembaliKeDaftar()
+      // Tetap di detail pasien — kader bisa tambah imunisasi lagi
     },
     onError: () => {
       toast({ title: 'Gagal menyimpan', description: 'Coba lagi.', variant: 'destructive' })
