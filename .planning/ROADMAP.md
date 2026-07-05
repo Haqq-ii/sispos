@@ -19,7 +19,7 @@
 | 5 | Reports & Export | 2/2 | Complete   | 2026-07-04 |
 | 6 | PWA & Offline | Service Worker Workbox, IndexedDB sync Meja 1-5, auto-sync online | PWA-01 | Complete   | 2026-07-04 |
 | 7 | Seed Data Demo | 2/3 | In Progress|  |
-| 8 | UI Figma Alignment | Semua screen semua role align ke Figma + perbaikan fitur yang belum optimal | UI-01..03 | ○ Pending |
+| 8 | UI Figma Alignment | 2/5 | In Progress|  |
 
 ---
 
@@ -418,17 +418,17 @@ Plans:
 - CLAUDE.md § Figma MCP
 - `docs/ROADMAP.md` (screen list per phase)
 
-**Plans:** 5 plans
+**Plans:** 2/5 plans executed
 
 Plans:
 
 **Wave 1** *(blocking verification — no dependencies)*
 
-- [ ] 08-01-PLAN.md — Seed pipeline + 5 login scenarios verify + AI chatbot gizi/pendaftaran/rate-limit verify [has checkpoint]
+- [x] 08-01-PLAN.md — Seed pipeline + 5 login scenarios verify + AI chatbot gizi/pendaftaran/rate-limit verify [has checkpoint]
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 08-02-PLAN.md — Backend GET /growth/riwayat citizen endpoint + TumbuhKembangPage grafik tab + Citizen screens Figma alignment
+- [x] 08-02-PLAN.md — Backend GET /growth/riwayat citizen endpoint + TumbuhKembangPage grafik tab + Citizen screens Figma alignment
 
 **Wave 3** *(blocked on Wave 2)*
 
