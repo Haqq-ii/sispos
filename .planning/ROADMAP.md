@@ -418,37 +418,73 @@ Plans:
 - CLAUDE.md § Figma MCP
 - `docs/ROADMAP.md` (screen list per phase)
 
-**Plans:** 4/7 plans executed (replanned — 3 new plans added 2026-07-05)
+**Plans:** 6/16 plans executed (full replan 2026-07-05 — 10 new plans 08-07 through 08-16)
 
 Plans:
 
-**Wave 1** *(blocking verification — no dependencies)*
+**Wave 1** *(no dependencies)*
 
-- [x] 08-01-PLAN.md — Seed pipeline + 5 login scenarios verify + AI chatbot gizi/pendaftaran/rate-limit verify [has checkpoint]
+- [x] 08-01-PLAN.md — Seed pipeline + login verify + AI chatbot gizi/pendaftaran/rate-limit verify [has checkpoint]
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [x] 08-02-PLAN.md — Backend GET /growth/riwayat citizen endpoint + TumbuhKembangPage grafik tab + Citizen screens Figma alignment
+- [x] 08-02-PLAN.md — Backend GET /growth/riwayat + TumbuhKembangPage grafik + Citizen screens alignment
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [x] 08-03-PLAN.md — Kader screens: LockScreenPage green header + KaderDashboardPage stats + Meja2 numpad + Meja4 STT layout ✓ (fd3c6a8, e21fda5)
+- [x] 08-03-PLAN.md — Kader screens: LockScreenPage + KaderDashboardPage stats + Meja2 numpad + Meja4 STT
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [x] 08-04-PLAN.md — Puskesmas screens: PetaStuntingPage mobile-first + PuskesmasDashboardPage + ManajemenPenggunaPage
+- [x] 08-04-PLAN.md — Puskesmas screens: PetaStuntingPage + PuskesmasDashboardPage + ManajemenPenggunaPage
 
-**Wave 5** *(blocked on Wave 4 — replanned 2026-07-05)*
+**Wave 5** *(blocked on Wave 4)*
 
-- [x] 08-05-PLAN.md (Task 1 done, replanned) — LoginPage mint bg + demo buttons + footer; CitizenDashboardPage white greeting (green header removed) [Figma 5:5731 + 5:2029]
+- [x] 08-05-PLAN.md — LoginPage + CitizenDashboardPage + ProfilSayaPage + FamilyAccountPage aligned
 
 **Wave 6** *(blocked on Wave 5)*
 
-- [ ] 08-06-PLAN.md — Backend GET /api/kader/dashboard-stats + KaderDashboardPage redesign with recharts Tabs (Figma 27:2531)
+- [ ] 08-06-PLAN.md — Backend GET /api/kader/dashboard-stats + KaderDashboardPage recharts redesign
 
 **Wave 7** *(blocked on Wave 6)* [has checkpoint]
 
-- [ ] 08-07-PLAN.md — Backend verify-ketua-pin + TukarMejaModal component + Meja1–5 integration + Final QA
+- [ ] 08-07-PLAN.md — Backend verify-ketua-pin + TukarMejaModal + PelayananHariHPage + Meja1—5 wire + QA
+
+**Wave 8** *(no dependencies)*
+
+- [ ] 08-08-PLAN.md — RegisterPage + VerifikasiOtpPage + OnboardingLokasiPage + LokasiSelesaiPage alignment
+
+**Wave 9** *(blocked on Wave 8)*
+
+- [ ] 08-09-PLAN.md — Antrian flow: PilihTanggal + PilihSesi + KonfirmasiAntrian + TiketAntrian alignment
+
+**Wave 10** *(no dependencies)*
+
+- [ ] 08-10-PLAN.md — TumbuhKembangPage grafik+imunisasi real tabs + ChatAssistantPage alignment
+
+**Wave 11** *(blocked on Wave 7)*
+
+- [ ] 08-11-PLAN.md — Meja1Page header + antrian cards + go-show form Figma alignment
+
+**Wave 12** *(blocked on Wave 11)*
+
+- [ ] 08-12-PLAN.md — Meja2Page numpad + biologic Dialog + Meja3Page ZScoreChart + native checkboxes
+
+**Wave 13** *(blocked on Wave 12)*
+
+- [ ] 08-13-PLAN.md — Meja4Page mic circle states + Meja5Page orange header + Selesai Pelayanan
+
+**Wave 14** *(no dependencies)*
+
+- [ ] 08-14-PLAN.md — KaderProfilPage STUB—functional + AuditLogPage pagination + ManajemenJadwalPage + LaporanPage
+
+**Wave 15** *(no dependencies)*
+
+- [ ] 08-15-PLAN.md — LandingPage mobile-first Figma alignment (2001:691)
+
+**Wave 16** *(depends on all — FINAL GATE)* [has checkpoint]
+
+- [ ] 08-16-PLAN.md — Full lint check + human verify: all screens core demo flow 375px mobile
 
 ---
 
