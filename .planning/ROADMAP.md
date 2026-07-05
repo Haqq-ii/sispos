@@ -19,7 +19,7 @@
 | 5 | Reports & Export | 2/2 | Complete   | 2026-07-04 |
 | 6 | PWA & Offline | Service Worker Workbox, IndexedDB sync Meja 1-5, auto-sync online | PWA-01 | Complete   | 2026-07-04 |
 | 7 | Seed Data Demo | 2/3 | In Progress|  |
-| 8 | UI Figma Alignment | 2/5 | In Progress|  |
+| 8 | UI Figma Alignment | 3/5 | In Progress|  |
 
 ---
 
@@ -418,7 +418,7 @@ Plans:
 - CLAUDE.md § Figma MCP
 - `docs/ROADMAP.md` (screen list per phase)
 
-**Plans:** 2/5 plans executed
+**Plans:** 3/5 plans executed
 
 Plans:
 
@@ -432,7 +432,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 08-03-PLAN.md — Kader screens: LockScreenPage green header + KaderDashboardPage stats + Meja2 numpad + Meja4 STT layout
+- [x] 08-03-PLAN.md — Kader screens: LockScreenPage green header + KaderDashboardPage stats + Meja2 numpad + Meja4 STT layout ✓ (fd3c6a8, e21fda5)
 
 **Wave 4** *(blocked on Wave 3)*
 

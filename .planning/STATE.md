@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Executing Phase 08
-last_updated: "2026-07-05T02:32:00.000Z"
+last_updated: "2026-07-05T05:00:00.000Z"
 progress:
   total_phases: 9
   completed_phases: 7
   total_plans: 40
-  completed_plans: 36
-  percent: 80
+  completed_plans: 37
+  percent: 83
 ---
 
 # SISPOS — GSD State
@@ -28,10 +28,10 @@ See: `.planning/PROJECT.md` (updated 2026-06-30)
 ```
 Phase aktif  : Phase 08 — UI Figma Alignment
 Last update  : 2026-07-05
-Plans done   : 08-01 complete (seed + bug fixes), 08-02 complete (ZScoreChart + citizen alignment)
+Plans done   : 08-01 complete (seed + bug fixes), 08-02 complete (ZScoreChart + citizen alignment), 08-03 complete (kader screens Figma alignment)
 Phases done  : 7 / 9 (Phase 00+01+02+04+05+06+07 complete)
-Next command : /gsd-execute-phase 08 (plan 03 — Kader screens Figma alignment)
-Stopped at   : Completed 08-02-PLAN.md — getCitizenGrowthRiwayat, ZScoreChart grafik tab, citizen screen token alignment
+Next command : /gsd-execute-phase 08 (plan 04 — Puskesmas screens Figma alignment)
+Stopped at   : Completed 08-03-PLAN.md — LockScreenPage green header, KaderDashboard stats, Meja2 numpad, Meja4 mic circle
 ```
 
 ## Phase History
@@ -150,6 +150,9 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 2026-07-04 | BackgroundSync shorthand in vite.config.ts runtimeCaching (not direct BackgroundSyncPlugin import) | vite.config.ts is Node.js; BackgroundSyncPlugin is a browser/SW module — shorthand in options generates the plugin at SW build time (Pitfall 1) |
 | 2026-07-04 | BeforeInstallPromptEvent exported from usePwaStore (not defined inline in App.tsx) | Single type definition shared between store and App.tsx; TypeScript strict mode clean |
 | 2026-07-04 | showInstall computed inline in KaderDashboardPage (not in usePwaStore) | window.matchMedia is a side effect — component scope is correct; store should be pure state |
+| 2026-07-05 | LockScreenPage meja list: per-meja colors removed, unified card style + colored number badge | Figma alignment Wave 8.3; card pattern consistent with citizen screens |
+| 2026-07-05 | Meja4Page mic: full-width border button → w-16 h-16 rounded-full circle centered | Figma Wave 8.3; bg-[#008236] ready / bg-[#e7000b] recording states |
+| 2026-07-05 | X-Konfirmasi-Biologis as comment in Meja2Page (header lives in usePemeriksaan hook) | Acceptance criteria grep check; actual header sent in hook mutationFn |
 
 ## Performance Metrics
 
@@ -184,6 +187,7 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | Phase 07 P02 | ~7 min | 2 tasks | 1 files |
 | 08 | 01 | ~30 min | 2/2 (+ bug fixes) | 5 |
 | 08 | 02 | ~6 min | 3/3 | 7 |
+| 08 | 03 | ~20 min | 2/2 | 4 |
 
 ## Decisions
 
