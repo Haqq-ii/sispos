@@ -97,10 +97,11 @@ export default function AuditLogPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-10">
-        <h1 className="text-base font-semibold text-gray-900">Audit Log</h1>
-        <p className="text-xs text-gray-500">Riwayat aktivitas sistem</p>
+      {/* Header — Figma 5:17126 */}
+      <div className="bg-[#008236] px-5 py-6">
+        <p className="text-[#7bf1a8] text-xs font-medium mb-0.5">Puskesmas</p>
+        <h1 className="text-white font-bold text-xl leading-tight">Riwayat Aktivitas</h1>
+        <p className="text-[#b9f8cf] text-xs mt-1">Log aktivitas kader dan sistem posyandu</p>
       </div>
 
       <div className="p-4 max-w-5xl mx-auto">
