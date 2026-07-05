@@ -2,7 +2,7 @@
  * CitizenDashboardPage — Redesigned dashboard citizen (Figma design system).
  *
  * Layout:
- * - Green header: greeting + notification bell + child chip placeholder
+ * - White header: greeting + notification bell + user chip (Figma 5:2029)
  * - Section A (antrian aktif): blue card dengan nomor, estimasi
  * - Section B (tidak ada antrian): white CTA card
  * - Layanan Cepat 2×2 grid
@@ -104,38 +104,37 @@ export default function CitizenDashboardPage() {
 
   return (
     <div className="min-h-full bg-[#f9fafb]">
-      {/* ── Green header ─────────────────────────────────────────────────── */}
-      <div className="bg-[#008236] px-4 pt-5 pb-6">
+      {/* ── White header (Figma 5:2029) ──────────────────────────────────── */}
+      <div className="bg-white px-4 pt-10 pb-4 border-b border-[#f3f4f6]">
         {/* Top row: greeting + notification bell */}
-        <div className="flex items-start justify-between mb-4">
+        <div className="flex justify-between items-start">
           <div>
-            <p className="text-[#7bf1a8] text-xs">Selamat datang,</p>
-            <h1 className="text-white font-bold text-xl leading-tight">
+            <p className="text-[#99a1af] text-xs">Selamat datang,</p>
+            <h1 className="text-[#1e2939] font-bold text-xl leading-tight">
               {user?.namaLengkap ?? 'Warga'}
             </h1>
-            {posyanduNama && (
-              <p className="text-[#b9f8cf] text-xs mt-0.5">{posyanduNama}</p>
-            )}
           </div>
           <button
             type="button"
-            className="bg-[rgba(0,166,62,0.5)] rounded-[14px] p-2 relative flex-shrink-0"
+            className="bg-[#f3f4f6] rounded-[14px] p-2 relative flex-shrink-0"
             aria-label="Notifikasi"
           >
-            <Bell size={20} className="text-white" />
+            <Bell size={20} className="text-[#364153]" />
             {/* Red badge */}
             <span className="absolute top-1 right-1 w-2 h-2 bg-[#fb2c36] rounded-full" />
           </button>
         </div>
 
-        {/* Child profile chips — placeholder */}
-        <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-          <button
-            type="button"
-            className="bg-white rounded-full px-3 py-1.5 text-[#008236] font-semibold text-xs flex-shrink-0 shadow-sm"
-          >
-            Balita
-          </button>
+        {/* User chip row */}
+        <div className="mt-3 flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-[#dcfce7] flex items-center justify-center flex-shrink-0">
+            <span className="text-[#008236] font-bold text-sm">
+              {user?.namaLengkap?.[0]?.toUpperCase() ?? 'W'}
+            </span>
+          </div>
+          <span className="bg-[#f0fdf4] text-[#008236] text-xs font-semibold px-2.5 py-1 rounded-full">
+            {user?.namaLengkap ?? 'Warga'}
+          </span>
         </div>
       </div>
 
