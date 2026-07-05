@@ -75,7 +75,7 @@ export default function KaderDashboardPage() {
   const isLoading = isLoadingActiveMeja || isLoadingJadwal
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-[#f9fafb] flex flex-col">
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="bg-[#008236] px-4 pt-12 pb-6">
@@ -125,15 +125,15 @@ export default function KaderDashboardPage() {
           </div>
         ) : todayJadwal ? (
           <div className="grid grid-cols-3 gap-2">
-            <div className="bg-[rgba(255,255,255,0.15)] rounded-[14px] px-3 py-3">
+            <div className="bg-[rgba(255,255,255,0.15)] rounded-2xl px-3 py-3">
               <p className="text-white font-bold text-2xl leading-none">{totalKuota}</p>
               <p className="text-[#dcfce7] text-[10px] leading-tight mt-1">Total<br/>Kuota</p>
             </div>
-            <div className="bg-[rgba(255,255,255,0.15)] rounded-[14px] px-3 py-3">
+            <div className="bg-[rgba(255,255,255,0.15)] rounded-2xl px-3 py-3">
               <p className="text-white font-bold text-2xl leading-none">{totalTerdaftar}</p>
               <p className="text-[#b9f8cf] text-[10px] leading-tight mt-1">Hadir<br/>Hari Ini</p>
             </div>
-            <div className="bg-[rgba(255,255,255,0.15)] rounded-[14px] px-3 py-3">
+            <div className="bg-[rgba(255,255,255,0.15)] rounded-2xl px-3 py-3">
               <p className="text-[#ffd230] font-bold text-2xl leading-none">{totalAntrian}</p>
               <p className="text-[#dcfce7] text-[10px] leading-tight mt-1">Antrian<br/>Aktif</p>
             </div>
@@ -161,7 +161,7 @@ export default function KaderDashboardPage() {
         ) : (
           <>
             {/* JADWAL PELAYANAN card */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+            <div className="bg-white rounded-2xl shadow-sm border border-[#f3f4f6] p-4">
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">
                 Jadwal Pelayanan
               </p>
@@ -198,7 +198,7 @@ export default function KaderDashboardPage() {
                     state: { slotId: slot.id, slotLabel: slot.labelSesi },
                   })
                 }
-                className="w-full bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-3.5 flex items-center justify-between active:bg-gray-50"
+                className="w-full bg-white rounded-2xl shadow-sm border border-[#f3f4f6] px-4 py-3.5 flex items-center justify-between active:bg-[#f9fafb]"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-[#008236] rounded-xl flex items-center justify-center">

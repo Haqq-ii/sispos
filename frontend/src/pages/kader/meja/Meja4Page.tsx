@@ -52,15 +52,15 @@ interface EarlyWarningData {
 function LevelBadge({ level }: { level: 'normal' | 'waspada' | 'kritis' }) {
   const config = {
     normal: {
-      className: 'bg-green-100 text-green-800 border border-green-300',
+      className: 'bg-[#dcfce7] text-[#00a63e] border border-[#b9f8cf]',
       label: 'NORMAL',
     },
     waspada: {
-      className: 'bg-yellow-100 text-yellow-800 border border-yellow-300',
+      className: 'bg-yellow-50 text-yellow-700 border border-yellow-200',
       label: 'WASPADA',
     },
     kritis: {
-      className: 'bg-red-100 text-red-800 border border-red-300',
+      className: 'bg-[#fef2f2] text-[#e7000b] border border-[#ffc9c9]',
       label: 'KRITIS',
     },
   }
@@ -269,7 +269,7 @@ function Meja4Content({
   // ── Render ─────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-[#f9fafb] flex flex-col">
 
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className="bg-[#008236] px-4 pt-10 pb-4">
@@ -293,24 +293,24 @@ function Meja4Content({
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
 
         {/* ── Perekaman Suara ──────────────────────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <div className="bg-white rounded-2xl border border-[#f3f4f6] shadow-sm p-4">
+          <p className="text-xs font-semibold text-[#99a1af] uppercase tracking-wide mb-4">
             Perekaman Suara (Opsional)
           </p>
           <div className="space-y-3">
-            <div className="flex gap-3">
+            {/* Mic circle button — centered */}
+            <div className="flex flex-col items-center gap-2">
               {!isRecording ? (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        className={`flex-1 border border-[#b9f8cf] text-[#008236] rounded-xl py-2.5 text-sm font-medium flex items-center justify-center gap-2 ${!isOnline ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`w-16 h-16 rounded-full flex items-center justify-center bg-[#008236] text-white transition-colors ${!isOnline ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#00a63e] active:scale-95'}`}
                         onClick={() => void startRecording()}
                         disabled={!isOnline || transcribeMutation.isPending}
                       >
-                        <Mic className="h-4 w-4" />
-                        Mulai Rekam
+                        <Mic className="h-6 w-6" />
                       </button>
                     </TooltipTrigger>
                     {!isOnline && (
@@ -323,20 +323,20 @@ function Meja4Content({
               ) : (
                 <button
                   type="button"
-                  className="flex-1 border border-red-300 text-red-700 rounded-xl py-2.5 text-sm font-medium flex items-center justify-center gap-2 animate-pulse"
+                  className="w-16 h-16 rounded-full flex items-center justify-center bg-[#e7000b] text-white animate-pulse active:scale-95 transition-transform"
                   onClick={stopRecording}
                 >
-                  <MicOff className="h-4 w-4" />
-                  Stop Rekam
+                  <MicOff className="h-6 w-6" />
                 </button>
               )}
+              <p className="text-xs text-[#99a1af]">
+                {isRecording ? 'Ketuk untuk berhenti' : 'Mulai Rekam'}
+              </p>
             </div>
             {isRecording && (
-              <div className="flex items-center justify-between text-red-600 text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-                  Merekam...
-                </div>
+              <div className="flex items-center justify-center gap-3 text-[#e7000b] text-sm">
+                <span className="h-2 w-2 rounded-full bg-[#e7000b] animate-pulse" />
+                <span>Merekam...</span>
                 {secondsLeft !== null && (
                   <span className={`font-mono font-semibold ${secondsLeft <= 10 ? 'text-red-700' : 'text-red-500'}`}>
                     {secondsLeft}s
@@ -345,17 +345,17 @@ function Meja4Content({
               </div>
             )}
             {transcribeMutation.isPending && (
-              <div className="flex items-center gap-2 text-gray-500 text-sm">
+              <div className="flex items-center justify-center gap-2 text-[#99a1af] text-sm">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Memproses audio...
               </div>
             )}
             {transcribeMutation.isSuccess && (
               <div className="space-y-1">
-                <p className="text-xs text-gray-500 font-medium">Hasil transkripsi:</p>
-                <div className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 min-h-[60px]">
+                <p className="text-xs text-[#99a1af] font-medium">Hasil transkripsi:</p>
+                <div className="bg-[#f9fafb] border border-[#f3f4f6] rounded-xl px-3 py-2 text-sm text-[#1e2939] min-h-[60px]">
                   {transcribeMutation.data || (
-                    <span className="text-gray-400 italic">Tidak ada ucapan terdeteksi</span>
+                    <span className="text-[#99a1af] italic">Tidak ada ucapan terdeteksi</span>
                   )}
                 </div>
               </div>
@@ -364,8 +364,8 @@ function Meja4Content({
         </div>
 
         {/* ── AI Early Warning ──────────────────────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <div className="bg-white rounded-2xl border border-[#f3f4f6] shadow-sm p-4">
+          <p className="text-xs font-semibold text-[#99a1af] uppercase tracking-wide mb-3">
             AI Early Warning Stunting
           </p>
           <div className="space-y-3">
@@ -374,7 +374,7 @@ function Meja4Content({
                 <TooltipTrigger asChild>
                   <button
                     type="button"
-                    className={`w-full bg-indigo-600 text-white rounded-xl py-3 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60 ${!isOnline ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`w-full bg-[#008236] text-white rounded-xl py-3 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60 ${!isOnline ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#00a63e]'}`}
                     onClick={() => earlyWarningMutation.mutate()}
                     disabled={!isOnline || earlyWarningMutation.isPending}
                   >
@@ -394,25 +394,25 @@ function Meja4Content({
             </TooltipProvider>
 
             {earlyWarningData && (
-              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
+              <div className="bg-white border border-[#f3f4f6] rounded-2xl p-4 space-y-3">
                 <LevelBadge level={earlyWarningData.level} />
                 <div>
-                  <p className="text-xs font-semibold text-gray-500 mb-1">Ringkasan:</p>
-                  <p className="text-sm text-gray-800">{earlyWarningData.ringkasan}</p>
+                  <p className="text-xs font-semibold text-[#99a1af] mb-1">Ringkasan:</p>
+                  <p className="text-sm text-[#1e2939]">{earlyWarningData.ringkasan}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-gray-500 mb-1">Rekomendasi:</p>
-                  <p className="text-sm text-gray-800">{earlyWarningData.rekomendasi}</p>
+                  <p className="text-xs font-semibold text-[#99a1af] mb-1">Rekomendasi:</p>
+                  <p className="text-sm text-[#1e2939]">{earlyWarningData.rekomendasi}</p>
                 </div>
-                <p className="text-xs text-gray-400 italic">Rekomendasi AI telah disimpan secara otomatis.</p>
+                <p className="text-xs text-[#99a1af] italic">Rekomendasi AI telah disimpan secara otomatis.</p>
               </div>
             )}
           </div>
         </div>
 
         {/* ── Catatan Konsultasi ────────────────────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <div className="bg-white rounded-2xl border border-[#f3f4f6] shadow-sm p-4">
+          <p className="text-xs font-semibold text-[#99a1af] uppercase tracking-wide mb-3">
             Catatan Konsultasi
           </p>
           <div className="space-y-3">

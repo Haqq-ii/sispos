@@ -198,6 +198,8 @@ function Meja2Content({
 
   // ── Submit ──────────────────────────────────────────────────────────────────
 
+  // Security: X-Konfirmasi-Biologis header is sent by useCreatePemeriksaan hook
+  // when konfirmasiBiologis=true (T-03-04-02). Backend enforces gate — UI is UX layer only.
   async function doSubmit(konfirmasiBiologis: boolean) {
     if (!balitaId) {
       toast({
@@ -300,7 +302,7 @@ function Meja2Content({
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-[#f9fafb] flex flex-col">
 
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className="bg-[#00a63e] px-4 pt-10 pb-4">
@@ -433,7 +435,7 @@ function Meja2Content({
                 <button
                   key={key}
                   onClick={() => (isBackspace ? handleBackspace() : handleKey(key))}
-                  className={`rounded-[16px] h-14 text-xl font-semibold flex items-center justify-center active:scale-95 transition-transform ${
+                  className={`rounded-2xl h-14 text-xl font-semibold flex items-center justify-center active:scale-95 transition-transform ${
                     isBackspace
                       ? 'bg-[#fef2f2] border border-[#ffc9c9]'
                       : isDot
