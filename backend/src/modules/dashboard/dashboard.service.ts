@@ -104,51 +104,43 @@ export async function getDashboardStats(
 ): Promise<DashboardStats> {
   const { startOfMonth, endOfMonth } = parseBulan(bulan)
 
-  const posyanduList = await prisma.posyandu.findMany({
-    where: { puskesmasId },
-    select: {
-      jadwal: {
-        where: {
-          tanggalPelaksanaan: { gte: startOfMonth, lte: endOfMonth },
-        },
-        select: {
-          slotSesi: {
-            select: {
-              antrian: {
-                where: { statusAntrian: 'selesai' },
-                select: {
-                  wargaId: true,
-                  pemeriksaan: {
-                    select: { statusGizi: true },
-                  },
-                },
-              },
-            },
-          },
-        },
+  // Query pemeriksaan directly via balita → warga (posyanduUtamaId) under this puskesmas.
+  // Seed massal creates pemeriksaan without antrian (antrianId: null), so traversing
+  // through antrian chain would always return 0. Instead, query by tanggalPemeriksaan
+  // and posyandu membership.
+  const posyanduIds = await prisma.posyandu
+    .findMany({ where: { puskesmasId }, select: { id: true } })
+    .then((rows) => rows.map((r) => r.id))
+
+  if (posyanduIds.length === 0) {
+    return { totalPemeriksaan: 0, totalBalita: 0, breakdown: {} }
+  }
+
+  const allPemeriksaan = await prisma.pemeriksaan.findMany({
+    where: {
+      tanggalPemeriksaan: { gte: startOfMonth, lte: endOfMonth },
+      balita: {
+        warga: { posyanduUtamaId: { in: posyanduIds } },
       },
+      statusGizi: { not: null },
+    },
+    select: {
+      statusGizi: true,
+      statusGiziOverride: true,
+      balita: { select: { wargaId: true } },
     },
   })
 
-  const allAntrian = posyanduList
-    .flatMap((p) => p.jadwal)
-    .flatMap((j) => j.slotSesi)
-    .flatMap((s) => s.antrian)
-
-  const allPemeriksaan = allAntrian
-    .flatMap((a) => a.pemeriksaan)
-    .filter((pm) => pm.statusGizi !== null)
-
   const breakdown = allPemeriksaan.reduce(
     (acc, pm) => {
-      if (pm.statusGizi) acc[pm.statusGizi] = (acc[pm.statusGizi] ?? 0) + 1
+      const status = pm.statusGiziOverride ?? pm.statusGizi
+      if (status) acc[status] = (acc[status] ?? 0) + 1
       return acc
     },
     {} as Record<string, number>
   )
 
-  // Count distinct wargaId from antrian in the period
-  const uniqueWargaIds = new Set(allAntrian.map((a) => a.wargaId))
+  const uniqueWargaIds = new Set(allPemeriksaan.map((pm) => pm.balita.wargaId))
 
   return {
     totalPemeriksaan: allPemeriksaan.length,

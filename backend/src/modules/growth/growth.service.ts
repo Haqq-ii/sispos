@@ -318,3 +318,47 @@ export async function getPemeriksaanHistory(balitaId: string) {
     },
   })
 }
+
+// ── getRiwayatForCitizen ──────────────────────────────────────────────────────
+
+/**
+ * getRiwayatForCitizen — Ambil semua riwayat pemeriksaan untuk semua balita
+ * milik warga yang sedang login (citizen role).
+ *
+ * Digunakan oleh GET /api/growth/riwayat.
+ * Tidak mengekspos catatanKonsultasi/rekomendasiAi (encrypted, bukan untuk citizen).
+ */
+export async function getRiwayatForCitizen(wargaId: string): Promise<
+  {
+    id: string
+    createdAt: string
+    beratBadan: number
+    tinggiBadan: number
+    zScore: number
+    statusGizi: string
+  }[]
+> {
+  const records = await prisma.pemeriksaan.findMany({
+    where: { balita: { wargaId } },
+    select: {
+      id: true,
+      createdAt: true,
+      tanggalPemeriksaan: true,
+      beratBadan: true,
+      tinggiBadan: true,
+      zScoreBbU: true,
+      statusGizi: true,
+      statusGiziOverride: true,
+    },
+    orderBy: { tanggalPemeriksaan: 'desc' },
+  })
+
+  return records.map((r) => ({
+    id: r.id,
+    createdAt: r.createdAt.toISOString(),
+    beratBadan: r.beratBadan ?? 0,
+    tinggiBadan: r.tinggiBadan ?? 0,
+    zScore: r.zScoreBbU ?? 0,
+    statusGizi: (r.statusGiziOverride ?? r.statusGizi ?? 'normal') as string,
+  }))
+}

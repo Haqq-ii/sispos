@@ -4,10 +4,19 @@ import { requireRole } from '../../shared/middleware/require-role.middleware'
 import {
   createPemeriksaanHandler,
   getPemeriksaanHistoryHandler,
+  getRiwayatCitizenHandler,
   updatePemeriksaanHandler,
 } from './growth.controller'
 
 export const growthRouter = Router()
+
+// GET /api/growth/riwayat — Riwayat pemeriksaan untuk citizen (TumbuhKembangPage)
+growthRouter.get(
+  '/riwayat',
+  authMiddleware,
+  requireRole('citizen'),
+  getRiwayatCitizenHandler
+)
 
 // POST /api/growth/pemeriksaan — Simpan hasil timbang/ukur (Meja 2)
 growthRouter.post(

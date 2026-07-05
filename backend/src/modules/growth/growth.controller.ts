@@ -1,7 +1,7 @@
 import type { Response } from 'express'
 import { z } from 'zod'
 import type { AuthRequest } from '../../shared/middleware/auth.middleware'
-import { createPemeriksaan, getPemeriksaanHistory, updatePemeriksaan } from './growth.service'
+import { createPemeriksaan, getPemeriksaanHistory, updatePemeriksaan, getRiwayatForCitizen } from './growth.service'
 
 const CreatePemeriksaanSchema = z.object({
   antrianId: z.string().uuid().optional(),
@@ -69,6 +69,16 @@ export async function createPemeriksaanHandler(req: AuthRequest, res: Response):
       error: e.code ?? 'INTERNAL_ERROR',
       message: 'Terjadi kesalahan internal. Coba lagi beberapa saat.',
     })
+  }
+}
+
+export async function getRiwayatCitizenHandler(req: AuthRequest, res: Response): Promise<void> {
+  const wargaId = req.user!.userId
+  try {
+    const data = await getRiwayatForCitizen(wargaId)
+    res.status(200).json({ success: true, data, message: 'Riwayat pemeriksaan berhasil diambil.' })
+  } catch {
+    res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: 'Terjadi kesalahan internal.' })
   }
 }
 
