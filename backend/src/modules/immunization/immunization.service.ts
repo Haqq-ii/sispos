@@ -26,6 +26,34 @@ export async function getImunisasiByBalita(balitaId: string) {
   })
 }
 
+/**
+ * getImunisasiForCitizen — Ambil semua riwayat imunisasi balita milik warga (citizen).
+ *
+ * Scoped ke wargaId dari JWT — tidak ada IDOR karena balita difilter via wargaId.
+ * T-08-10-01: endpoint aman, data hanya milik citizen ybs.
+ */
+export async function getImunisasiForCitizen(wargaId: string) {
+  // Fetch semua balita milik warga terlebih dahulu
+  const balitaList = await prisma.balita.findMany({
+    where: { wargaId },
+    select: { id: true },
+  })
+  const balitaIds = balitaList.map((b) => b.id)
+  if (balitaIds.length === 0) return []
+
+  return prisma.imunisasi.findMany({
+    where: { balitaId: { in: balitaIds } },
+    orderBy: { tanggalInjeksi: 'asc' },
+    select: {
+      id: true,
+      namaVaksin: true,
+      dosisKe: true,
+      tanggalInjeksi: true,
+      keterangan: true,
+    },
+  })
+}
+
 export async function createImunisasi(
   data: CreateImunisasiInput,
   kaderId: string,

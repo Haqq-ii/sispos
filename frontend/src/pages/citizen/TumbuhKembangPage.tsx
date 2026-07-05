@@ -6,8 +6,9 @@
  * Fitur:
  * - Green header dengan 3 stat cards (BB, TB, Z-Score)
  * - Tab navigation: Grafik | Riwayat | Imunisasi
- * - Default tab: Riwayat — menampilkan daftar pemeriksaan historis
- * - Grafik & Imunisasi: placeholder "segera hadir"
+ * - Grafik tab: ZScoreChart dari riwayatData (zScoreBbU, zScoreTbU, zScoreBbTb)
+ * - Riwayat tab: daftar pemeriksaan historis
+ * - Imunisasi tab: riwayat imunisasi dari GET /api/immunization/riwayat
  */
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -39,6 +40,14 @@ interface LatestStats {
   zScore?: number
 }
 
+interface ImunisasiItem {
+  id: string
+  namaVaksin: string
+  dosisKe: number
+  tanggalInjeksi: string
+  keterangan?: string | null
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function formatDate(isoStr: string): string {
@@ -62,8 +71,8 @@ function getStatusStyle(status: string): string {
 export default function TumbuhKembangPage() {
   const [activeTab, setActiveTab] = useState<'grafik' | 'riwayat' | 'imunisasi'>('riwayat')
 
-  // Fetch riwayat pemeriksaan — try /growth/riwayat
-  const { data: riwayat, isLoading } = useQuery<RiwayatRecord[]>({
+  // Fetch riwayat pemeriksaan (riwayatData) — GET /api/growth/riwayat
+  const { data: riwayatData, isLoading } = useQuery<RiwayatRecord[]>({
     queryKey: ['growth', 'riwayat'],
     queryFn: () =>
       apiClient.get('/growth/riwayat').then((r) => {
@@ -71,35 +80,52 @@ export default function TumbuhKembangPage() {
         return Array.isArray(d) ? d : []
       }),
     staleTime: 60_000,
-    // Gracefully handle 404 / not-yet-implemented endpoints
+    retry: false,
+  })
+
+  // Fetch riwayat imunisasi — GET /api/immunization/riwayat (citizen-scoped via JWT)
+  const { data: imunisasiList, isLoading: isLoadingImunisasi } = useQuery<ImunisasiItem[]>({
+    queryKey: ['imunisasi', 'citizen'],
+    queryFn: () =>
+      apiClient.get('/immunization/riwayat').then((r) => {
+        const d = r.data.data
+        return Array.isArray(d) ? d : []
+      }),
+    staleTime: 60_000,
     retry: false,
   })
 
   // Derive latest stats from most recent record
   const latest: LatestStats =
-    riwayat && riwayat.length > 0
+    riwayatData && riwayatData.length > 0
       ? {
-          beratBadan: riwayat[0].beratBadan,
-          tinggiBadan: riwayat[0].tinggiBadan,
-          zScore: riwayat[0].zScore,
+          beratBadan: riwayatData[0].beratBadan,
+          tinggiBadan: riwayatData[0].tinggiBadan,
+          zScore: riwayatData[0].zScore,
         }
       : {}
 
-  // Grafik data — map riwayat to ZScoreDataPoint[] for ZScoreChart
-  const grafikData: ZScoreDataPoint[] = (riwayat ?? []).map((record) => {
-    const dateStr = record.tanggalPemeriksaan ?? record.createdAt
-    const tanggal = new Date(dateStr).toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: '2-digit',
-      year: '2-digit',
+  // Grafik data — sort riwayatData ascending by date, then map to ZScoreDataPoint[]
+  const grafikData: ZScoreDataPoint[] = [...(riwayatData ?? [])]
+    .sort((a, b) => {
+      const tA = new Date(a.tanggalPemeriksaan ?? a.createdAt).getTime()
+      const tB = new Date(b.tanggalPemeriksaan ?? b.createdAt).getTime()
+      return tA - tB
     })
-    return {
-      tanggal,
-      bbU: record.zScoreBbU ?? null,
-      tbU: record.zScoreTbU ?? null,
-      bbTb: record.zScoreBbTb ?? null,
-    }
-  })
+    .map((record) => {
+      const dateStr = record.tanggalPemeriksaan ?? record.createdAt
+      const tanggal = new Date(dateStr).toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit',
+      })
+      return {
+        tanggal,
+        bbU: record.zScoreBbU ?? null,
+        tbU: record.zScoreTbU ?? null,
+        bbTb: record.zScoreBbTb ?? null,
+      }
+    })
 
   const statCards = [
     {
@@ -179,7 +205,7 @@ export default function TumbuhKembangPage() {
               </>
             )}
 
-            {!isLoading && (!riwayat || riwayat.length === 0) && (
+            {!isLoading && (!riwayatData || riwayatData.length === 0) && (
               <div className="bg-white border border-[#f3f4f6] rounded-2xl p-8 text-center shadow-sm">
                 <p className="text-[#1e2939] font-semibold text-sm">Belum ada data pemeriksaan</p>
                 <p className="text-[#99a1af] text-xs mt-1 leading-relaxed">
@@ -189,9 +215,9 @@ export default function TumbuhKembangPage() {
             )}
 
             {!isLoading &&
-              riwayat &&
-              riwayat.length > 0 &&
-              riwayat.map((record) => (
+              riwayatData &&
+              riwayatData.length > 0 &&
+              riwayatData.map((record) => (
                 <div
                   key={record.id}
                   className="bg-white border border-[#f3f4f6] rounded-2xl shadow-sm p-4"
@@ -233,23 +259,19 @@ export default function TumbuhKembangPage() {
         {/* ── Grafik tab ───────────────────────────────────────────────────── */}
         {activeTab === 'grafik' && (
           <>
-            {isLoading && (
-              <Skeleton className="h-[260px] rounded-2xl" />
-            )}
+            {isLoading && <Skeleton className="h-[260px] rounded-2xl" />}
 
             {!isLoading && grafikData.length === 0 && (
-              <div className="bg-white border border-[#f3f4f6] rounded-2xl p-8 text-center shadow-sm">
-                <p className="text-[#1e2939] font-semibold text-sm">Belum ada data pemeriksaan untuk grafik</p>
-                <p className="text-[#99a1af] text-xs mt-1 leading-relaxed">
-                  Lakukan pemeriksaan pertama di Posyandu.
-                </p>
-              </div>
+              <p className="text-[#99a1af] text-sm text-center py-8">
+                Belum ada data pemeriksaan untuk ditampilkan.
+              </p>
             )}
 
             {!isLoading && grafikData.length > 0 && (
-              <div className="bg-white rounded-2xl border border-[#f3f4f6] shadow-sm p-4">
-                <p className="text-[#1e2939] font-semibold text-sm">Tren Z-Score</p>
-                <p className="text-[#99a1af] text-xs mb-3">BB/U · TB/U · BB/TB</p>
+              <div className="bg-white border border-[#f3f4f6] rounded-2xl shadow-sm p-4">
+                <p className="text-[#99a1af] text-xs font-semibold tracking-wider mb-3">
+                  GRAFIK Z-SCORE
+                </p>
                 <ZScoreChart data={grafikData} />
               </div>
             )}
@@ -258,12 +280,32 @@ export default function TumbuhKembangPage() {
 
         {/* ── Imunisasi tab ────────────────────────────────────────────────── */}
         {activeTab === 'imunisasi' && (
-          <div className="bg-white border border-[#f3f4f6] rounded-2xl p-8 text-center shadow-sm">
-            <p className="text-[#1e2939] font-semibold text-sm">Riwayat Imunisasi</p>
-            <p className="text-[#99a1af] text-xs mt-2 leading-relaxed">
-              Riwayat imunisasi tersedia setelah pemeriksaan Meja 5 di Posyandu.
-            </p>
-          </div>
+          <>
+            {isLoadingImunisasi && <Skeleton className="h-24 rounded-2xl" />}
+
+            {!isLoadingImunisasi && (!imunisasiList || imunisasiList.length === 0) && (
+              <p className="text-[#99a1af] text-sm text-center py-8">
+                Belum ada riwayat imunisasi.
+              </p>
+            )}
+
+            {!isLoadingImunisasi &&
+              imunisasiList &&
+              imunisasiList.length > 0 &&
+              imunisasiList.map((item) => (
+                <div
+                  key={item.id}
+                  className="bg-white border border-[#f3f4f6] rounded-2xl px-4 py-3 shadow-sm"
+                >
+                  <p className="text-[#1e2939] font-semibold text-sm">{item.namaVaksin}</p>
+                  <p className="text-[#99a1af] text-xs mt-0.5">Dosis ke-{item.dosisKe}</p>
+                  <p className="text-[#6a7282] text-xs mt-1">{formatDate(item.tanggalInjeksi)}</p>
+                  {item.keterangan && (
+                    <p className="text-[#99a1af] text-xs mt-1 italic">{item.keterangan}</p>
+                  )}
+                </div>
+              ))}
+          </>
         )}
       </div>
     </div>
