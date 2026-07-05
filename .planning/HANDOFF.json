@@ -1,38 +1,81 @@
 {
   "version": "1.0",
-  "timestamp": "2026-07-05T06:06:48.114Z",
+  "timestamp": "2026-07-05T07:29:43.234Z",
   "phase": "08",
   "phase_name": "ui-figma-alignment",
   "phase_dir": ".planning/phases/08-ui-figma-alignment",
   "plan": 5,
-  "task": 2,
-  "total_tasks": 2,
+  "task": 1,
+  "total_tasks": 16,
   "status": "paused",
   "completed_tasks": [
-    {"id": 1, "name": "FamilyAccountPage balita list + ProfilSayaPage polish + TypeScript audit", "status": "done", "commit": "4aaf69e"},
-    {"id": 2, "name": "Wave 2 — getCitizenGrowthRiwayat + TumbuhKembangPage ZScoreChart", "status": "done", "commit": "e3c5899"},
-    {"id": 3, "name": "Wave 3 — LockScreenPage + KaderDashboard + Meja2 + Meja4 token alignment", "status": "done", "commit": "fd3c6a8"},
-    {"id": 4, "name": "Wave 4 — PetaStunting mobile-first + PuskesmasDashboard + ManajemenPengguna", "status": "done", "commit": "6b672bc"}
+    {"id": 1, "name": "08-01: Seed pipeline + backend bug fixes", "status": "done", "commit": "committed"},
+    {"id": 2, "name": "08-02: ZScoreChart + citizen token tweaks", "status": "done", "commit": "committed"},
+    {"id": 3, "name": "08-03: LockScreen + KaderDash + Meja2/4 token adjustments", "status": "done", "commit": "committed"},
+    {"id": 4, "name": "08-04: PetaStunting mobile-first + Puskesmas screens", "status": "done", "commit": "committed"},
+    {"id": 5, "name": "08-05 Task 1 (old): FamilyAccountPage + ProfilSayaPage", "status": "done", "commit": "4aaf69e"},
+    {"id": 6, "name": "PLANNING: Created 10 new plans (08-07 corrected + 08-08 through 08-16)", "status": "done", "commit": "5458a4b"}
   ],
   "remaining_tasks": [
-    {"id": 5, "name": "08-05 Task 2: QA pass human-verify checkpoint (PENDING — user did not approve)", "status": "blocked"},
-    {"id": 6, "name": "MAJOR: Pixel-perfect Figma redesign — all screens (Login, CitizenDashboard, KaderDashboard, all meja, puskesmas)", "status": "not_started"},
-    {"id": 7, "name": "Kader meja lock feature — enter meja locks UI, Tukar Meja needs ketua kader PIN", "status": "not_started"},
-    {"id": 8, "name": "Tukar Meja button — currently non-functional, needs PIN flow handler", "status": "not_started"}
+    {"id": 7, "name": "EXECUTE 08-05: LoginPage mint bg + CitizenDashboard white greeting", "status": "not_started"},
+    {"id": 8, "name": "EXECUTE 08-06: Backend kader dashboard stats + KaderDashboard recharts", "status": "not_started"},
+    {"id": 9, "name": "EXECUTE 08-07: verify-ketua-pin backend + TukarMejaModal fullscreen + Meja1-5 wire + QA", "status": "not_started"},
+    {"id": 10, "name": "EXECUTE 08-08: Auth flow alignment (Kader Login, Register, OTP, Lokasi)", "status": "not_started"},
+    {"id": 11, "name": "EXECUTE 08-09: Antrian flow mobile alignment (Pilih Tanggal, Sesi, Konfirmasi, Cetak)", "status": "not_started"},
+    {"id": 12, "name": "EXECUTE 08-10: TumbuhKembang real tabs + ChatAssistant alignment", "status": "not_started"},
+    {"id": 13, "name": "EXECUTE 08-11: Meja 1 alignment + Daftar Manual", "status": "not_started"},
+    {"id": 14, "name": "EXECUTE 08-12: Meja 2 + Meja 3 alignment", "status": "not_started"},
+    {"id": 15, "name": "EXECUTE 08-13: Meja 4 + Meja 5 alignment (CRITICAL: Selesai Pelayanan)", "status": "not_started"},
+    {"id": 16, "name": "EXECUTE 08-14: KaderProfil + AuditLog + ManajemenJadwal + Laporan audit", "status": "not_started"},
+    {"id": 17, "name": "EXECUTE 08-15: Landing page mobile", "status": "not_started"},
+    {"id": 18, "name": "EXECUTE 08-16: Final QA checkpoint", "status": "not_started"}
   ],
-  "blockers": [
-    {"description": "08-05 Task 2 QA checkpoint pending — user found 401 console errors (expected/handled by interceptor) but also found UI doesn't match Figma at all", "type": "human_action", "workaround": "Skip QA approval for 08-05 and fold it into next phase's full redesign"},
-    {"description": "Phase 8 Wave 2-4 produced surface-level token changes only — Figma structural layout not implemented", "type": "technical", "workaround": "Re-execute all screens using Figma MCP get_screenshot before each screen"}
-  ],
+  "blockers": [],
   "human_actions_pending": [
-    {"action": "User must decide: re-run Phase 8 entirely with proper Figma alignment OR create Phase 9 for pixel-perfect pass", "context": "Waves 2-4 used design tokens from RESEARCH.md without pulling Figma screenshots. Login bg is wrong, CitizenDashboard has green header that Figma doesn't have, KaderDashboard missing charts entirely.", "blocking": true},
-    {"action": "Implement Kader meja lock feature (enter meja → locked, switch → ketua kader PIN)", "context": "User confirmed this is a required security feature missing from the app", "blocking": true}
+    {
+      "action": "Human verify checkpoint in 08-07 Task 4: verify all screens 08-05 through 08-07 visually",
+      "context": "Mandatory QA checkpoint — executor will pause and wait for human approval before continuing",
+      "blocking": true
+    },
+    {
+      "action": "Human verify checkpoint in 08-16: final full QA of all 16 screens",
+      "context": "Final gate before Phase 08 can be marked complete",
+      "blocking": true
+    }
   ],
   "decisions": [
-    {"decision": "401 console errors during QA are expected — axios interceptor handles refresh-then-retry", "rationale": "withCredentials: true set, interceptor catches 401 and retries after token refresh", "phase": "08"},
-    {"decision": "Waves 2-4 changes kept in git (do not revert) as foundation for next pass", "rationale": "Design tokens applied are correct; structural layout needs addition on top, not replacement", "phase": "08"}
+    {
+      "decision": "TukarMejaModal is FULLSCREEN (fixed inset-0 z-50), NOT shadcn Dialog",
+      "rationale": "Figma spec confirmed — modal menutup seluruh layar, tidak bisa di-dismiss tanpa PIN",
+      "phase": "08"
+    },
+    {
+      "decision": "Max 3 percobaan PIN Tukar Meja (NOT 10 like kader lockout)",
+      "rationale": "Figma spec: 3x → disabled → Master Overrule by Puskesmas via ManajemenPengguna",
+      "phase": "08"
+    },
+    {
+      "decision": "On Tukar Meja PIN success: navigate to /kader/pelayanan (PelayananGateway) NOT LockScreenPage",
+      "rationale": "Figma spec: kembali ke PelayananGateway → pilih meja baru",
+      "phase": "08"
+    },
+    {
+      "decision": "PelayananHariHPage needs confirmation modal before entering meja",
+      "rationale": "Figma spec: tap meja → modal konfirmasi → Confirm → setActiveMeja + navigate",
+      "phase": "08"
+    },
+    {
+      "decision": "Demo PIN ketua kader: 654321",
+      "rationale": "User-confirmed from Figma spec; different from kader login PIN (123456)",
+      "phase": "08"
+    },
+    {
+      "decision": "ALL 96 Figma frames audited — 16 plans created to cover all unique mobile screens",
+      "rationale": "User requested zero frames skipped, all buttons functional",
+      "phase": "08"
+    }
   ],
   "uncommitted_files": [".planning/STATE.md"],
-  "next_action": "Start new session, read memory/project-phase8-gaps.md, then either: (A) re-plan Phase 8 with /gsd-plan-phase 08 to create proper pixel-perfect plans, OR (B) create Phase 9 pixel-perfect-ui. Use Figma frame IDs in memory file.",
-  "context_notes": "User wants ALL screens pixel-perfect to Figma — text size, spacing, component structure, not just colors. Key Figma frame IDs are saved in memory/feedback-figma-pixel-perfect.md. Critical: Login needs mint bg, CitizenDashboard has no green header in Figma, KaderDashboard needs bar+donut charts. Kader meja lock is a missing security feature."
+  "next_action": "/gsd-execute-phase 08 — starts at 08-05 (Login pixel-perfect + CitizenDashboard)",
+  "context_notes": "Full re-plan session. User provided Figma spec for PelayananHariH workflow. Audited all 96 Figma frames — found 20+ screens not covered. Planner created 10 new plans (08-07 corrected + 08-08 through 08-16). Each plan mandates Figma MCP get_screenshot before any JSX. Every button must have working handler. Key screens: Login mint bg, CitizenDashboard NO green header, KaderDashboard bar+donut charts, Meja pages full alignment. Figma file key: 4DIazKntakgAGXBDYefjbD, single page named 'sispos'."
 }
