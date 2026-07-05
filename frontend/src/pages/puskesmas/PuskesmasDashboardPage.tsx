@@ -84,8 +84,8 @@ export default function PuskesmasDashboardPage() {
   return (
     <div className="min-h-full bg-[#f9fafb] pb-8">
       {/* ── Green Header ──────────────────────────────────────────────────── */}
-      <div className="bg-[#008236] px-5 py-6">
-        <div className="flex items-start justify-between mb-4">
+      <div className="bg-[#008236] px-5 pt-6 pb-5">
+        <div className="flex items-start justify-between">
           <div>
             <p className="text-[#7bf1a8] text-xs font-medium mb-0.5">Dashboard Puskesmas</p>
             <p className="text-white font-bold text-xl leading-tight">
@@ -100,49 +100,49 @@ export default function PuskesmasDashboardPage() {
             className="px-3 py-1.5 text-xs border border-[rgba(255,255,255,0.3)] bg-[rgba(255,255,255,0.15)] text-white rounded-[14px] focus:outline-none focus:bg-[rgba(255,255,255,0.25)]"
           />
         </div>
-
-        {/* Stat boxes in header */}
-        {isLoading ? (
-          <div className="grid grid-cols-2 gap-2">
-            {[1, 2, 3, 4].map((i) => (
-              <div
-                key={i}
-                className="bg-[rgba(255,255,255,0.15)] rounded-[14px] px-3 py-3 h-16 animate-pulse"
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-[rgba(255,255,255,0.15)] rounded-[14px] px-3 py-3">
-              <p className="text-white font-bold text-xl leading-none">
-                {(stats?.totalPemeriksaan ?? 0).toLocaleString('id-ID')}
-              </p>
-              <p className="text-[#dcfce7] text-[10px] leading-tight mt-1">Total Pemeriksaan</p>
-            </div>
-            <div className="bg-[rgba(255,255,255,0.15)] rounded-[14px] px-3 py-3">
-              <p className="text-white font-bold text-xl leading-none">
-                {(stats?.totalBalita ?? 0).toLocaleString('id-ID')}
-              </p>
-              <p className="text-[#dcfce7] text-[10px] leading-tight mt-1">Total Balita</p>
-            </div>
-            <div className="bg-[rgba(255,255,255,0.15)] rounded-[14px] px-3 py-3">
-              <p className="text-[#7bf1a8] font-bold text-xl leading-none">
-                {(stats?.breakdown?.normal ?? 0).toLocaleString('id-ID')}
-              </p>
-              <p className="text-[#dcfce7] text-[10px] leading-tight mt-1">Gizi Normal</p>
-            </div>
-            <div className="bg-[rgba(255,255,255,0.15)] rounded-[14px] px-3 py-3">
-              <p className="text-[#fb2c36] font-bold text-xl leading-none">
-                {bermasalah.toLocaleString('id-ID')}
-              </p>
-              <p className="text-[#dcfce7] text-[10px] leading-tight mt-1">Bermasalah</p>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* ── Body ──────────────────────────────────────────────────────────── */}
       <div className="px-4 mt-4 space-y-4">
+        {/* Stats 2×2 grid */}
+        {isLoading ? (
+          <div className="grid grid-cols-2 gap-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="bg-white border border-[#f3f4f6] rounded-2xl shadow-sm p-4 h-20 animate-pulse"
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-white border border-[#f3f4f6] rounded-2xl shadow-sm p-4">
+              <p className="text-[#1e2939] font-bold text-2xl leading-none">
+                {(stats?.totalPemeriksaan ?? 0).toLocaleString('id-ID')}
+              </p>
+              <p className="text-[#99a1af] text-xs mt-1">Total Pemeriksaan</p>
+            </div>
+            <div className="bg-white border border-[#f3f4f6] rounded-2xl shadow-sm p-4">
+              <p className="text-[#1e2939] font-bold text-2xl leading-none">
+                {(stats?.totalBalita ?? 0).toLocaleString('id-ID')}
+              </p>
+              <p className="text-[#99a1af] text-xs mt-1">Total Balita</p>
+            </div>
+            <div className="bg-white border border-[#f3f4f6] rounded-2xl shadow-sm p-4">
+              <p className="text-[#008236] font-bold text-2xl leading-none">
+                {(stats?.breakdown?.normal ?? 0).toLocaleString('id-ID')}
+              </p>
+              <p className="text-[#99a1af] text-xs mt-1">Gizi Normal</p>
+            </div>
+            <div className="bg-white border border-[#f3f4f6] rounded-2xl shadow-sm p-4">
+              <p className="text-[#e7000b] font-bold text-2xl leading-none">
+                {bermasalah.toLocaleString('id-ID')}
+              </p>
+              <p className="text-[#99a1af] text-xs mt-1">Bermasalah</p>
+            </div>
+          </div>
+        )}
+
         {/* Quick actions */}
         <div>
           <p className="text-[#6a7282] text-xs font-semibold tracking-wider mb-3">AKSI CEPAT</p>
