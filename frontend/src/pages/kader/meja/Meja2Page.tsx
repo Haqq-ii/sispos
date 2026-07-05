@@ -32,6 +32,7 @@ import { useOfflineStatus } from '@/hooks/useOfflineStatus'
 import { useOfflineSync } from '@/hooks/useOfflineSync'
 import { SyncPendingBadge } from '@/components/offline/SyncPendingBadge'
 import { generateTempId } from '@/lib/offline-db'
+import { TukarMejaModal } from '@/components/kader/TukarMejaModal'
 
 // ── Antrian item type (subset dari Meja 1) ────────────────────────────────────
 
@@ -137,6 +138,8 @@ function Meja2Content({
   const { activeAntrianId, activeBalitaId, activeNamaBalita, setActiveAntrian } = useKaderMejaStore()
   const isOnline = useOfflineStatus()
   const { enqueueOperation } = useOfflineSync()
+
+  const [showTukarMeja, setShowTukarMeja] = useState(false)
 
   const routeState = location.state as {
     antrianId?: string
@@ -320,7 +323,7 @@ function Meja2Content({
             </div>
           </div>
           <button
-            onClick={() => navigate('/kader/pelayanan', { state: { slotId: activeSlotId, slotLabel: 'Sesi Aktif' } })}
+            onClick={() => setShowTukarMeja(true)}
             className="bg-[rgba(0,166,62,0.6)] border border-[rgba(0,201,80,0.5)] rounded-xl px-3 py-1.5 text-white text-xs font-medium"
           >
             Tukar Meja
@@ -586,6 +589,7 @@ function Meja2Content({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <TukarMejaModal open={showTukarMeja} onClose={() => setShowTukarMeja(false)} slotId={activeSlotId} />
     </div>
   )
 }

@@ -24,6 +24,7 @@ import { useOfflineStatus } from '@/hooks/useOfflineStatus'
 import { useOfflineSync } from '@/hooks/useOfflineSync'
 import { SyncPendingBadge } from '@/components/offline/SyncPendingBadge'
 import { generateTempId } from '@/lib/offline-db'
+import { TukarMejaModal } from '@/components/kader/TukarMejaModal'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -81,6 +82,8 @@ export default function Meja5Page() {
   const { activeSlotId, setActiveMeja, setActivePemeriksaanId, setLocked, activeAntrianId, activeBalitaId, activeNamaBalita } = useKaderMejaStore()
   const isOnline = useOfflineStatus()
   const { enqueueOperation } = useOfflineSync()
+
+  const [showTukarMeja, setShowTukarMeja] = useState(false)
 
   const state = location.state as {
     antrianId?: string
@@ -237,7 +240,7 @@ export default function Meja5Page() {
           <div className="flex items-center gap-2">
             <SyncPendingBadge />
             <button
-              onClick={() => navigate('/kader/pelayanan', { state: { slotId: activeSlotId, slotLabel: 'Sesi Aktif' } })}
+              onClick={() => setShowTukarMeja(true)}
               className="bg-[rgba(254,154,0,0.6)] border border-[rgba(255,185,0,0.5)] rounded-xl px-3 py-1.5 text-white text-xs font-medium"
             >
               Tukar Meja
@@ -401,6 +404,7 @@ export default function Meja5Page() {
           }
         </Button>
       </div>
+      <TukarMejaModal open={showTukarMeja} onClose={() => setShowTukarMeja(false)} slotId={activeSlotId ?? ''} />
     </div>
   )
 }

@@ -30,6 +30,7 @@ import { useOfflineSync } from '@/hooks/useOfflineSync'
 import { SyncPendingBadge } from '@/components/offline/SyncPendingBadge'
 import { generateTempId } from '@/lib/offline-db'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { TukarMejaModal } from '@/components/kader/TukarMejaModal'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -133,6 +134,8 @@ function Meja4Content({
   const { activeSlotId } = useKaderMejaStore()
   const isOnline = useOfflineStatus()
   const { enqueueOperation } = useOfflineSync()
+
+  const [showTukarMeja, setShowTukarMeja] = useState(false)
 
   // Voice recorder state
   const { isRecording, audioBlob, secondsLeft, startRecording, stopRecording } = useVoiceRecorder()
@@ -281,7 +284,7 @@ function Meja4Content({
           <div className="flex items-center gap-2">
             <SyncPendingBadge />
             <button
-              onClick={() => navigate('/kader/pelayanan', { state: { slotId: activeSlotId, slotLabel: 'Sesi Aktif' } })}
+              onClick={() => setShowTukarMeja(true)}
               className="bg-[rgba(0,166,62,0.6)] border border-[rgba(0,201,80,0.5)] rounded-xl px-3 py-1.5 text-white text-xs font-medium"
             >
               Tukar Meja
@@ -458,6 +461,7 @@ function Meja4Content({
           Selesai Meja 4
         </button>
       </div>
+      <TukarMejaModal open={showTukarMeja} onClose={() => setShowTukarMeja(false)} slotId={activeSlotId ?? ''} />
     </div>
   )
 }

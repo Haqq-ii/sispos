@@ -12,6 +12,7 @@ import { useOfflineStatus } from '@/hooks/useOfflineStatus'
 import { useOfflineSync } from '@/hooks/useOfflineSync'
 import { SyncPendingBadge } from '@/components/offline/SyncPendingBadge'
 import { generateTempId } from '@/lib/offline-db'
+import { TukarMejaModal } from '@/components/kader/TukarMejaModal'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -91,6 +92,7 @@ function Meja1Content({ activeSlotId, clearActiveMejaMutation, resetStore }: Mej
   const isOnline = useOfflineStatus()
   const { enqueueOperation } = useOfflineSync()
 
+  const [showTukarMeja, setShowTukarMeja] = useState(false)
   const [selectedRt, setSelectedRt] = useState<string>('Semua')
   const [searchQuery, setSearchQuery] = useState('')
   const [showGoShow, setShowGoShow] = useState(false)
@@ -252,7 +254,7 @@ function Meja1Content({ activeSlotId, clearActiveMejaMutation, resetStore }: Mej
             </div>
           </div>
           <button
-            onClick={() => navigate('/kader/dashboard')}
+            onClick={() => setShowTukarMeja(true)}
             className="bg-[rgba(0,166,62,0.6)] border border-[rgba(0,201,80,0.5)] rounded-xl px-3 py-1.5 text-white text-xs font-medium"
           >
             Tukar Meja
@@ -479,6 +481,7 @@ function Meja1Content({ activeSlotId, clearActiveMejaMutation, resetStore }: Mej
           </button>
         </div>
       </div>
+      <TukarMejaModal open={showTukarMeja} onClose={() => setShowTukarMeja(false)} slotId={activeSlotId} />
     </div>
   )
 }

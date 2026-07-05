@@ -39,6 +39,7 @@ import { useOfflineStatus } from '@/hooks/useOfflineStatus'
 import { useOfflineSync } from '@/hooks/useOfflineSync'
 import { SyncPendingBadge } from '@/components/offline/SyncPendingBadge'
 import { generateTempId } from '@/lib/offline-db'
+import { TukarMejaModal } from '@/components/kader/TukarMejaModal'
 
 // ── Zod v4 schema (frontend) ──────────────────────────────────────────────
 
@@ -128,6 +129,7 @@ function Meja3Content({ antrianId, balitaId, namaBalita, pemeriksaanId }: Meja3C
   const isOnline = useOfflineStatus()
   const { enqueueOperation } = useOfflineSync()
 
+  const [showTukarMeja, setShowTukarMeja] = useState(false)
   const [statusGiziOverride, setStatusGiziOverride] = useState<string | null>(null)
 
   // Riwayat pemeriksaan untuk grafik Z-Score
@@ -261,7 +263,7 @@ function Meja3Content({ antrianId, balitaId, namaBalita, pemeriksaanId }: Meja3C
           <div className="flex items-center gap-2">
             <SyncPendingBadge />
             <button
-              onClick={() => navigate('/kader/pelayanan', { state: { slotId: activeSlotId, slotLabel: 'Sesi Aktif' } })}
+              onClick={() => setShowTukarMeja(true)}
               className="bg-[rgba(0,166,62,0.6)] border border-[rgba(0,201,80,0.5)] rounded-xl px-3 py-1.5 text-white text-xs font-medium"
             >
               Tukar Meja
@@ -398,6 +400,7 @@ function Meja3Content({ antrianId, balitaId, namaBalita, pemeriksaanId }: Meja3C
           </button>
         </form>
       </div>
+      <TukarMejaModal open={showTukarMeja} onClose={() => setShowTukarMeja(false)} slotId={activeSlotId ?? ''} />
     </div>
   )
 }
