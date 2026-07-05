@@ -1,80 +1,38 @@
 {
   "version": "1.0",
-  "timestamp": "2026-07-02T02:18:02.952Z",
-  "phase": "03",
-  "phase_name": "kader-5-meja",
-  "phase_dir": ".planning/phases/03-kader-5-meja",
-  "plan": 7,
-  "task": 1,
-  "total_tasks": 3,
+  "timestamp": "2026-07-05T06:06:48.114Z",
+  "phase": "08",
+  "phase_name": "ui-figma-alignment",
+  "phase_dir": ".planning/phases/08-ui-figma-alignment",
+  "plan": 5,
+  "task": 2,
+  "total_tasks": 2,
   "status": "paused",
   "completed_tasks": [
-    {"id": "03-01", "name": "Foundation: WHO LMS data, encrypt.ts, zscore.ts, vitest", "status": "done", "commit": "prior session"},
-    {"id": "03-02", "name": "Backend modules: growth, queue-kader, immunization, app.ts", "status": "done", "commit": "prior session"},
-    {"id": "03-03", "name": "Frontend foundation: Zustand store, Socket.IO hook, KaderDashboardPage, LockScreenPage, Meja1Page, router", "status": "done", "commit": "prior session"},
-    {"id": "03-04", "name": "Meja2Page: BB/TB numpad, Z-Score display, biological gate", "status": "done", "commit": "b72b0ec"},
-    {"id": "03-05", "name": "ZScoreChart (recharts) + Meja3Page (tanda klinis) + PATCH /api/growth/pemeriksaan/:id", "status": "done", "commit": "aa7deef"},
-    {"id": "03-06", "name": "Voice/STT backend + AI early warning (GPT-4o) + Meja4Page", "status": "done", "commit": "95ab7e4"}
+    {"id": 1, "name": "FamilyAccountPage balita list + ProfilSayaPage polish + TypeScript audit", "status": "done", "commit": "4aaf69e"},
+    {"id": 2, "name": "Wave 2 — getCitizenGrowthRiwayat + TumbuhKembangPage ZScoreChart", "status": "done", "commit": "e3c5899"},
+    {"id": 3, "name": "Wave 3 — LockScreenPage + KaderDashboard + Meja2 + Meja4 token alignment", "status": "done", "commit": "fd3c6a8"},
+    {"id": 4, "name": "Wave 4 — PetaStunting mobile-first + PuskesmasDashboard + ManajemenPengguna", "status": "done", "commit": "6b672bc"}
   ],
   "remaining_tasks": [
-    {
-      "id": "03-07-task1",
-      "name": "Meja5 selesai endpoint + moving average (QUEUE-05) + Meja5Page",
-      "status": "in_progress",
-      "progress": "Background agent was executing this when pause was requested — check git log for 03-07 commits on resume"
-    },
-    {
-      "id": "03-07-task2",
-      "name": "Rekap harian export (ExcelJS + pdfkit) + RekapHarianPage + app.ts",
-      "status": "not_started"
-    },
-    {
-      "id": "03-07-task3",
-      "name": "Checkpoint: human-verify — full 5-meja smoke test (7 steps)",
-      "status": "not_started",
-      "progress": "autonomous:false gate — requires human to run docker compose + 7-step smoke test then type 'approved'"
-    }
+    {"id": 5, "name": "08-05 Task 2: QA pass human-verify checkpoint (PENDING — user did not approve)", "status": "blocked"},
+    {"id": 6, "name": "MAJOR: Pixel-perfect Figma redesign — all screens (Login, CitizenDashboard, KaderDashboard, all meja, puskesmas)", "status": "not_started"},
+    {"id": 7, "name": "Kader meja lock feature — enter meja locks UI, Tukar Meja needs ketua kader PIN", "status": "not_started"},
+    {"id": 8, "name": "Tukar Meja button — currently non-functional, needs PIN flow handler", "status": "not_started"}
   ],
   "blockers": [
-    {
-      "description": "Background agent for plan 03-07 was still running when pause was requested",
-      "type": "external",
-      "workaround": "On resume: check git log for '03-07' commits. If Tasks 1 & 2 are committed, proceed to human-verify checkpoint (Task 3). If not committed, re-run /gsd-execute-phase 03."
-    }
+    {"description": "08-05 Task 2 QA checkpoint pending — user found 401 console errors (expected/handled by interceptor) but also found UI doesn't match Figma at all", "type": "human_action", "workaround": "Skip QA approval for 08-05 and fold it into next phase's full redesign"},
+    {"description": "Phase 8 Wave 2-4 produced surface-level token changes only — Figma structural layout not implemented", "type": "technical", "workaround": "Re-execute all screens using Figma MCP get_screenshot before each screen"}
   ],
   "human_actions_pending": [
-    {
-      "action": "Run full 5-meja smoke test (7 steps) in docker compose",
-      "context": "Task 3 of plan 03-07 is a blocking human-verify checkpoint for the complete Phase 03 end-to-end flow. Steps: dashboard+lock-screen, Meja1 hadir, Meja2 penimbangan, Meja3 tanda klinis, Meja4 AI warning, Meja5 selesai, rekap harian download.",
-      "blocking": true
-    }
+    {"action": "User must decide: re-run Phase 8 entirely with proper Figma alignment OR create Phase 9 for pixel-perfect pass", "context": "Waves 2-4 used design tokens from RESEARCH.md without pulling Figma screenshots. Login bg is wrong, CitizenDashboard has green header that Figma doesn't have, KaderDashboard missing charts entirely.", "blocking": true},
+    {"action": "Implement Kader meja lock feature (enter meja → locked, switch → ketua kader PIN)", "context": "User confirmed this is a required security feature missing from the app", "blocking": true}
   ],
   "decisions": [
-    {
-      "decision": "Use native HTML <input type='checkbox'> + Tailwind instead of shadcn Checkbox",
-      "rationale": "@radix-ui/react-checkbox not in package.json; consistent with prior plans (03-02, 03-05)",
-      "phase": "03"
-    },
-    {
-      "decision": "Use native <textarea> instead of shadcn Textarea",
-      "rationale": "No shadcn Textarea in components/ui/; consistent pattern across all meja pages",
-      "phase": "03"
-    },
-    {
-      "decision": "Graceful degradation for Google STT and OpenAI when env vars not set",
-      "rationale": "Dev/academic environment may not have API keys; stub responses allow UI testing without credentials",
-      "phase": "03"
-    },
-    {
-      "decision": "worktrees=false; sequential execution on main working tree",
-      "rationale": "Project config.json has use_worktrees=false",
-      "phase": "03"
-    }
+    {"decision": "401 console errors during QA are expected — axios interceptor handles refresh-then-retry", "rationale": "withCredentials: true set, interceptor catches 401 and retries after token refresh", "phase": "08"},
+    {"decision": "Waves 2-4 changes kept in git (do not revert) as foundation for next pass", "rationale": "Design tokens applied are correct; structural layout needs addition on top, not replacement", "phase": "08"}
   ],
-  "uncommitted_files": [
-    "backend/package-lock.json (modified — from package installs in prior plans)",
-    ".planning/phases/03-kader-5-meja/03-PATTERNS.md (untracked)"
-  ],
-  "next_action": "Check git log for 03-07 commits. If Tasks 1 & 2 are done, proceed to human-verify (Task 3 checkpoint). If not, re-run: /gsd-execute-phase 03",
-  "context_notes": "Phase 03 is the Kader 5-Meja flow — the core value of SISPOS. Plans 03-01 through 03-06 are fully complete this session. Only 03-07 remains: Meja5 selesai endpoint with moving average (QUEUE-05 critical), rekap harian export (ExcelJS + pdfkit), and the human smoke test. A background agent was building Tasks 1 & 2 when pause was requested."
+  "uncommitted_files": [".planning/STATE.md"],
+  "next_action": "Start new session, read memory/project-phase8-gaps.md, then either: (A) re-plan Phase 8 with /gsd-plan-phase 08 to create proper pixel-perfect plans, OR (B) create Phase 9 pixel-perfect-ui. Use Figma frame IDs in memory file.",
+  "context_notes": "User wants ALL screens pixel-perfect to Figma — text size, spacing, component structure, not just colors. Key Figma frame IDs are saved in memory/feedback-figma-pixel-perfect.md. Critical: Login needs mint bg, CitizenDashboard has no green header in Figma, KaderDashboard needs bar+donut charts. Kader meja lock is a missing security feature."
 }
