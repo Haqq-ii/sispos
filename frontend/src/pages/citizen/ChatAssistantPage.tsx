@@ -155,7 +155,10 @@ export default function ChatAssistantPage() {
                   {QUICK_SUGGESTIONS.map((q) => (
                     <button
                       key={q}
-                      onClick={() => setInput(q)}
+                      onClick={() => {
+                        setInput(q)
+                        chatMutation.mutate({ msg: q, history: messages })
+                      }}
                       className="w-full bg-white border border-[#e5e7eb] rounded-[14px] px-3 py-2.5 flex items-center justify-between text-left hover:border-[#008236] transition-colors"
                     >
                       <span className="text-[#364153] text-sm font-medium">{q}</span>
@@ -182,9 +185,8 @@ export default function ChatAssistantPage() {
                 className={
                   msg.role === 'user'
                     ? 'bg-[#008236] text-white rounded-tl-2xl rounded-tr-md rounded-br-2xl rounded-bl-2xl px-4 py-2.5 max-w-[80%] text-sm leading-relaxed'
-                    : 'bg-white border border-[#f3f4f6] text-[#364153] rounded-tl-md rounded-tr-2xl rounded-br-2xl rounded-bl-2xl px-4 py-2.5 max-w-[80%] text-sm leading-relaxed shadow-sm'
+                    : 'bg-white border border-[#f3f4f6] text-[#364153] rounded-tl-md rounded-tr-2xl rounded-br-2xl rounded-bl-2xl px-4 py-2.5 max-w-[80%] text-sm leading-relaxed shadow-sm whitespace-pre-wrap'
                 }
-                style={msg.role === 'assistant' ? { whiteSpace: 'pre-wrap' } : undefined}
               >
                 {msg.content}
               </div>
