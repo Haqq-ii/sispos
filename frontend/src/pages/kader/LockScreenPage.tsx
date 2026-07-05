@@ -8,7 +8,6 @@
  * Navigated to from KaderDashboardPage (fallback) or directly.
  */
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useMutationSetActiveMeja } from '@/hooks/useActiveMeja'
 import { useKaderMejaStore } from '@/stores/useKaderMejaStore'
@@ -16,11 +15,11 @@ import { useKaderMejaStore } from '@/stores/useKaderMejaStore'
 // ── Meja definitions ───────────────────────────────────────────────────────────
 
 const MEJA_LIST = [
-  { number: 1, label: 'Meja 1 — Pendaftaran & Kehadiran', color: 'bg-blue-50 border-blue-200 hover:bg-blue-100' },
-  { number: 2, label: 'Meja 2 — Penimbangan', color: 'bg-green-50 border-green-200 hover:bg-green-100' },
-  { number: 3, label: 'Meja 3 — Pencatatan', color: 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100' },
-  { number: 4, label: 'Meja 4 — Konseling', color: 'bg-purple-50 border-purple-200 hover:bg-purple-100' },
-  { number: 5, label: 'Meja 5 — Selesai', color: 'bg-red-50 border-red-200 hover:bg-red-100' },
+  { number: 1, label: 'Meja 1', desc: 'Pendaftaran & Kehadiran Balita', badgeColor: 'bg-blue-500' },
+  { number: 2, label: 'Meja 2', desc: 'Penimbangan & Pengukuran', badgeColor: 'bg-[#008236]' },
+  { number: 3, label: 'Meja 3', desc: 'Pencatatan Klinis & Grafik', badgeColor: 'bg-yellow-500' },
+  { number: 4, label: 'Meja 4', desc: 'Konseling & AI Early Warning', badgeColor: 'bg-purple-500' },
+  { number: 5, label: 'Meja 5', desc: 'Selesai Pelayanan & Imunisasi', badgeColor: 'bg-[#e17100]' },
 ] as const
 
 // ── Component ──────────────────────────────────────────────────────────────────
@@ -54,24 +53,34 @@ export default function LockScreenPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
-      <div className="bg-white border-b px-4 py-3 flex items-center gap-2">
-        <Lock size={16} className="text-primary" />
-        <span className="text-sm font-bold">Pilih Meja Pelayanan</span>
+    <div className="min-h-screen bg-[#f9fafb] flex flex-col">
+
+      {/* ── Header ──────────────────────────────────────────────────────── */}
+      <div className="bg-[#008236] px-4 pt-10 pb-6">
+        <p className="text-[#7bf1a8] text-xs font-medium mb-0.5">Sesi Pelayanan</p>
+        <p className="text-white font-bold text-xl leading-tight">Pilih Meja Pelayanan</p>
+        <p className="text-[#b9f8cf] text-xs mt-1">
+          {slotId
+            ? `Slot aktif: ${slotId.slice(0, 8)}…`
+            : new Date().toLocaleDateString('id-ID', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              })}
+        </p>
       </div>
 
-      <div className="max-w-[480px] mx-auto w-full px-4 py-6 space-y-4">
-        <p className="text-sm text-gray-500 text-center">
-          Pilih meja untuk memulai sesi pelayanan.
-          {!slotId && (
-            <span className="block text-amber-600 mt-1 text-xs">
-              Slot belum dipilih — kembali ke Dashboard.
-            </span>
-          )}
-        </p>
+      <div className="max-w-[480px] mx-auto w-full px-4 py-6 space-y-3">
+        {!slotId && (
+          <div className="bg-[#fff7ed] border border-[#fde68a] rounded-2xl px-4 py-3">
+            <p className="text-[#92400e] text-xs font-medium">
+              Slot belum dipilih — kembali ke Dashboard untuk memilih sesi.
+            </p>
+          </div>
+        )}
 
-        {/* Meja buttons */}
+        {/* Meja cards */}
         <div className="space-y-3">
           {MEJA_LIST.map((meja) => (
             <button
@@ -79,9 +88,17 @@ export default function LockScreenPage() {
               type="button"
               onClick={() => handleMejaClick(meja.number)}
               disabled={!slotId || setActiveMejaMutation.isPending}
-              className={`w-full text-left px-4 py-4 rounded-xl border font-medium text-sm transition-colors ${meja.color} disabled:opacity-50 disabled:cursor-not-allowed`}
+              className="bg-white border border-[#f3f4f6] rounded-2xl shadow-sm px-4 py-4 w-full text-left flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed active:bg-[#f0fdf4] transition-colors"
             >
-              {meja.label}
+              <div
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${meja.badgeColor}`}
+              >
+                {meja.number}
+              </div>
+              <div>
+                <p className="font-semibold text-[#1e2939] text-sm">{meja.label}</p>
+                <p className="text-[#99a1af] text-xs mt-0.5">{meja.desc}</p>
+              </div>
             </button>
           ))}
         </div>
