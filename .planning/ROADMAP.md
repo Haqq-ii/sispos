@@ -418,6 +418,30 @@ Plans:
 - CLAUDE.md § Figma MCP
 - `docs/ROADMAP.md` (screen list per phase)
 
+**Plans:** 5 plans
+
+Plans:
+
+**Wave 1** *(blocking verification — no dependencies)*
+
+- [ ] 08-01-PLAN.md — Seed pipeline + 5 login scenarios verify + AI chatbot gizi/pendaftaran/rate-limit verify [has checkpoint]
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 08-02-PLAN.md — Backend GET /growth/riwayat citizen endpoint + TumbuhKembangPage grafik tab + Citizen screens Figma alignment
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 08-03-PLAN.md — Kader screens: LockScreenPage green header + KaderDashboardPage stats + Meja2 numpad + Meja4 STT layout
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 08-04-PLAN.md — Puskesmas screens: PetaStuntingPage mobile-first + PuskesmasDashboardPage + ManajemenPenggunaPage
+
+**Wave 5** *(blocked on Wave 4)*
+
+- [ ] 08-05-PLAN.md — FamilyAccountPage balita list + ProfilSayaPage polish + TypeScript audit + final QA [has checkpoint]
+
 ---
 
 ## Execution Notes
