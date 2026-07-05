@@ -19,7 +19,7 @@
 | 5 | Reports & Export | 2/2 | Complete   | 2026-07-04 |
 | 6 | PWA & Offline | Service Worker Workbox, IndexedDB sync Meja 1-5, auto-sync online | PWA-01 | Complete   | 2026-07-04 |
 | 7 | Seed Data Demo | 2/3 | In Progress|  |
-| 8 | UI Figma Alignment | 4/5 | In Progress|  |
+| 8 | UI Figma Alignment | 5/16 | In Progress|  |
 
 ---
 
@@ -418,7 +418,7 @@ Plans:
 - CLAUDE.md § Figma MCP
 - `docs/ROADMAP.md` (screen list per phase)
 
-**Plans:** 6/16 plans executed (full replan 2026-07-05 — 10 new plans 08-07 through 08-16)
+**Plans:** 5/16 plans executed
 
 Plans:
 
