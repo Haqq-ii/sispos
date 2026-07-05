@@ -37,7 +37,7 @@ interface PilihSesiLocationState {
 export default function PilihSesiPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { selectedDate, setSelectedSlotId } = useAntrianStore()
+  const { selectedDate, selectedSlotId, setSelectedSlotId } = useAntrianStore()
 
   // Ambil jadwalId dari navigation state yang diteruskan PilihTanggalPage
   const state = (location.state ?? {}) as PilihSesiLocationState
@@ -62,10 +62,16 @@ export default function PilihSesiPage() {
     sesiList.length > 0 &&
     sesiList.every((s) => s.terisi >= s.kuota)
 
-  // ── Handler: citizen pilih sesi ──────────────────────────────────
+  // ── Handler: citizen pilih sesi (hanya set selection — tidak langsung navigate) ──
 
   const handlePilihSesi = (sesiId: string) => {
     setSelectedSlotId(sesiId)
+  }
+
+  // ── Handler: citizen lanjutkan ke konfirmasi ──────────────────────────────────
+
+  const handleLanjutkan = () => {
+    if (!selectedSlotId) return
     // Teruskan jadwalId ke KonfirmasiAntrianPage agar bisa load estimasi durasi
     navigate('/citizen/antrian/konfirmasi', {
       state: { jadwalId },
@@ -133,20 +139,42 @@ export default function PilihSesiPage() {
         {!isLoading && sesiList && sesiList.length > 0 && !allFull && (
           <div className="flex flex-col gap-3">
             {sesiList.map((sesi) => (
-              <SesiCard
+              <div
                 key={sesi.id}
-                sesi={{
-                  id: sesi.id,
-                  nomorSesi: sesi.nomorSesi,
-                  labelSesi: sesi.labelSesi,
-                  jamMulai: sesi.jamMulai,
-                  jamSelesai: sesi.jamSelesai,
-                  kuota: sesi.kuota,
-                  terisi: sesi.terisi,
-                }}
-                onPilih={handlePilihSesi}
-              />
+                className={
+                  selectedSlotId === sesi.id
+                    ? 'rounded-2xl border-2 border-[#008236]'
+                    : 'rounded-2xl border-2 border-transparent'
+                }
+              >
+                <SesiCard
+                  sesi={{
+                    id: sesi.id,
+                    nomorSesi: sesi.nomorSesi,
+                    labelSesi: sesi.labelSesi,
+                    jamMulai: sesi.jamMulai,
+                    jamSelesai: sesi.jamSelesai,
+                    kuota: sesi.kuota,
+                    terisi: sesi.terisi,
+                  }}
+                  onPilih={handlePilihSesi}
+                />
+              </div>
             ))}
+          </div>
+        )}
+
+        {/* CTA — Lanjutkan ke Konfirmasi */}
+        {!isLoading && !allFull && (
+          <div className="mt-6">
+            <Button
+              type="button"
+              className="w-full min-h-[44px] bg-[#008236] text-white rounded-[14px] hover:bg-[#00a63e]"
+              disabled={!selectedSlotId}
+              onClick={handleLanjutkan}
+            >
+              Lanjutkan
+            </Button>
           </div>
         )}
       </div>

@@ -140,11 +140,11 @@ export default function PilihTanggalPage() {
         <div className="mt-6">
           <Button
             type="button"
-            className="w-full min-h-[44px]"
+            className="w-full min-h-[44px] bg-[#008236] text-white rounded-[14px] hover:bg-[#00a63e]"
             disabled={!canProceed}
             onClick={handlePilihTanggal}
           >
-            Pilih Tanggal Ini
+            Lanjutkan
           </Button>
           <p className="text-xs text-gray-400 text-center mt-2">
             Jadwal tersedia ditandai dengan titik hijau
