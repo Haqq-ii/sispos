@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Executing Phase 07
-last_updated: "2026-07-04T17:03:08.893Z"
+status: Executing Phase 08
+last_updated: "2026-07-05T02:32:00.000Z"
 progress:
   total_phases: 9
   completed_phases: 7
-  total_plans: 35
-  completed_plans: 34
-  percent: 78
+  total_plans: 40
+  completed_plans: 36
+  percent: 80
 ---
 
 # SISPOS — GSD State
@@ -21,17 +21,17 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-30)
 
 **Core value:** Countdown antrian adaptif + alur 5 Meja kader end-to-end
-**Current focus:** Phase 07 PAUSED (checkpoint 07-03 Task 3 belum resolved — seed pipeline OK, UI gaps: grafik tumbuh kembang, kader dashboard, stunting map) → lanjut Phase 08 UI Figma Alignment
+**Current focus:** Phase 08 — ui-figma-alignment
 
 ## Current Status
 
 ```
-Phase aktif  : Phase 06 — PWA & Offline
-Last update  : 2026-07-04
-Plans done   : 06-01 + 06-02 + 06-03 + 06-04 complete (IDB foundation + Meja 1/2 + Meja 3/4/5 offline intercepts + Workbox BackgroundSync + App OfflineBanner + usePwaStore + install button)
-Phases done  : 6 / 8 (Phase 00 + 01 + 02 + 04 + 05 + 06 complete), Phase 03 pending verification
-Next command : /gsd-execute-phase 07 (Seed Data Demo) or Phase 03 verification
-Stopped at   : Phase 07-03 PAUSED at human-verify checkpoint — Tasks 1+2 done (seed.demo.ts + seed.today.ts refactored), awaiting Task 3 (npx prisma db seed run + 5 login scenarios verified)
+Phase aktif  : Phase 08 — UI Figma Alignment
+Last update  : 2026-07-05
+Plans done   : 08-01 complete (seed + bug fixes), 08-02 complete (ZScoreChart + citizen alignment)
+Phases done  : 7 / 9 (Phase 00+01+02+04+05+06+07 complete)
+Next command : /gsd-execute-phase 08 (plan 03 — Kader screens Figma alignment)
+Stopped at   : Completed 08-02-PLAN.md — getCitizenGrowthRiwayat, ZScoreChart grafik tab, citizen screen token alignment
 ```
 
 ## Phase History
@@ -182,9 +182,14 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 06 | 03 | ~5 min | 2/2 | 3 |
 | 06 | 04 | ~2 min | 1/1 + checkpoint | 4 |
 | Phase 07 P02 | ~7 min | 2 tasks | 1 files |
+| 08 | 01 | ~30 min | 2/2 (+ bug fixes) | 5 |
+| 08 | 02 | ~6 min | 3/3 | 7 |
 
 ## Decisions
 
 - [Phase ?]: Tasks 1+2 both target seed.massal.ts — single cohesive file creation; both task criteria satisfied in commit 48d32d6
 - [Phase ?]: BCRYPT_ROUNDS=8 in seedMassal for bulk performance (vs ROUNDS=10 in seed.demo.ts)
 - [Phase ?]: balitaRecords accumulator separates warga/balita pass from pemeriksaan/imunisasi pass in seedMassal
+- [08-02]: getCitizenGrowthRiwayat uses findFirst(balita orderBy createdAt asc) — IDOR safe via JWT wargaId
+- [08-02]: tailwind primary.DEFAULT is #16a34a not #008236 — explicit hex required for Figma alignment
+- [08-02]: LoginForm.tsx button explicit bg-[#008236] (deviation: file not in plan list but needed for acceptance criteria)
