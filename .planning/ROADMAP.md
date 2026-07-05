@@ -418,7 +418,7 @@ Plans:
 - CLAUDE.md § Figma MCP
 - `docs/ROADMAP.md` (screen list per phase)
 
-**Plans:** 4/5 plans executed
+**Plans:** 4/7 plans executed (replanned — 3 new plans added 2026-07-05)
 
 Plans:
 
@@ -438,9 +438,17 @@ Plans:
 
 - [x] 08-04-PLAN.md — Puskesmas screens: PetaStuntingPage mobile-first + PuskesmasDashboardPage + ManajemenPenggunaPage
 
-**Wave 5** *(blocked on Wave 4)*
+**Wave 5** *(blocked on Wave 4 — replanned 2026-07-05)*
 
-- [ ] 08-05-PLAN.md — FamilyAccountPage balita list + ProfilSayaPage polish + TypeScript audit + final QA [has checkpoint]
+- [x] 08-05-PLAN.md (Task 1 done, replanned) — LoginPage mint bg + demo buttons + footer; CitizenDashboardPage white greeting (green header removed) [Figma 5:5731 + 5:2029]
+
+**Wave 6** *(blocked on Wave 5)*
+
+- [ ] 08-06-PLAN.md — Backend GET /api/kader/dashboard-stats + KaderDashboardPage redesign with recharts Tabs (Figma 27:2531)
+
+**Wave 7** *(blocked on Wave 6)* [has checkpoint]
+
+- [ ] 08-07-PLAN.md — Backend verify-ketua-pin + TukarMejaModal component + Meja1–5 integration + Final QA
 
 ---
 
