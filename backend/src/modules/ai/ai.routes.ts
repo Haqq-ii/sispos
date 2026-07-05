@@ -45,6 +45,7 @@ const EarlyWarningRequestSchema = z.object({
       pucat: z.boolean(),
       lainnya: z.string().nullable().optional(),
     })
+    .nullable()
     .optional(),
 })
 
@@ -149,11 +150,21 @@ async function earlyWarningHandler(req: AuthRequest, res: Response): Promise<voi
       }
     }
 
+    // 2b. Validasi data BB/TB — jangan panggil OpenAI jika data timbang belum ada
+    if (!pemeriksaan.beratBadan) {
+      res.status(422).json({
+        success: false,
+        error: 'DATA_TIDAK_LENGKAP',
+        message: 'Data berat badan belum tersedia. Lakukan penimbangan di Meja 2 terlebih dahulu.',
+      })
+      return
+    }
+
     // 3. Build EarlyWarningInput
     const now = new Date()
     const usiaBulan = ageInMonths(new Date(pemeriksaan.balita.tanggalLahir), now)
 
-    // Default tanda klinis: semua false jika tidak dikirim dari request
+    // Default tanda klinis: semua false jika null atau tidak dikirim dari request
     const resolvedTandaKlinis = tandaKlinis ?? {
       rambutKemerahan: false,
       perutBuncit: false,

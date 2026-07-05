@@ -69,6 +69,20 @@ export async function createPemeriksaan(
     throw Object.assign(new Error('Balita tidak ditemukan'), { code: 'BALITA_TIDAK_DITEMUKAN' })
   }
 
+  // 1b. Cegah duplikasi pemeriksaan: antrianId yang sama tidak boleh punya >1 pemeriksaan
+  if (data.antrianId) {
+    const existing = await prisma.pemeriksaan.findFirst({
+      where: { antrianId: data.antrianId, beratBadan: { not: null } },
+      select: { id: true },
+    })
+    if (existing) {
+      throw Object.assign(
+        new Error('Pemeriksaan untuk antrian ini sudah ada. Gunakan data yang sudah disimpan.'),
+        { code: 'PEMERIKSAAN_SUDAH_ADA' }
+      )
+    }
+  }
+
   // 2. Validasi biologis — BB > 30 kg memerlukan konfirmasi eksplisit kader
   //    (T-03-02-01 in threat model: client-provided BB can be extreme)
   if (data.beratBadan > 30 && meta.headers['x-konfirmasi-biologis'] !== 'true') {
@@ -351,7 +365,7 @@ export async function getCitizenGrowthRiwayat(wargaId: string): Promise<
 
   const records = await prisma.pemeriksaan.findMany({
     where: { balitaId: balita.id },
-    orderBy: { tanggalPemeriksaan: 'asc' },
+    orderBy: { tanggalPemeriksaan: 'desc' },
     select: {
       id: true,
       tanggalPemeriksaan: true,

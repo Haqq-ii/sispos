@@ -146,13 +146,21 @@ export default function Meja4Page() {
       const response = await apiClient.post('/ai/early-warning', {
         pemeriksaanId: selectedPemeriksaanId ?? undefined,
         balitaId: selectedBalitaId ?? undefined,
-        tandaKlinis,
+        // Kirim undefined (bukan null) agar Zod .optional() tidak menolak
+        tandaKlinis: tandaKlinis ?? undefined,
       })
       return (response.data as { data: EarlyWarningData }).data
     },
     onSuccess: (data) => setEarlyWarningData(data),
-    onError: () => {
-      toast({ description: 'Gagal generate AI Early Warning. Coba lagi.', variant: 'destructive' })
+    onError: (err) => {
+      const axiosErr = err as unknown as { response?: { data?: { message?: string; error?: string } } }
+      const backendMsg = axiosErr?.response?.data?.message
+      const errCode = axiosErr?.response?.data?.error
+      if (errCode === 'DATA_TIDAK_LENGKAP') {
+        toast({ description: backendMsg ?? 'Data timbang belum ada. Lakukan Meja 2 terlebih dahulu.', variant: 'destructive' })
+      } else {
+        toast({ description: backendMsg ?? 'Gagal generate AI Early Warning. Coba lagi.', variant: 'destructive' })
+      }
     },
   })
 

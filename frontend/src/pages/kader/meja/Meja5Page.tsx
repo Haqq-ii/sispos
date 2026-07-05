@@ -12,7 +12,7 @@
  * slotId: from useKaderMejaStore.activeSlotId
  */
 import { useState, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CheckCircle, Plus, Syringe, Loader2, LogOut } from 'lucide-react'
 
@@ -76,31 +76,30 @@ function isToday(iso: string): boolean {
 
 export default function Meja5Page() {
   const navigate = useNavigate()
-  const location = useLocation()
   const { toast } = useToast()
   const queryClient = useQueryClient()
-  const { activeSlotId, setActiveMeja, setActivePemeriksaanId, setLocked, activeAntrianId, activeBalitaId, activeNamaBalita } = useKaderMejaStore()
+  const { activeSlotId, setActiveMeja, setActivePemeriksaanId, setLocked } = useKaderMejaStore()
   const isOnline = useOfflineStatus()
   const { enqueueOperation } = useOfflineSync()
 
   const [showTukarMeja, setShowTukarMeja] = useState(false)
-
-  const state = location.state as {
-    antrianId?: string
-    balitaId?: string
-    namaBalita?: string
-    pemeriksaanId?: string
-  } | null
 
   // Two-step: step 1 = select balita, step 2 = imunisasi UI
   const [selectedAntrianId, setSelectedAntrianId] = useState<string | undefined>(undefined)
   const [selectedBalitaId, setSelectedBalitaId] = useState<string | null>(null)
   const [selectedNama, setSelectedNama] = useState('')
 
-  // Keep legacy aliases for existing code below
+  // Aliases untuk kode di bawah
   const antrianId = selectedAntrianId
   const balitaId = selectedBalitaId
   const namaBalita = selectedNama
+
+  // Kembali ke Step 1 (daftar) tanpa keluar meja
+  const handleKembaliKeDaftar = () => {
+    setSelectedAntrianId(undefined)
+    setSelectedBalitaId(null)
+    setSelectedNama('')
+  }
 
   // Guard: require activeSlotId
   useEffect(() => {
@@ -152,6 +151,7 @@ export default function Meja5Page() {
       setNamaVaksin('')
       setDosisKe('1')
       toast({ title: 'Imunisasi dicatat', description: `${namaVaksin} dosis ${dosisKe} berhasil disimpan.` })
+      handleKembaliKeDaftar()
     },
     onError: () => {
       toast({ title: 'Gagal menyimpan', description: 'Coba lagi.', variant: 'destructive' })
@@ -163,16 +163,10 @@ export default function Meja5Page() {
       const response = await apiClient.patch(`/antrian/${antrianId}/selesai`)
       return (response.data as { data: SelesaiResult }).data
     },
-    onSuccess: async () => {
-      try { await apiClient.delete('/kader/active-meja') } catch (e) {
-        // WR-07: Best-effort cleanup — active-meja cleared locally regardless
-        if (import.meta.env.DEV) console.warn('[Meja5] Failed to clear active-meja:', e)
-      }
-      setLocked(false)
-      setActiveMeja(null, null)
-      setActivePemeriksaanId(null)
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['antrian', 'kader', activeSlotId] })
       toast({ title: 'Pelayanan selesai', description: `${namaBalita} telah selesai dilayani.` })
-      navigate('/kader/rekap', { state: { slotId: activeSlotId }, replace: true })
+      handleKembaliKeDaftar()
     },
     onError: (err) => {
       toast({ title: 'Gagal', description: err.message, variant: 'destructive' })
@@ -227,11 +221,7 @@ export default function Meja5Page() {
           timestamp: Date.now(),
         })
         toast({ description: 'Tersimpan lokal, akan sync saat online' })
-        // Mirror online success flow: reset state + navigate ke rekap
-        setLocked(false)
-        setActiveMeja(null, null)
-        setActivePemeriksaanId(null)
-        navigate('/kader/rekap', { state: { slotId: activeSlotId }, replace: true })
+        handleKembaliKeDaftar()
       } catch {
         // WR-03: IDB unavailable or quota exceeded — warn kader
         toast({ description: 'Gagal simpan offline — coba lagi', variant: 'destructive' })
@@ -239,6 +229,17 @@ export default function Meja5Page() {
       return
     }
     selesaiMutation.mutate()
+  }
+
+  // Exit seluruh meja — dipanggil dari Step 1 "Selesai Meja 5"
+  const handleKeluarMeja = async () => {
+    try { await apiClient.delete('/kader/active-meja') } catch (e) {
+      if (import.meta.env.DEV) console.warn('[Meja5] Failed to clear active-meja:', e)
+    }
+    setLocked(false)
+    setActiveMeja(null, null)
+    setActivePemeriksaanId(null)
+    navigate('/kader/rekap', { state: { slotId: activeSlotId }, replace: true })
   }
 
   // Guard: activeSlotId wajib ada — useEffect handles navigation above
@@ -276,23 +277,26 @@ export default function Meja5Page() {
               <p className="text-xs text-gray-400">Tandai kehadiran di Meja 1 terlebih dahulu.</p>
             </div>
           ) : (
-            hadirList.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setSelectedAntrianId(item.id)
-                  setSelectedBalitaId(item.balitaId)
-                  setSelectedNama(item.balita.namaBalita)
-                }}
-                className="w-full bg-white border border-gray-100 rounded-2xl px-4 py-3 flex items-center justify-between shadow-sm active:bg-gray-50 text-left"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-[#99a1af] text-xs font-semibold w-6">{String(item.nomorUrut).padStart(2, '0')}</span>
-                  <p className="font-bold text-[#1e2939] text-sm">{item.balita.namaBalita}</p>
-                </div>
-                <CheckCircle size={16} className="text-gray-300 flex-shrink-0" />
-              </button>
-            ))
+            hadirList.map((item) => {
+              const done = item.statusAntrian === 'selesai'
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setSelectedAntrianId(item.id)
+                    setSelectedBalitaId(item.balitaId)
+                    setSelectedNama(item.balita.namaBalita)
+                  }}
+                  className="w-full bg-white border border-gray-100 rounded-2xl px-4 py-3 flex items-center justify-between shadow-sm active:bg-gray-50 text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-[#99a1af] text-xs font-semibold w-6">{String(item.nomorUrut).padStart(2, '0')}</span>
+                    <p className={`font-bold text-sm ${done ? 'text-gray-400' : 'text-[#1e2939]'}`}>{item.balita.namaBalita}</p>
+                  </div>
+                  <CheckCircle size={16} className={done ? 'text-green-500 flex-shrink-0' : 'text-gray-300 flex-shrink-0'} />
+                </button>
+              )
+            })
           )}
         </div>
 
@@ -300,7 +304,7 @@ export default function Meja5Page() {
           <Button
             variant="ghost"
             className="w-full bg-[#fef2f2] border border-[#ffc9c9] text-[#e7000b] font-semibold rounded-2xl h-12 hover:bg-red-50"
-            onClick={() => navigate('/kader/dashboard', { replace: true })}
+            onClick={() => void handleKeluarMeja()}
           >
             <LogOut size={16} className="mr-2" />Selesai Meja 5
           </Button>
@@ -341,7 +345,7 @@ export default function Meja5Page() {
           <p className="font-bold text-[#1e2939] text-sm">{namaBalita}</p>
         </div>
         <button
-          onClick={() => navigate(-1)}
+          onClick={handleKembaliKeDaftar}
           className="text-[#99a1af] text-xs font-medium"
         >
           ← Kembali
@@ -476,7 +480,7 @@ export default function Meja5Page() {
         )}
       </div>
 
-      {/* Footer — Selesai Meja 5 */}
+      {/* Footer — Selesai Pasien Ini (kembali ke daftar setelah selesai) */}
       <div className="bg-white border-t border-gray-100 p-4">
         <Button
           variant="ghost"
@@ -486,7 +490,7 @@ export default function Meja5Page() {
         >
           {selesaiMutation.isPending
             ? <><Loader2 size={16} className="animate-spin mr-2" />Memproses...</>
-            : <><LogOut size={16} className="mr-2" />Selesai Meja 5</>
+            : <><CheckCircle size={16} className="mr-2" />Selesai Pasien Ini</>
           }
         </Button>
       </div>

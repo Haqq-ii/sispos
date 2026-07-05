@@ -53,11 +53,17 @@ export async function getSlotAntrian(slotId: string) {
   return prisma.antrian.findMany({
     where: {
       slotId,
-      statusAntrian: { in: ['menunggu', 'dipanggil', 'ditangguhkan'] },
+      statusAntrian: { in: ['menunggu', 'dipanggil', 'ditangguhkan', 'selesai'] },
     },
     include: {
       balita: { select: { namaBalita: true, jenisKelamin: true, tanggalLahir: true } },
       warga: { select: { rt: true } },
+      pemeriksaan: {
+        where: { beratBadan: { not: null } },
+        select: { id: true, beratBadan: true, tinggiBadan: true },
+        take: 1,
+        orderBy: { createdAt: 'desc' },
+      },
     },
     orderBy: { nomorUrut: 'asc' },
   })

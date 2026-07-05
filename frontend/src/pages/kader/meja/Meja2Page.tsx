@@ -1,32 +1,32 @@
 /**
- * Meja2Page — Meja 2: Penimbangan (BB/TB) + Z-Score WHO 2006
+ * Meja2Page — Meja 2: Penimbangan BB/TB
  *
- * Features:
- * - Custom numeric keypad for BB (kg) + TB (cm)
- * - Biological validation gate: if BB > 30 kg → Dialog konfirmasi sebelum kirim
- * - POST /api/growth/pemeriksaan → Z-Score response
- * - Z-Score result card: WAZ, HAZ, WHZ + statusGizi badge
- * - "Lanjut ke Meja 3" → navigate with state { antrianId, balitaId, namaBalita, pemeriksaanId }
- * - Guard: if !activeSlotId → redirect to /kader/dashboard
+ * Alur (Figma Make):
+ * Step 1 — Daftar balita hadir (dipanggil), tandai sudah diukur dgn checkmark
+ * Step 2 — Pilih balita → Numpad BB+TB (keduanya wajib)
+ *           Simpan → toast sukses 2 detik → kembali ke Step 1 otomatis
+ * "Selesai Meja 2" → modal konfirmasi → keluar ke dashboard
+ *
+ * Tidak ada navigate ke Meja 3 dari sini (setiap meja independen).
  */
 import { useState, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { ChevronLeft, Delete, Loader2, AlertTriangle, Users } from 'lucide-react'
-
+import { useNavigate } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog'
+  ChevronLeft,
+  Delete,
+  Loader2,
+  AlertTriangle,
+  Users,
+  CheckCircle,
+  X,
+} from 'lucide-react'
+
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 import { useMutationClearActiveMeja } from '@/hooks/useActiveMeja'
 import { useKaderMejaStore } from '@/stores/useKaderMejaStore'
-import { useCreatePemeriksaan, type PemeriksaanRecord } from '@/hooks/usePemeriksaan'
+import { useCreatePemeriksaan } from '@/hooks/usePemeriksaan'
 import apiClient from '@/lib/axios'
 import { useOfflineStatus } from '@/hooks/useOfflineStatus'
 import { useOfflineSync } from '@/hooks/useOfflineSync'
@@ -34,7 +34,7 @@ import { SyncPendingBadge } from '@/components/offline/SyncPendingBadge'
 import { generateTempId } from '@/lib/offline-db'
 import { TukarMejaModal } from '@/components/kader/TukarMejaModal'
 
-// ── Antrian item type (subset dari Meja 1) ────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface AntrianItem {
   id: string
@@ -42,31 +42,22 @@ interface AntrianItem {
   statusAntrian: string
   balitaId: string
   balita: { namaBalita: string; tanggalLahir: string }
+  pemeriksaan?: Array<{ id: string; beratBadan: number | null; tinggiBadan: number | null }>
 }
 
-// ── Status gizi styles ────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-const STATUS_GIZI_STYLE: Record<string, string> = {
-  normal: 'bg-[#dcfce7] text-[#00a63e]',
-  kurang: 'bg-yellow-100 text-yellow-700',
-  buruk: 'bg-red-100 text-red-700',
-  lebih: 'bg-orange-100 text-orange-700',
-  obesitas: 'bg-orange-100 text-orange-700',
-  pendek: 'bg-purple-100 text-purple-700',
-  sangat_pendek: 'bg-purple-100 text-purple-700',
+function appendKey(current: string, key: string): string {
+  if (key === '.' && current.includes('.')) return current
+  if (key === '.' && current === '') return '0.'
+  if (current === '0' && key !== '.') return key
+  if (current.length >= 6) return current
+  return current + key
 }
 
-const STATUS_GIZI_LABEL: Record<string, string> = {
-  normal: 'Normal',
-  kurang: 'Berat Badan Kurang',
-  buruk: 'Gizi Buruk',
-  lebih: 'Berat Badan Lebih',
-  obesitas: 'Obesitas',
-  pendek: 'Pendek',
-  sangat_pendek: 'Sangat Pendek',
+function backspaceStr(current: string): string {
+  return current.slice(0, -1)
 }
-
-// ── Error helper ──────────────────────────────────────────────────────────────
 
 function isAxiosLikeError(
   error: unknown,
@@ -79,19 +70,6 @@ function isAxiosLikeError(
     (error as { response: unknown }).response !== null &&
     'data' in (error as { response: Record<string, unknown> }).response
   )
-}
-
-// ── Keypad helpers ────────────────────────────────────────────────────────────
-
-function appendKey(current: string, key: string): string {
-  if (key === '.' && current.includes('.')) return current
-  if (key === '.' && current === '') return '0.'
-  if (current === '0' && key !== '.') return key
-  return current + key
-}
-
-function backspaceStr(current: string): string {
-  return current.slice(0, -1)
 }
 
 // ── Guard wrapper ─────────────────────────────────────────────────────────────
@@ -133,145 +111,62 @@ function Meja2Content({
   setActivePemeriksaanId,
 }: Meja2ContentProps) {
   const navigate = useNavigate()
-  const location = useLocation()
   const { toast } = useToast()
-  const { activeAntrianId, activeBalitaId, activeNamaBalita, setActiveAntrian } = useKaderMejaStore()
+  const { setActiveAntrian } = useKaderMejaStore()
   const isOnline = useOfflineStatus()
   const { enqueueOperation } = useOfflineSync()
+  const queryClient = useQueryClient()
 
   const [showTukarMeja, setShowTukarMeja] = useState(false)
+  const [showEndConfirm, setShowEndConfirm] = useState(false)
+  const [showSaveSuccess, setShowSaveSuccess] = useState(false)
+  const [savedData, setSavedData] = useState<Record<string, { bb: string; tb: string }>>({})
 
-  const routeState = location.state as {
-    antrianId?: string
-    balitaId?: string
-    namaBalita?: string
-  } | null
+  // Selected balita (Step 2)
+  const [antrianId, setAntrianId] = useState<string | undefined>(undefined)
+  const [balitaId, setBalitaId] = useState<string | undefined>(undefined)
+  const [namaBalita, setNamaBalita] = useState<string>('Balita')
 
-  // Prioritas: route state → store fallback
-  const [antrianId, setAntrianId] = useState<string | undefined>(
-    routeState?.antrianId ?? activeAntrianId ?? undefined
-  )
-  const [balitaId, setBalitaId] = useState<string | undefined>(
-    routeState?.balitaId ?? activeBalitaId ?? undefined
-  )
-  const [namaBalita, setNamaBalita] = useState<string>(
-    routeState?.namaBalita ?? activeNamaBalita ?? 'Balita'
-  )
-
-  // Fetch antrian untuk picker (hanya kalau belum ada balitaId)
+  // Always fetch so list stays fresh after saves
   const { data: antrianList = [], isLoading: pickerLoading } = useQuery<AntrianItem[]>({
     queryKey: ['antrian', 'kader', activeSlotId],
     queryFn: () =>
-      apiClient.get(`/kader/slot/${activeSlotId}/antrian`).then((r) => r.data.data as AntrianItem[]),
-    enabled: !balitaId,
+      apiClient
+        .get(`/kader/slot/${activeSlotId}/antrian`)
+        .then((r) => r.data.data as AntrianItem[]),
   })
   const dipanggilList = antrianList.filter((a) => a.statusAntrian === 'dipanggil')
 
-  // ── Local state ─────────────────────────────────────────────────────────────
+  // Numpad state
   const [activeField, setActiveField] = useState<'bb' | 'tb'>('bb')
   const [bbStr, setBbStr] = useState('')
   const [tbStr, setTbStr] = useState('')
   const [showKonfirmasi, setShowKonfirmasi] = useState(false)
-  const [pemResult, setPemResult] = useState<PemeriksaanRecord | null>(null)
+  const [konfirmasiInfo, setKonfirmasiInfo] = useState<{
+    field: string
+    value: string
+    suggestion: string
+  } | null>(null)
 
   const bbValue = parseFloat(bbStr) || 0
   const tbValue = parseFloat(tbStr) || 0
-  const isBbFilled = bbStr !== '' && bbValue > 0
+  const isBothFilled = bbStr !== '' && bbValue > 0 && tbStr !== '' && tbValue > 0
 
   const createPemeriksaan = useCreatePemeriksaan()
   const isSaving = createPemeriksaan.isPending
 
-  // ── Keypad handler ──────────────────────────────────────────────────────────
+  const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', '⌫'] as const
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
 
   const handleKey = (key: string) => {
-    if (activeField === 'bb') {
-      setBbStr((prev) => appendKey(prev, key))
-    } else {
-      setTbStr((prev) => appendKey(prev, key))
-    }
+    if (activeField === 'bb') setBbStr((prev) => appendKey(prev, key))
+    else setTbStr((prev) => appendKey(prev, key))
   }
 
   const handleBackspace = () => {
-    if (activeField === 'bb') {
-      setBbStr((prev) => backspaceStr(prev))
-    } else {
-      setTbStr((prev) => backspaceStr(prev))
-    }
-  }
-
-  // ── Submit ──────────────────────────────────────────────────────────────────
-
-  // Security: X-Konfirmasi-Biologis header is sent by useCreatePemeriksaan hook
-  // when konfirmasiBiologis=true (T-03-04-02). Backend enforces gate — UI is UX layer only.
-  async function doSubmit(konfirmasiBiologis: boolean) {
-    if (!balitaId) {
-      toast({
-        description: 'Data balita tidak tersedia. Kembali ke Meja 1 dan pilih balita.',
-        variant: 'destructive',
-      })
-      return
-    }
-
-    // Offline branch (Pitfall 3 — avoids Z-Score result blocking navigation)
-    if (!isOnline) {
-      const tempPemeriksaanId = generateTempId()
-      try {
-        await enqueueOperation('pemeriksaan', {
-          id: generateTempId(),
-          tempPemeriksaanId,
-          type: 'create' as const,
-          data: {
-            balitaId,
-            antrianId,
-            beratBadan: bbValue,
-            tinggiBadan: tbStr !== '' && tbValue > 0 ? tbValue : undefined,
-            konfirmasiBiologis,
-          },
-          timestamp: Date.now(),
-        })
-        setActivePemeriksaanId(tempPemeriksaanId)
-        toast({ description: 'Tersimpan lokal, akan sync saat online' })
-        setShowKonfirmasi(false)
-        navigate('/kader/meja/3', {
-          state: { antrianId, balitaId, namaBalita, pemeriksaanId: tempPemeriksaanId },
-        })
-      } catch {
-        // WR-03: IDB unavailable or quota exceeded — warn kader before proceeding
-        toast({ description: 'Gagal simpan offline — coba lagi', variant: 'destructive' })
-      }
-      return
-    }
-
-    createPemeriksaan.mutate(
-      {
-        balitaId,
-        antrianId,
-        beratBadan: bbValue,
-        tinggiBadan: tbStr !== '' && tbValue > 0 ? tbValue : undefined,
-        konfirmasiBiologis,
-      },
-      {
-        onSuccess: (result) => {
-          setActivePemeriksaanId(result.id)
-          setPemResult(result)
-          setShowKonfirmasi(false)
-          toast({ description: 'Data timbang berhasil disimpan.' })
-        },
-        onError: (err) => {
-          const msg = isAxiosLikeError(err) ? err.response.data.message : 'Terjadi kesalahan.'
-          toast({ description: msg, variant: 'destructive' })
-        },
-      }
-    )
-  }
-
-  function handleSimpan() {
-    if (!isBbFilled) return
-    if (bbValue > 30) {
-      setShowKonfirmasi(true)
-      return
-    }
-    doSubmit(false)
+    if (activeField === 'bb') setBbStr((prev) => backspaceStr(prev))
+    else setTbStr((prev) => backspaceStr(prev))
   }
 
   const handlePilihBalita = (item: AntrianItem) => {
@@ -281,50 +176,106 @@ function Meja2Content({
     setActiveAntrian(item.id, item.balitaId, item.balita.namaBalita)
   }
 
+  const handleKembaliKeDaftar = () => {
+    setBalitaId(undefined)
+    setAntrianId(undefined)
+    setNamaBalita('Balita')
+    setBbStr('')
+    setTbStr('')
+    setActiveField('bb')
+  }
+
   const handleKeluarMeja = () => {
     clearActiveMejaMutation.mutate()
     resetStore()
     navigate('/kader/dashboard', { replace: true })
   }
 
-  const handleLanjutMeja3 = () => {
-    navigate('/kader/meja/3', {
-      state: {
-        antrianId,
-        balitaId,
-        namaBalita,
-        pemeriksaanId: pemResult?.id,
-      },
-    })
+  async function doSubmit(konfirmasiBiologis: boolean) {
+    if (!balitaId) return
+
+    const onSaved = (pemId: string) => {
+      setActivePemeriksaanId(pemId)
+      setSavedData((prev) => ({ ...prev, [balitaId]: { bb: bbStr, tb: tbStr } }))
+      setShowKonfirmasi(false)
+      setShowSaveSuccess(true)
+      setTimeout(() => setShowSaveSuccess(false), 2000)
+      void queryClient.invalidateQueries({ queryKey: ['antrian', 'kader', activeSlotId] })
+      handleKembaliKeDaftar()
+    }
+
+    if (!isOnline) {
+      const tempId = generateTempId()
+      try {
+        await enqueueOperation('pemeriksaan', {
+          id: generateTempId(),
+          tempPemeriksaanId: tempId,
+          type: 'create' as const,
+          data: { balitaId, antrianId, beratBadan: bbValue, tinggiBadan: tbValue, konfirmasiBiologis },
+          timestamp: Date.now(),
+        })
+        onSaved(tempId)
+      } catch {
+        toast({ description: 'Gagal simpan offline — coba lagi', variant: 'destructive' })
+      }
+      return
+    }
+
+    createPemeriksaan.mutate(
+      { balitaId, antrianId, beratBadan: bbValue, tinggiBadan: tbValue, konfirmasiBiologis },
+      {
+        onSuccess: (result) => onSaved(result.id),
+        onError: (err) => {
+          if (isAxiosLikeError(err) && err.response.data.error === 'PEMERIKSAAN_SUDAH_ADA') {
+            // Treat duplicate as success — mark locally as done and go back
+            setSavedData((prev) => ({ ...prev, [balitaId]: { bb: bbStr, tb: tbStr } }))
+            void queryClient.invalidateQueries({ queryKey: ['antrian', 'kader', activeSlotId] })
+            toast({ description: 'Sudah ditimbang sebelumnya — data dipertahankan.' })
+            handleKembaliKeDaftar()
+            return
+          }
+          const msg = isAxiosLikeError(err) ? err.response.data.message : 'Terjadi kesalahan.'
+          toast({ description: msg, variant: 'destructive' })
+        },
+      }
+    )
   }
 
-  // ── Keypad layout ───────────────────────────────────────────────────────────
+  function handleSimpan() {
+    if (!isBothFilled) return
+    if (bbValue < 1.5 || bbValue > 40) {
+      setKonfirmasiInfo({ field: 'Berat Badan', value: bbStr, suggestion: 'Batas wajar balita: 1,5–40 kg' })
+      setShowKonfirmasi(true)
+      return
+    }
+    if (tbValue < 35 || tbValue > 130) {
+      setKonfirmasiInfo({ field: 'Tinggi Badan', value: tbStr, suggestion: 'Batas wajar balita: 35–130 cm' })
+      setShowKonfirmasi(true)
+      return
+    }
+    void doSubmit(false)
+  }
 
-  const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', '⌫'] as const
-
-  // ── Render ──────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-[#f9fafb] flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
 
-      {/* ── Header ────────────────────────────────────────────────────────── */}
-      <div className="bg-[#00a63e] px-4 pt-10 pb-4">
+      {/* Header */}
+      <div className="bg-green-600 px-4 pt-10 pb-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate(-1)}
-              className="bg-[rgba(0,166,62,0.5)] rounded-xl p-2"
-            >
+          <div className="flex items-center gap-2">
+            <div className="bg-green-500/60 rounded-xl p-2">
               <ChevronLeft size={18} className="text-white" />
-            </button>
+            </div>
             <div>
               <p className="text-white font-bold text-sm">MEJA 2 — Pengukuran BB/TB</p>
-              <p className="text-[#b9f8cf] text-xs">Timbang &amp; ukur tinggi badan</p>
+              <p className="text-green-200 text-xs">Mode Pelayanan Aktif · Layar Terkunci</p>
             </div>
           </div>
           <button
             onClick={() => setShowTukarMeja(true)}
-            className="bg-[rgba(0,166,62,0.6)] border border-[rgba(0,201,80,0.5)] rounded-xl px-3 py-1.5 text-white text-xs font-medium"
+            className="px-3 py-1.5 bg-green-500/60 text-white text-xs rounded-xl border border-green-400/50 font-medium"
           >
             Tukar Meja
           </button>
@@ -332,264 +283,244 @@ function Meja2Content({
         <SyncPendingBadge />
       </div>
 
-      {/* ── Sub-header: balita ────────────────────────────────────────────── */}
-      <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
-        <div>
-          <p className="font-bold text-[#1e2939] text-sm">{balitaId ? namaBalita : 'Pilih balita terlebih dahulu'}</p>
-        </div>
-        <button onClick={() => navigate(-1)} className="text-[#99a1af] text-xs">
-          ← Kembali
-        </button>
-      </div>
-
-      {/* ── Picker balita (tampil jika belum ada balitaId) ───────────────── */}
-      {!balitaId && !pemResult && (
-        <div className="flex-1 px-4 py-4">
-          <div className="bg-white rounded-2xl border border-amber-200 p-4 mb-3">
-            <div className="flex items-center gap-2 mb-3">
-              <Users size={16} className="text-amber-600" />
-              <p className="text-sm font-semibold text-amber-700">Pilih balita yang akan ditimbang</p>
+      {/* ── Step 1: Daftar balita ─────────────────────────────────────────── */}
+      {!balitaId && (
+        <div className="flex-1 px-4 py-4 overflow-y-auto">
+          <p className="text-gray-600 text-sm font-semibold mb-3">Pilih balita yang sudah hadir:</p>
+          {pickerLoading ? (
+            <div className="flex justify-center py-10">
+              <Loader2 size={24} className="animate-spin text-gray-400" />
             </div>
-            {pickerLoading ? (
-              <div className="flex justify-center py-6">
-                <Loader2 size={20} className="animate-spin text-gray-400" />
-              </div>
-            ) : dipanggilList.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-4">
-                Belum ada balita yang hadir. Kembali ke Meja 1 untuk tandai kehadiran.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {dipanggilList.map((item) => (
+          ) : dipanggilList.length === 0 ? (
+            <div className="text-center py-10">
+              <Users size={32} className="text-gray-300 mx-auto mb-2" />
+              <p className="text-sm text-gray-400">Belum ada balita yang hadir.</p>
+              <p className="text-xs text-gray-400 mt-1">Kembali ke Meja 1 untuk tandai kehadiran.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {dipanggilList.map((item) => {
+                // done = server confirms pemeriksaan exists OR optimistic local state
+                const serverDone =
+                  Array.isArray(item.pemeriksaan) &&
+                  item.pemeriksaan.length > 0 &&
+                  item.pemeriksaan[0].beratBadan !== null
+                const done = serverDone || !!savedData[item.balitaId]
+                return (
                   <button
                     key={item.id}
-                    onClick={() => handlePilihBalita(item)}
-                    className="w-full bg-[#f0fdf4] border border-[#b9f8cf] rounded-xl px-4 py-3 flex items-center justify-between text-left active:bg-[#dcfce7]"
+                    onClick={() => !done && handlePilihBalita(item)}
+                    className={`w-full flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition ${
+                      done
+                        ? 'border-green-200 bg-green-50 opacity-70 cursor-default'
+                        : 'border-gray-200 bg-white hover:border-green-400 hover:bg-green-50 active:scale-95'
+                    }`}
                   >
-                    <div>
-                      <p className="font-semibold text-[#1e2939] text-sm">{item.balita.namaBalita}</p>
-                      <p className="text-xs text-gray-400">No. {String(item.nomorUrut).padStart(2, '0')}</p>
+                    <span className="text-gray-400 text-sm w-8 text-center font-bold">
+                      #{String(item.nomorUrut).padStart(2, '0')}
+                    </span>
+                    <div className="flex-1">
+                      <p className="text-gray-800 text-sm font-semibold">{item.balita.namaBalita}</p>
+                      {done && (
+                        <p className="text-green-600 text-xs mt-0.5 font-medium">
+                          ✓ BB: {savedData[item.balitaId].bb} kg · TB: {savedData[item.balitaId].tb} cm
+                        </p>
+                      )}
                     </div>
-                    <span className="text-[#008236] text-xs font-semibold">Pilih →</span>
+                    {done
+                      ? <CheckCircle size={18} className="text-green-500 flex-shrink-0" />
+                      : <span className="text-gray-400 text-xs font-semibold">Pilih →</span>
+                    }
                   </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {!pemResult ? (
-        <>
-          {/* ── BB / TB display cards ────────────────────────────────────── */}
-          <div className="px-4 py-4 flex gap-3">
+                )
+              })}
+            </div>
+          )}
+          <div className="mt-4 text-center">
             <button
-              onClick={() => setActiveField('bb')}
-              className={`flex-1 rounded-2xl px-4 py-4 text-left border transition-colors ${
-                activeField === 'bb'
-                  ? 'bg-[#f0fdf4] border-[#00c950]'
-                  : 'bg-white border-[#e5e7eb]'
-              }`}
-            >
-              <p className="text-xs text-gray-400 mb-1">Berat Badan</p>
-              <p
-                className={`text-3xl font-bold leading-none ${
-                  activeField === 'bb' ? 'text-[#00a63e]' : 'text-[#364153]'
-                }`}
-              >
-                {bbStr || '0'}
-              </p>
-              <p className="text-xs text-gray-400 mt-1">kg</p>
-            </button>
-
-            <button
-              onClick={() => setActiveField('tb')}
-              className={`flex-1 rounded-2xl px-4 py-4 text-left border transition-colors ${
-                activeField === 'tb'
-                  ? 'bg-[#f0fdf4] border-[#00c950]'
-                  : 'bg-white border-[#e5e7eb]'
-              }`}
-            >
-              <p className="text-xs text-gray-400 mb-1">Tinggi Badan</p>
-              <p
-                className={`text-3xl font-bold leading-none ${
-                  activeField === 'tb' ? 'text-[#00a63e]' : 'text-[#364153]'
-                }`}
-              >
-                {tbStr || '0'}
-              </p>
-              <p className="text-xs text-gray-400 mt-1">cm</p>
-            </button>
-          </div>
-
-          {/* Hint */}
-          <p className="text-center text-xs text-gray-400 px-4 -mt-2 mb-2">
-            {activeField === 'bb'
-              ? 'Masukkan berat badan dalam kg'
-              : 'Tinggi badan opsional — ketuk kolom kiri untuk kembali ke BB'}
-          </p>
-
-          {/* ── Custom keypad ──────────────────────────────────────────────── */}
-          <div className="px-4 pb-2 grid grid-cols-3 gap-2.5">
-            {KEYS.map((key) => {
-              const isBackspace = key === '⌫'
-              const isDot = key === '.'
-              return (
-                <button
-                  key={key}
-                  onClick={() => (isBackspace ? handleBackspace() : handleKey(key))}
-                  className={`rounded-2xl h-14 text-xl font-semibold flex items-center justify-center active:scale-95 transition-transform ${
-                    isBackspace
-                      ? 'bg-[#fef2f2] border border-[#ffc9c9]'
-                      : isDot
-                      ? 'bg-[#f3f4f6] border border-[#e5e7eb] text-gray-600'
-                      : 'bg-white border border-[#e5e7eb] text-gray-800 shadow-sm'
-                  }`}
-                >
-                  {isBackspace ? <Delete size={20} className="text-[#e7000b]" /> : key}
-                </button>
-              )
-            })}
-          </div>
-
-          {/* ── Action buttons ─────────────────────────────────────────────── */}
-          <div className="px-4 pt-2 pb-3 flex gap-2">
-            <button
-              onClick={() => setActiveField(activeField === 'bb' ? 'tb' : 'bb')}
-              className="flex-1 bg-[#f3f4f6] rounded-2xl py-3.5 text-sm font-semibold text-gray-600"
-            >
-              {activeField === 'bb' ? 'Pindah ke Tinggi Badan' : 'Pindah ke Berat Badan'}
-            </button>
-            <button
-              onClick={handleSimpan}
-              disabled={!isBbFilled || isSaving}
-              className={`flex-1 rounded-2xl py-3.5 text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${
-                isBbFilled && !isSaving
-                  ? 'bg-[#00a63e] text-white'
-                  : 'bg-[#e5e7eb] text-gray-400 cursor-not-allowed'
-              }`}
-            >
-              {isSaving && <Loader2 size={14} className="animate-spin" />}
-              Simpan Data
-            </button>
-          </div>
-
-          {/* Keluar Meja */}
-          <div className="px-4 pb-4">
-            <button
-              onClick={handleKeluarMeja}
-              className="w-full bg-[#fef2f2] border border-[#ffc9c9] text-[#e7000b] rounded-2xl py-3 text-sm font-semibold"
+              onClick={() => setShowEndConfirm(true)}
+              className="px-5 py-2.5 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm font-semibold"
             >
               Selesai Meja 2
             </button>
           </div>
-        </>
-      ) : (
-        /* ── Z-Score result ────────────────────────────────────────────── */
-        <div className="flex-1 px-4 py-4 space-y-3">
-          <div className="bg-white rounded-2xl border border-[#e5e7eb] p-4 flex gap-6">
-            <div>
-              <p className="text-xs text-gray-400 mb-0.5">Berat Badan</p>
-              <p className="text-2xl font-bold text-[#1e2939]">
-                {pemResult.beratBadan}{' '}
-                <span className="text-sm font-normal text-gray-400">kg</span>
-              </p>
-            </div>
-            {pemResult.tinggiBadan !== null && (
-              <div>
-                <p className="text-xs text-gray-400 mb-0.5">Tinggi Badan</p>
-                <p className="text-2xl font-bold text-[#1e2939]">
-                  {pemResult.tinggiBadan}{' '}
-                  <span className="text-sm font-normal text-gray-400">cm</span>
-                </p>
-              </div>
-            )}
-          </div>
-
-          <div className="bg-[#f0fdf4] border border-[#b9f8cf] rounded-2xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-gray-700">Hasil Z-Score WHO 2006</p>
-              {pemResult.statusGizi && (
-                <span
-                  className={`text-xs font-bold px-3 py-1 rounded-full ${
-                    STATUS_GIZI_STYLE[pemResult.statusGizi] ?? 'bg-gray-100 text-gray-600'
-                  }`}
-                >
-                  {STATUS_GIZI_LABEL[pemResult.statusGizi] ?? pemResult.statusGizi}
-                </span>
-              )}
-            </div>
-            <div className="space-y-2">
-              {[
-                { label: 'BB / Umur (WAZ)', val: pemResult.zScoreBbU },
-                { label: 'TB / Umur (HAZ)', val: pemResult.zScoreTbU },
-                { label: 'BB / TB (WHZ)', val: pemResult.zScoreBbTb },
-              ].map(({ label, val }) => (
-                <div key={label} className="flex justify-between text-sm">
-                  <span className="text-gray-500">{label}</span>
-                  <span className="font-mono font-semibold text-[#1e2939]">
-                    {val !== null ? val.toFixed(2) : '—'}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <p className="text-xs text-gray-400 border-t pt-2">
-              Z-Score dihitung berdasarkan standar WHO 2006
-            </p>
-          </div>
-
-          <button
-            onClick={handleLanjutMeja3}
-            className="w-full bg-[#008236] text-white rounded-2xl py-4 text-sm font-bold"
-          >
-            Lanjut ke Meja 3 →
-          </button>
         </div>
       )}
 
-      {/* ── Biological confirmation Dialog ────────────────────────────────── */}
-      <Dialog
-        open={showKonfirmasi}
-        onOpenChange={(open: boolean) => {
-          if (!open) setShowKonfirmasi(false)
-        }}
-      >
-        <DialogContent className="max-w-sm mx-4">
-          <DialogHeader>
-            <div className="flex items-center gap-2 mb-1">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
-              <DialogTitle>Konfirmasi Nilai Tidak Biasa</DialogTitle>
+      {/* ── Step 2: Numpad BB/TB ──────────────────────────────────────────── */}
+      {balitaId && (
+        <div className="flex-1 flex flex-col">
+          {/* Balita sub-header */}
+          <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
+            <div>
+              <p className="text-gray-800 text-sm font-bold">{namaBalita}</p>
             </div>
-            <DialogDescription className="text-left">
-              Berat badan <strong>{bbStr} kg</strong> sangat tidak biasa untuk balita (umumnya
-              tidak melebihi 30 kg). Pastikan data sudah benar sebelum menyimpan.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex-col gap-2 sm:flex-col">
-            <Button
-              variant="destructive"
-              onClick={() => doSubmit(true)}
-              disabled={isSaving}
-              className="w-full"
+            <button
+              onClick={handleKembaliKeDaftar}
+              className="p-2 rounded-xl bg-gray-100"
             >
-              {isSaving ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Menyimpan...</>
-              ) : (
-                'Ya, Data Sudah Benar — Simpan'
+              <X size={16} className="text-gray-500" />
+            </button>
+          </div>
+
+          {/* BB / TB field display */}
+          <div className="px-4 py-4 flex gap-3">
+            <button
+              onClick={() => setActiveField('bb')}
+              className={`flex-1 p-3 rounded-2xl border-2 text-left transition ${
+                activeField === 'bb' ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-white'
+              }`}
+            >
+              <p className="text-gray-400 text-xs mb-1">Berat Badan (kg)</p>
+              <p className={`text-2xl font-extrabold ${activeField === 'bb' ? 'text-green-600' : 'text-gray-700'}`}>
+                {bbStr || '—'}
+              </p>
+              {activeField === 'bb' && (
+                <div className="w-0.5 h-4 bg-green-500 animate-pulse inline-block ml-0.5" />
               )}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setShowKonfirmasi(false)}
-              disabled={isSaving}
-              className="w-full"
+            </button>
+            <button
+              onClick={() => setActiveField('tb')}
+              className={`flex-1 p-3 rounded-2xl border-2 text-left transition ${
+                activeField === 'tb' ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-white'
+              }`}
             >
-              Koreksi Data
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <TukarMejaModal open={showTukarMeja} onClose={() => setShowTukarMeja(false)} slotId={activeSlotId} />
+              <p className="text-gray-400 text-xs mb-1">Tinggi Badan (cm)</p>
+              <p className={`text-2xl font-extrabold ${activeField === 'tb' ? 'text-green-600' : 'text-gray-700'}`}>
+                {tbStr || '—'}
+              </p>
+              {activeField === 'tb' && (
+                <div className="w-0.5 h-4 bg-green-500 animate-pulse inline-block ml-0.5" />
+              )}
+            </button>
+          </div>
+
+          {/* Keypad */}
+          <div className="px-4 flex-1">
+            <div className="bg-white rounded-2xl p-3 border border-gray-100 shadow-sm">
+              <p className="text-gray-400 text-xs text-center mb-3">
+                Input angka via kalkulator (tanpa keyboard QWERTY)
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {KEYS.map((key) => {
+                  const isBackspace = key === '⌫'
+                  const isDot = key === '.'
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => (isBackspace ? handleBackspace() : handleKey(key))}
+                      className={`h-14 rounded-2xl text-xl font-bold flex items-center justify-center active:scale-90 transition-transform ${
+                        isBackspace
+                          ? 'bg-red-50 text-red-500 border border-red-200'
+                          : isDot
+                          ? 'bg-gray-100 text-gray-700'
+                          : 'bg-white text-gray-800 border border-gray-200 shadow-sm hover:bg-gray-50'
+                      }`}
+                    >
+                      {isBackspace ? <Delete size={20} /> : key}
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <button
+                  onClick={() => setActiveField(activeField === 'bb' ? 'tb' : 'bb')}
+                  className="py-3 rounded-xl bg-gray-100 text-gray-600 text-sm font-semibold"
+                >
+                  Pindah ke {activeField === 'bb' ? 'Tinggi Badan' : 'Berat Badan'}
+                </button>
+                <button
+                  onClick={handleSimpan}
+                  disabled={!isBothFilled || isSaving}
+                  className="py-3 rounded-xl bg-green-600 hover:bg-green-700 disabled:bg-gray-200 disabled:text-gray-400 text-white text-sm font-semibold shadow-md flex items-center justify-center gap-2"
+                >
+                  {isSaving && <Loader2 size={14} className="animate-spin" />}
+                  Simpan Data
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Validation warning modal ──────────────────────────────────────── */}
+      {showKonfirmasi && konfirmasiInfo && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-5 w-full max-w-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle size={20} className="text-amber-500" />
+              <p className="text-gray-800 font-bold">Angka di Luar Batas Biologis Wajar</p>
+            </div>
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl mb-4">
+              <p className="text-amber-700 text-sm">
+                {konfirmasiInfo.field}:{' '}
+                <span className="font-bold">{konfirmasiInfo.value}</span>
+              </p>
+              <p className="text-amber-600 text-xs mt-1">{konfirmasiInfo.suggestion}</p>
+              <p className="text-amber-600 text-xs mt-1">
+                Apakah Anda yakin data ini benar? Angka abnormal akan diblokir untuk menjaga akurasi grafik Z-Score.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setShowKonfirmasi(false)}
+                className="py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold"
+              >
+                Koreksi Angka
+              </button>
+              <Button
+                onClick={() => void doSubmit(true)}
+                disabled={isSaving}
+                className="py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-semibold h-auto"
+              >
+                {isSaving
+                  ? <Loader2 size={14} className="animate-spin mx-auto" />
+                  : 'Yakin, Simpan'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── End confirm modal ─────────────────────────────────────────────── */}
+      {showEndConfirm && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-5 w-full max-w-sm">
+            <p className="text-gray-800 font-bold mb-2">Selesai Pelayanan Meja 2?</p>
+            <p className="text-gray-500 text-sm mb-4">
+              {dipanggilList.length - Object.keys(savedData).length} balita belum diinput datanya.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setShowEndConfirm(false)}
+                className="py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleKeluarMeja}
+                className="py-3 bg-red-600 text-white rounded-xl text-sm font-semibold"
+              >
+                Ya, Selesai
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Save success toast ────────────────────────────────────────────── */}
+      {showSaveSuccess && (
+        <div className="fixed bottom-6 left-4 right-4 bg-green-600 text-white rounded-2xl p-4 flex items-center gap-3 shadow-lg z-50">
+          <CheckCircle size={20} />
+          <p className="text-sm font-semibold">Data BB/TB berhasil disimpan!</p>
+        </div>
+      )}
+
+      <TukarMejaModal
+        open={showTukarMeja}
+        onClose={() => setShowTukarMeja(false)}
+        slotId={activeSlotId}
+      />
     </div>
   )
 }
