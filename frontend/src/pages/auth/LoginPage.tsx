@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
-import { ShieldCheck } from 'lucide-react'
+import { ShieldCheck, MapPin } from 'lucide-react'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LoginForm } from '@/components/auth/LoginForm'
@@ -116,6 +116,13 @@ export default function LoginPage() {
     setGagalLogin(0)
   }
 
+  // Demo login helper — calls same mutation as LoginForm
+  const handleDemoLogin = (demoIdentifier: string, password: string) => {
+    setErrorMsg(null)
+    setIdentifier(demoIdentifier)
+    loginMutation.mutate({ identifier: demoIdentifier, password })
+  }
+
   const detectedRole = detectRole(identifier)
   const showRegisterLink = !identifier || detectedRole === 'citizen'
 
@@ -126,19 +133,39 @@ export default function LoginPage() {
         <KaderLockScreen terkunciSampai={terkunciSampai} onUnlock={handleUnlock} />
       )}
 
-      <div className="min-h-screen flex items-center justify-center bg-[#f9fafb] px-4">
-        <div className="w-full max-w-[400px] space-y-6">
-          {/* Logo + wordmark */}
-          <div className="flex flex-col items-center space-y-2">
-            <div className="bg-[#f0fdf4] rounded-full p-3">
-              <ShieldCheck size={48} className="text-[#008236]" />
+      {/* Root container — mint green background */}
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#f0fdf4] px-4 py-8">
+        <div className="w-full max-w-[400px] space-y-4">
+
+          {/* ── Logo + wordmark ─────────────────────────────────────────────── */}
+          <div className="flex flex-col items-center">
+            {/* Green rounded-square icon block */}
+            <div className="w-16 h-16 bg-[#008236] rounded-2xl flex items-center justify-center mb-3">
+              <ShieldCheck size={36} className="text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-[#008236]">SISPOS</h1>
-            <p className="text-sm text-[#99a1af]">Digitalisasi Posyandu Indonesia</p>
+            <h1 className="text-[#008236] font-bold text-2xl">SISPOS</h1>
+            <p className="text-[#99a1af] text-sm mt-0.5">Sistem Informasi Posyandu</p>
+            <div className="flex items-center gap-1 justify-center mt-1">
+              <MapPin size={12} className="text-[#008236]" />
+              <span className="text-[#008236] text-xs">Posyandu Digital Indonesia</span>
+            </div>
           </div>
 
-          {/* Form card */}
-          <div className="bg-white rounded-2xl border border-[#f3f4f6] shadow-sm p-6 space-y-4">
+          {/* ── Login card ──────────────────────────────────────────────────── */}
+          <div className="bg-white rounded-2xl border border-[#f3f4f6] shadow-md px-6 py-6 space-y-4">
+            {/* Heading */}
+            <div>
+              <h2 className="text-[#1e2939] font-bold text-lg mb-1">Masuk ke Akun</h2>
+              {/* Role detection chip — ditampilkan jika identifier terisi */}
+              {identifier && (
+                <span className="bg-[#dcfce7] text-[#008236] text-xs rounded-[10px] px-2 py-0.5 mb-3 inline-block">
+                  {detectedRole === 'citizen' && 'Warga (NIK)'}
+                  {detectedRole === 'kader' && 'Kader / Ketua Kader (No HP)'}
+                  {detectedRole === 'puskesmas' && 'Puskesmas (Email)'}
+                </span>
+              )}
+            </div>
+
             <LoginForm
               onSubmit={handleSubmit}
               isLoading={loginMutation.isPending}
@@ -154,6 +181,39 @@ export default function LoginPage() {
             )}
           </div>
 
+          {/* ── Demo Akun Cepat ─────────────────────────────────────────────── */}
+          <div>
+            <p className="text-[#99a1af] text-xs font-semibold tracking-wider text-center mb-2">
+              Demo Akun Cepat
+            </p>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => handleDemoLogin('3471012345670001', 'Demo1234!')}
+                disabled={loginMutation.isPending}
+                className="bg-white border border-[#f3f4f6] rounded-[14px] py-2.5 px-4 w-full text-sm font-semibold text-[#364153] shadow-sm hover:bg-[#f0fdf4] transition-colors disabled:opacity-60"
+              >
+                Demo Warga
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDemoLogin('081234560001', '123456')}
+                disabled={loginMutation.isPending}
+                className="bg-white border border-[#f3f4f6] rounded-[14px] py-2.5 px-4 w-full text-sm font-semibold text-[#364153] shadow-sm hover:bg-[#f0fdf4] transition-colors disabled:opacity-60"
+              >
+                Demo Kader
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDemoLogin('demo@puskesmas-mergangsan.go.id', 'Demo1234!')}
+                disabled={loginMutation.isPending}
+                className="bg-white border border-[#f3f4f6] rounded-[14px] py-2.5 px-4 w-full text-sm font-semibold text-[#364153] shadow-sm hover:bg-[#f0fdf4] transition-colors disabled:opacity-60"
+              >
+                Demo Puskesmas
+              </button>
+            </div>
+          </div>
+
           {/* Register link — hanya untuk citizen */}
           {showRegisterLink && (
             <p className="text-center text-sm text-gray-500">
@@ -163,6 +223,12 @@ export default function LoginPage() {
               </Link>
             </p>
           )}
+
+          {/* ── Legal footer ────────────────────────────────────────────────── */}
+          <p className="text-center text-[#99a1af] text-[10px] mt-4 leading-relaxed">
+            SISPOS v1.0 · Dilindungi UU PDP No. 27/2022 · TLS 1.3 + AES-256
+          </p>
+
         </div>
       </div>
     </>
