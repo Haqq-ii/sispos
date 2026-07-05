@@ -4,18 +4,19 @@ import { requireRole } from '../../shared/middleware/require-role.middleware'
 import {
   createPemeriksaanHandler,
   getPemeriksaanHistoryHandler,
-  getRiwayatCitizenHandler,
+  getCitizenRiwayatHandler,
   updatePemeriksaanHandler,
 } from './growth.controller'
 
 export const growthRouter = Router()
 
 // GET /api/growth/riwayat — Riwayat pemeriksaan untuk citizen (TumbuhKembangPage)
+// getCitizenRiwayatHandler: returns full Z-Score shape (zScoreBbU, zScoreTbU, zScoreBbTb)
 growthRouter.get(
   '/riwayat',
   authMiddleware,
   requireRole('citizen'),
-  getRiwayatCitizenHandler
+  getCitizenRiwayatHandler
 )
 
 // POST /api/growth/pemeriksaan — Simpan hasil timbang/ukur (Meja 2)

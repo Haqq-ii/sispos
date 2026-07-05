@@ -319,6 +319,64 @@ export async function getPemeriksaanHistory(balitaId: string) {
   })
 }
 
+// ── getCitizenGrowthRiwayat ───────────────────────────────────────────────────
+
+/**
+ * getCitizenGrowthRiwayat — Ambil riwayat pemeriksaan balita pertama milik warga
+ * (citizen login) dengan semua field Z-Score (BB/U, TB/U, BB/TB) untuk grafik.
+ *
+ * IDOR-safe: filter via wargaId dari JWT, bukan dari client-supplied balitaId.
+ * catatanKonsultasi / rekomendasiAi: TIDAK dikembalikan (encrypted, bukan untuk citizen).
+ */
+export async function getCitizenGrowthRiwayat(wargaId: string): Promise<
+  {
+    id: string
+    tanggalPemeriksaan: string
+    beratBadan: number
+    tinggiBadan: number
+    zScoreBbU: number | null
+    zScoreTbU: number | null
+    zScoreBbTb: number | null
+    statusGizi: string
+  }[]
+> {
+  // Ambil balita pertama milik warga (asc createdAt)
+  const balita = await prisma.balita.findFirst({
+    where: { wargaId },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true },
+  })
+
+  if (!balita) return []
+
+  const records = await prisma.pemeriksaan.findMany({
+    where: { balitaId: balita.id },
+    orderBy: { tanggalPemeriksaan: 'asc' },
+    select: {
+      id: true,
+      tanggalPemeriksaan: true,
+      beratBadan: true,
+      tinggiBadan: true,
+      zScoreBbU: true,
+      zScoreTbU: true,
+      zScoreBbTb: true,
+      statusGizi: true,
+      statusGiziOverride: true,
+    },
+  })
+
+  return records.map((r) => ({
+    id: r.id,
+    tanggalPemeriksaan: r.tanggalPemeriksaan.toISOString(),
+    beratBadan: r.beratBadan ?? 0,
+    tinggiBadan: r.tinggiBadan ?? 0,
+    zScoreBbU: r.zScoreBbU ?? null,
+    zScoreTbU: r.zScoreTbU ?? null,
+    zScoreBbTb: r.zScoreBbTb ?? null,
+    statusGizi: (r.statusGiziOverride ?? r.statusGizi ?? 'normal') as string,
+  }))
+}
+
 // ── getRiwayatForCitizen ──────────────────────────────────────────────────────
 
 /**
