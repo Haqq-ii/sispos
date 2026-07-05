@@ -15,6 +15,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
+import { ZScoreChart, type ZScoreDataPoint } from '@/components/kader/ZScoreChart'
 import apiClient from '@/lib/axios'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -22,9 +23,13 @@ import apiClient from '@/lib/axios'
 interface RiwayatRecord {
   id: string
   createdAt: string
+  tanggalPemeriksaan?: string
   beratBadan: number
   tinggiBadan: number
   zScore: number
+  zScoreBbU?: number | null
+  zScoreTbU?: number | null
+  zScoreBbTb?: number | null
   statusGizi: string
 }
 
@@ -79,6 +84,22 @@ export default function TumbuhKembangPage() {
           zScore: riwayat[0].zScore,
         }
       : {}
+
+  // Grafik data — map riwayat to ZScoreDataPoint[] for ZScoreChart
+  const grafikData: ZScoreDataPoint[] = (riwayat ?? []).map((record) => {
+    const dateStr = record.tanggalPemeriksaan ?? record.createdAt
+    const tanggal = new Date(dateStr).toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: '2-digit',
+      year: '2-digit',
+    })
+    return {
+      tanggal,
+      bbU: record.zScoreBbU ?? null,
+      tbU: record.zScoreTbU ?? null,
+      bbTb: record.zScoreBbTb ?? null,
+    }
+  })
 
   const statCards = [
     {
@@ -211,15 +232,37 @@ export default function TumbuhKembangPage() {
 
         {/* ── Grafik tab ───────────────────────────────────────────────────── */}
         {activeTab === 'grafik' && (
-          <div className="bg-white border border-[#f3f4f6] rounded-2xl p-8 text-center shadow-sm">
-            <p className="text-[#99a1af]">Fitur akan segera tersedia</p>
-          </div>
+          <>
+            {isLoading && (
+              <Skeleton className="h-[260px] rounded-2xl" />
+            )}
+
+            {!isLoading && grafikData.length === 0 && (
+              <div className="bg-white border border-[#f3f4f6] rounded-2xl p-8 text-center shadow-sm">
+                <p className="text-[#1e2939] font-semibold text-sm">Belum ada data pemeriksaan untuk grafik</p>
+                <p className="text-[#99a1af] text-xs mt-1 leading-relaxed">
+                  Lakukan pemeriksaan pertama di Posyandu.
+                </p>
+              </div>
+            )}
+
+            {!isLoading && grafikData.length > 0 && (
+              <div className="bg-white rounded-2xl border border-[#f3f4f6] shadow-sm p-4">
+                <p className="text-[#1e2939] font-semibold text-sm">Tren Z-Score</p>
+                <p className="text-[#99a1af] text-xs mb-3">BB/U · TB/U · BB/TB</p>
+                <ZScoreChart data={grafikData} />
+              </div>
+            )}
+          </>
         )}
 
         {/* ── Imunisasi tab ────────────────────────────────────────────────── */}
         {activeTab === 'imunisasi' && (
           <div className="bg-white border border-[#f3f4f6] rounded-2xl p-8 text-center shadow-sm">
-            <p className="text-[#99a1af]">Fitur akan segera tersedia</p>
+            <p className="text-[#1e2939] font-semibold text-sm">Riwayat Imunisasi</p>
+            <p className="text-[#99a1af] text-xs mt-2 leading-relaxed">
+              Riwayat imunisasi tersedia setelah pemeriksaan Meja 5 di Posyandu.
+            </p>
           </div>
         )}
       </div>
