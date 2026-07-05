@@ -306,6 +306,9 @@ function Meja2Content({
                   item.pemeriksaan.length > 0 &&
                   item.pemeriksaan[0].beratBadan !== null
                 const done = serverDone || !!savedData[item.balitaId]
+                const localData = savedData[item.balitaId]
+                const displayBb = localData?.bb ?? item.pemeriksaan?.[0]?.beratBadan?.toString() ?? '—'
+                const displayTb = localData?.tb ?? item.pemeriksaan?.[0]?.tinggiBadan?.toString() ?? '—'
                 return (
                   <button
                     key={item.id}
@@ -323,7 +326,7 @@ function Meja2Content({
                       <p className="text-gray-800 text-sm font-semibold">{item.balita.namaBalita}</p>
                       {done && (
                         <p className="text-green-600 text-xs mt-0.5 font-medium">
-                          ✓ BB: {savedData[item.balitaId].bb} kg · TB: {savedData[item.balitaId].tb} cm
+                          ✓ BB: {displayBb} kg · TB: {displayTb} cm
                         </p>
                       )}
                     </div>
