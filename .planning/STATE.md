@@ -28,10 +28,10 @@ See: `.planning/PROJECT.md` (updated 2026-06-30)
 ```
 Phase aktif  : Phase 08 — UI Figma Alignment
 Last update  : 2026-07-05
-Plans done   : 08-01 complete (seed + bug fixes), 08-02 complete (ZScoreChart + citizen alignment), 08-03 complete (kader screens Figma alignment), 08-05 complete (LoginPage mint bg + CitizenDashboard white header), 08-08 complete (auth flow Register+OTP+Onboarding+LokasiSelesai Figma alignment)
+Plans done   : 08-01 complete (seed + bug fixes), 08-02 complete (ZScoreChart + citizen alignment), 08-03 complete (kader screens Figma alignment), 08-05 complete (LoginPage mint bg + CitizenDashboard white header), 08-08 complete (auth flow Register+OTP+Onboarding+LokasiSelesai Figma alignment), 08-10 complete (TumbuhKembang Grafik+Imunisasi tabs + ChatAssistant suggestion chips)
 Phases done  : 7 / 9 (Phase 00+01+02+04+05+06+07 complete)
-Next command : /gsd-execute-phase 08 (plan 09 — next wave)
-Stopped at   : Completed 08-08-PLAN.md — RegisterPage card, VerifikasiOtpPage inline OTP inputs, OnboardingLokasiPage title, LokasiSelesaiPage CTA
+Next command : /gsd-execute-phase 08 (plan 11 — next wave)
+Stopped at   : Completed 08-10-PLAN.md — TumbuhKembangPage 3 functional tabs, GET /api/immunization/riwayat citizen endpoint, ChatAssistantPage suggestion chips auto-submit
 ```
 
 ## Phase History
@@ -191,6 +191,7 @@ Citizen bisa ambil antrian dengan race condition guard; estimasi waktu tunggu ad
 | 08 | 02 | ~6 min | 3/3 | 7 |
 | 08 | 03 | ~20 min | 2/2 | 4 |
 | 08 | 08 | ~15 min | 2/2 | 4 |
+| 08 | 10 | ~20 min | 2/2 | 5 |
 
 ## Decisions
 
