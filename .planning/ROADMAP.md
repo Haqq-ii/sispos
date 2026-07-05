@@ -19,7 +19,7 @@
 | 5 | Reports & Export | 2/2 | Complete   | 2026-07-04 |
 | 6 | PWA & Offline | Service Worker Workbox, IndexedDB sync Meja 1-5, auto-sync online | PWA-01 | Complete   | 2026-07-04 |
 | 7 | Seed Data Demo | 2/3 | In Progress|  |
-| 8 | UI Figma Alignment | 3/5 | In Progress|  |
+| 8 | UI Figma Alignment | 4/5 | In Progress|  |
 
 ---
 
@@ -418,7 +418,7 @@ Plans:
 - CLAUDE.md § Figma MCP
 - `docs/ROADMAP.md` (screen list per phase)
 
-**Plans:** 3/5 plans executed
+**Plans:** 4/5 plans executed
 
 Plans:
 
@@ -436,7 +436,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [ ] 08-04-PLAN.md — Puskesmas screens: PetaStuntingPage mobile-first + PuskesmasDashboardPage + ManajemenPenggunaPage
+- [x] 08-04-PLAN.md — Puskesmas screens: PetaStuntingPage mobile-first + PuskesmasDashboardPage + ManajemenPenggunaPage
 
 **Wave 5** *(blocked on Wave 4)*
 
