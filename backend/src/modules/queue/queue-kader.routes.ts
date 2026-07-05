@@ -24,6 +24,7 @@ import {
   selesaikanAntrianHandler,
   goShowAntrianHandler,
   getAntrianDetailHandler,
+  getKaderDashboardStatsHandler,
 } from './queue-kader.controller'
 
 export const queueKaderRouter = Router()
@@ -37,6 +38,10 @@ queueKaderRouter.delete('/kader/active-meja', ...kaderAuth, clearActiveMejaHandl
 
 // Today's jadwal + slots for kader's posyandu (kader dashboard)
 queueKaderRouter.get('/kader/today-slots', ...kaderAuth, getTodaySlotsHandler)
+
+// Dashboard stats: total balita, risiko stunting, hadir hari ini, tren gizi, distribusi
+// T-08-06-01: kaderId dari JWT; T-08-06-04: kaderAuth middleware (kader + ketua_kader only)
+queueKaderRouter.get('/kader/dashboard-stats', ...kaderAuth, getKaderDashboardStatsHandler)
 
 // Slot antrian list
 queueKaderRouter.get('/kader/slot/:slotId/antrian', ...kaderAuth, getSlotAntrianHandler)

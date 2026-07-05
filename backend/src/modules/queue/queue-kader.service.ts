@@ -63,6 +63,194 @@ export async function getSlotAntrian(slotId: string) {
   })
 }
 
+// ── Dashboard stats (KaderDashboardPage) ──────────────────────────────────
+
+/**
+ * getKaderDashboardStats — statistik populasi balita untuk dashboard kader.
+ *
+ * T-08-06-01 Mitigation (IDOR): kaderId SELALU dari JWT (parameter fungsi ini),
+ * TIDAK PERNAH dari query params. posyanduId di-resolve dari DB via kaderId.
+ * T-08-06-02 Mitigation (SQL Injection): semua $queryRaw menggunakan tagged
+ * template literals — Prisma otomatis parameterisasi nilai interpolasi.
+ */
+export async function getKaderDashboardStats(kaderId: string): Promise<{
+  totalBalita: number
+  risikoStunting: number
+  hadirHariIni: number
+  trenGiziBulanan: Array<{ bulan: string; normal: number; kurang: number; buruk: number; pendek: number }>
+  distribusiGiziBulanIni: { normal: number; kurang: number; buruk: number; pendek: number }
+  peringatanRisiko: Array<{
+    balitaId: string
+    namaBalita: string
+    zScoreBbU: number | null
+    zScoreTbU: number | null
+    statusGizi: string
+  }>
+}> {
+  // Step A: posyanduId dari kader (sumber: JWT via kaderId — IDOR guard T-08-06-01)
+  const kader = await prisma.kader.findUnique({
+    where: { id: kaderId },
+    select: { posyanduId: true },
+  })
+  if (!kader) {
+    throw Object.assign(new Error('Kader tidak ditemukan'), { code: 'KADER_TIDAK_DITEMUKAN' })
+  }
+  const posyanduId = kader.posyanduId
+
+  // WIB date untuk hadirHariIni (UTC+7) — teknik sama dengan getTodaySlots
+  const nowUtc = new Date()
+  const wibOffset = 7 * 60 * 60 * 1000
+  const nowWib = new Date(nowUtc.getTime() + wibOffset)
+  const todayStr = [
+    String(nowWib.getUTCFullYear()),
+    String(nowWib.getUTCMonth() + 1).padStart(2, '0'),
+    String(nowWib.getUTCDate()).padStart(2, '0'),
+  ].join('-')
+  const todayDate = new Date(`${todayStr}T00:00:00.000Z`)
+
+  // Steps B–G paralel (setelah posyanduId resolved)
+  const [
+    totalBalita,
+    hadirHariIni,
+    risikoRows,
+    trenRaw,
+    distribusiRaw,
+    pemeriksaanRisiko,
+  ] = await Promise.all([
+    // B: total balita di posyandu (filter via warga.posyanduUtamaId — IDOR safe)
+    prisma.balita.count({
+      where: { warga: { posyanduUtamaId: posyanduId } },
+    }),
+
+    // C: hadir hari ini (waktuCheckin tidak null + jadwal posyandu hari ini WIB)
+    prisma.antrian.count({
+      where: {
+        slotSesi: {
+          jadwal: {
+            posyanduId,
+            tanggalPelaksanaan: { equals: todayDate },
+          },
+        },
+        waktuCheckin: { not: null },
+      },
+    }),
+
+    // D: balita dengan pemeriksaan terakhir statusGizi risiko (LATERAL JOIN)
+    // T-08-06-02: posyanduId via tagged template literal — parameterized, bukan concatenated
+    prisma.$queryRaw<Array<{ count: number }>>`
+      SELECT COUNT(DISTINCT b.id)::int AS count
+      FROM balita b
+      JOIN warga w ON b."wargaId" = w.id
+      JOIN LATERAL (
+        SELECT p."statusGizi"
+        FROM pemeriksaan p
+        WHERE p."balitaId" = b.id
+        ORDER BY p."tanggalPemeriksaan" DESC
+        LIMIT 1
+      ) latest ON TRUE
+      WHERE w."posyanduUtamaId" = ${posyanduId}
+        AND latest."statusGizi" IN ('kurang', 'buruk', 'pendek', 'sangat_pendek')
+    `,
+
+    // E: trenGiziBulanan — 6 bulan terakhir (grouped by bulan + statusGizi)
+    prisma.$queryRaw<Array<{ bulan: string; statusGizi: string; jumlah: number }>>`
+      SELECT
+        TO_CHAR(p."tanggalPemeriksaan", 'YYYY-MM') AS bulan,
+        p."statusGizi",
+        COUNT(*)::int AS jumlah
+      FROM pemeriksaan p
+      JOIN balita b ON p."balitaId" = b.id
+      JOIN warga w ON b."wargaId" = w.id
+      WHERE w."posyanduUtamaId" = ${posyanduId}
+        AND p."tanggalPemeriksaan" >= (NOW() AT TIME ZONE 'Asia/Jakarta' - INTERVAL '5 months')::date
+        AND p."statusGizi" IS NOT NULL
+      GROUP BY bulan, p."statusGizi"
+      ORDER BY bulan
+    `,
+
+    // F: distribusiGiziBulanIni — bulan berjalan
+    prisma.$queryRaw<Array<{ statusGizi: string; jumlah: number }>>`
+      SELECT
+        p."statusGizi",
+        COUNT(*)::int AS jumlah
+      FROM pemeriksaan p
+      JOIN balita b ON p."balitaId" = b.id
+      JOIN warga w ON b."wargaId" = w.id
+      WHERE w."posyanduUtamaId" = ${posyanduId}
+        AND TO_CHAR(p."tanggalPemeriksaan", 'YYYY-MM') = TO_CHAR(NOW() AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM')
+        AND p."statusGizi" IS NOT NULL
+      GROUP BY p."statusGizi"
+    `,
+
+    // G: peringatanRisiko — ambil 20, dedup ke 10 (lebih dari 10 untuk ruang dedup)
+    prisma.pemeriksaan.findMany({
+      where: {
+        statusGizi: { in: ['kurang', 'buruk', 'pendek', 'sangat_pendek'] },
+        balita: { warga: { posyanduUtamaId: posyanduId } },
+      },
+      orderBy: { zScoreBbU: 'asc' },
+      take: 20,
+      include: { balita: { select: { namaBalita: true } } },
+    }),
+  ])
+
+  // D: risikoStunting
+  const risikoStunting = Number(risikoRows[0]?.count ?? 0)
+
+  // E: transform ke { bulan, normal, kurang, buruk, pendek }
+  const trenMap = new Map<string, { bulan: string; normal: number; kurang: number; buruk: number; pendek: number }>()
+  for (const row of trenRaw) {
+    if (!trenMap.has(row.bulan)) {
+      trenMap.set(row.bulan, { bulan: row.bulan, normal: 0, kurang: 0, buruk: 0, pendek: 0 })
+    }
+    const entry = trenMap.get(row.bulan)!
+    const jumlah = Number(row.jumlah)
+    if (row.statusGizi === 'normal') entry.normal += jumlah
+    else if (row.statusGizi === 'kurang') entry.kurang += jumlah
+    else if (row.statusGizi === 'buruk') entry.buruk += jumlah
+    else if (row.statusGizi === 'pendek' || row.statusGizi === 'sangat_pendek') entry.pendek += jumlah
+  }
+  const trenGiziBulanan = Array.from(trenMap.values())
+
+  // F: distribusiGiziBulanIni
+  const distribusiGiziBulanIni = { normal: 0, kurang: 0, buruk: 0, pendek: 0 }
+  for (const row of distribusiRaw) {
+    const jumlah = Number(row.jumlah)
+    if (row.statusGizi === 'normal') distribusiGiziBulanIni.normal += jumlah
+    else if (row.statusGizi === 'kurang') distribusiGiziBulanIni.kurang += jumlah
+    else if (row.statusGizi === 'buruk') distribusiGiziBulanIni.buruk += jumlah
+    else if (row.statusGizi === 'pendek' || row.statusGizi === 'sangat_pendek') distribusiGiziBulanIni.pendek += jumlah
+  }
+
+  // G: dedup by balitaId, slice ke 10
+  const seenBalita = new Set<string>()
+  const peringatanRisiko = pemeriksaanRisiko
+    .filter((p) => {
+      if (seenBalita.has(p.balitaId)) return false
+      seenBalita.add(p.balitaId)
+      return true
+    })
+    .slice(0, 10)
+    .map((p) => ({
+      balitaId: p.balitaId,
+      namaBalita: p.balita.namaBalita,
+      zScoreBbU: p.zScoreBbU,
+      zScoreTbU: p.zScoreTbU,
+      statusGizi: p.statusGizi as string,
+    }))
+
+  logger.debug({ kaderId }, 'getKaderDashboardStats called')
+
+  return {
+    totalBalita,
+    risikoStunting,
+    hadirHariIni,
+    trenGiziBulanan,
+    distribusiGiziBulanIni,
+    peringatanRisiko,
+  }
+}
+
 // ── hadir (Meja 1) ────────────────────────────────────────────────────────
 
 /**

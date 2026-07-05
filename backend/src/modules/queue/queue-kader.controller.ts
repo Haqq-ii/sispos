@@ -12,6 +12,7 @@ import {
   selesaikanAntrian,
   goShowAntrian,
   getAntrianDetail,
+  getKaderDashboardStats,
 } from './queue-kader.service'
 
 const SetActiveMejaSchema = z.object({
@@ -123,6 +124,14 @@ export async function selesaikanAntrianHandler(req: AuthRequest, res: Response):
       data: result,
       message: 'Pelayanan selesai. Terima kasih.',
     })
+  } catch (err) { handleErr(err, res) }
+}
+
+export async function getKaderDashboardStatsHandler(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const kaderId = req.user!.userId
+    const data = await getKaderDashboardStats(kaderId)
+    res.status(200).json({ success: true, data, message: 'Statistik dashboard berhasil diambil.' })
   } catch (err) { handleErr(err, res) }
 }
 
