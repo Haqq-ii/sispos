@@ -115,7 +115,7 @@ export function LoginForm({ onSubmit, isLoading, error: _error, gagalLogin }: Lo
         {/* CTA */}
         <Button
           type="submit"
-          className="w-full min-h-[44px]"
+          className="w-full min-h-[44px] bg-[#008236] hover:bg-[#00a63e] text-white rounded-[14px]"
           disabled={isLoading}
           aria-busy={isLoading}
         >

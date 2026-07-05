@@ -126,19 +126,19 @@ export default function LoginPage() {
         <KaderLockScreen terkunciSampai={terkunciSampai} onUnlock={handleUnlock} />
       )}
 
-      <div className="min-h-screen flex items-center justify-center bg-white px-4">
+      <div className="min-h-screen flex items-center justify-center bg-[#f9fafb] px-4">
         <div className="w-full max-w-[400px] space-y-6">
           {/* Logo + wordmark */}
           <div className="flex flex-col items-center space-y-2">
-            <div className="bg-green-50 rounded-full p-3">
-              <ShieldCheck size={48} className="text-primary" />
+            <div className="bg-[#f0fdf4] rounded-full p-3">
+              <ShieldCheck size={48} className="text-[#008236]" />
             </div>
-            <h1 className="text-2xl font-bold text-primary">SISPOS</h1>
-            <p className="text-sm text-gray-500">Digitalisasi Posyandu Indonesia</p>
+            <h1 className="text-2xl font-bold text-[#008236]">SISPOS</h1>
+            <p className="text-sm text-[#99a1af]">Digitalisasi Posyandu Indonesia</p>
           </div>
 
           {/* Form card */}
-          <div className="bg-green-50 rounded-lg shadow-sm p-6 space-y-4">
+          <div className="bg-white rounded-2xl border border-[#f3f4f6] shadow-sm p-6 space-y-4">
             <LoginForm
               onSubmit={handleSubmit}
               isLoading={loginMutation.isPending}
@@ -158,7 +158,7 @@ export default function LoginPage() {
           {showRegisterLink && (
             <p className="text-center text-sm text-gray-500">
               Belum punya akun?{' '}
-              <Link to="/register" className="text-primary underline font-bold">
+              <Link to="/register" className="text-[#008236] underline font-bold">
                 Daftar sekarang
               </Link>
             </p>

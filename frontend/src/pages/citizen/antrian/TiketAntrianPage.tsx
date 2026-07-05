@@ -152,16 +152,16 @@ export default function TiketAntrianPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[#f9fafb]">
       {/* Sticky header */}
-      <div className="sticky top-0 z-10 bg-white border-b px-4 py-3 flex items-center justify-between">
-        <span className="text-primary font-bold text-sm">SISPOS</span>
+      <div className="sticky top-0 z-10 bg-white border-b border-[#f3f4f6] px-4 py-3 flex items-center justify-between">
+        <span className="text-[#008236] font-bold text-sm">SISPOS</span>
         <span className="text-sm font-bold">Tiket Antrian</span>
         <div className="w-16" /> {/* Spacer untuk centering */}
       </div>
 
       {/* Body */}
-      <div className="max-w-[400px] mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-[400px] mx-auto px-4 py-6 space-y-4">
         {isLoading ? (
           /* Loading state */
           <>
@@ -195,8 +195,8 @@ export default function TiketAntrianPage() {
               </p>
             </div>
 
-            {/* Section 2 — Nomor antrian (text-center, bg-green-50, rounded-xl) */}
-            <div className="text-center py-6 bg-green-50 rounded-xl">
+            {/* Section 2 — Nomor antrian (text-center, bg-[#f0fdf4], rounded-2xl) */}
+            <div className="text-center py-6 bg-[#f0fdf4] rounded-2xl">
               <p className="text-xs text-gray-400 uppercase tracking-wider">
                 NOMOR ANTRIAN ANDA
               </p>
