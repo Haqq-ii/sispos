@@ -1,15 +1,46 @@
+/**
+ * KaderDashboardPage — Figma 27:2531 alignment
+ *
+ * Layout:
+ *   - Green header: kader name, logout, SyncPendingBadge, install button
+ *   - Stats row (body): Total Balita | Risiko Stunting | Hadir Hari Ini
+ *   - Mulai Pelayanan Hari-H card per slot
+ *   - Tabs: Ringkasan | Data Balita | Absensi
+ *     Ringkasan: TREN STATUS GIZI (BarChart) + STATUS GIZI BULAN INI (PieChart) + PERINGATAN RISIKO STUNTING table
+ *
+ * Data sources:
+ *   - GET /api/kader/today-slots → jadwal + slot cards
+ *   - GET /api/kader/dashboard-stats → stats + charts + risk table
+ *
+ * KRITIS: useActiveMeja redirect useEffect TIDAK BOLEH dihapus (lock-screen feature)
+ */
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { LogOut, ClipboardList, ChevronRight, Play, Download } from 'lucide-react'
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts'
 
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useActiveMeja } from '@/hooks/useActiveMeja'
 import { useKaderMejaStore } from '@/stores/useKaderMejaStore'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { usePwaStore } from '@/stores/usePwaStore'
 import { SyncPendingBadge } from '@/components/offline/SyncPendingBadge'
 import apiClient from '@/lib/axios'
+
+// ── Interfaces ────────────────────────────────────────────────────────────
 
 interface TodaySlot {
   id: string
@@ -31,18 +62,63 @@ interface TodayJadwal {
   slotSesi: TodaySlot[]
 }
 
+interface KaderDashboardStats {
+  totalBalita: number
+  risikoStunting: number
+  hadirHariIni: number
+  trenGiziBulanan: Array<{
+    bulan: string
+    normal: number
+    kurang: number
+    buruk: number
+    pendek: number
+  }>
+  distribusiGiziBulanIni: {
+    normal: number
+    kurang: number
+    buruk: number
+    pendek: number
+  }
+  peringatanRisiko: Array<{
+    balitaId: string
+    namaBalita: string
+    zScoreBbU: number | null
+    zScoreTbU: number | null
+    statusGizi: string
+  }>
+}
+
+// ── Helper ────────────────────────────────────────────────────────────────
+
+function statusGiziBadgeClass(status: string): string {
+  const map: Record<string, string> = {
+    normal: 'bg-[#dcfce7] text-[#16a34a]',
+    kurang: 'bg-[#fef9c3] text-[#ca8a04]',
+    buruk: 'bg-[#fee2e2] text-[#e7000b]',
+    pendek: 'bg-[#ffedd5] text-[#f97316]',
+    sangat_pendek: 'bg-[#fee2e2] text-[#e7000b]',
+    lebih: 'bg-[#fef9c3] text-[#ca8a04]',
+    obesitas: 'bg-[#fee2e2] text-[#e7000b]',
+  }
+  return map[status] ?? 'bg-gray-100 text-gray-600'
+}
+
+// ── Component ─────────────────────────────────────────────────────────────
+
 export default function KaderDashboardPage() {
   const navigate = useNavigate()
   const { clearAuth, user } = useAuthStore()
   const { setActiveMeja, setLocked } = useKaderMejaStore()
   const { deferredPrompt, triggerInstall } = usePwaStore()
-  // WR-08: window.matchMedia is undefined in JSDOM and some legacy browsers — use optional chaining
+  // WR-08: window.matchMedia is undefined in JSDOM and some legacy browsers
   const showInstall =
     deferredPrompt !== null &&
     !(window.matchMedia?.('(display-mode: standalone)')?.matches ?? false)
 
+  // Lock-screen redirect (KRITIS — jangan hapus)
   const { data: activeMejaData, isLoading: isLoadingActiveMeja } = useActiveMeja()
 
+  // Today's jadwal + slots
   const { data: todayJadwal, isLoading: isLoadingJadwal } = useQuery<TodayJadwal | null>({
     queryKey: ['kader', 'today-slots'],
     queryFn: () =>
@@ -50,6 +126,15 @@ export default function KaderDashboardPage() {
     staleTime: 30_000,
   })
 
+  // Dashboard stats (Figma 27:2531 — stats row + charts + risk table)
+  const { data: dashboardStats, isLoading: isLoadingStats } = useQuery<KaderDashboardStats>({
+    queryKey: ['kader', 'dashboard-stats'],
+    queryFn: () =>
+      apiClient.get('/kader/dashboard-stats').then((r) => r.data.data as KaderDashboardStats),
+    staleTime: 60_000,
+  })
+
+  // KRITIS: auto-redirect kader ke meja aktif saat dashboard load (lock-screen feature)
   useEffect(() => {
     if (!isLoadingActiveMeja && activeMejaData) {
       setActiveMeja(activeMejaData.activeMeja, activeMejaData.slotId)
@@ -62,24 +147,31 @@ export default function KaderDashboardPage() {
 
   const handleLogout = async () => {
     try { await apiClient.post('/auth/logout') } catch (e) {
-      // WR-07: Best-effort logout — local auth cleared regardless; log in dev for visibility
+      // WR-07: Best-effort logout — local auth cleared regardless
       if (import.meta.env.DEV) console.warn('[KaderDashboard] Logout API call failed:', e)
     }
     clearAuth()
     navigate('/login', { replace: true })
   }
 
-  const totalKuota = todayJadwal?.slotSesi.reduce((s, sl) => s + sl.kuota, 0) ?? 0
-  const totalTerdaftar = todayJadwal?.slotSesi.reduce((s, sl) => s + sl.terisi, 0) ?? 0
-  const totalAntrian = todayJadwal?.slotSesi.reduce((s, sl) => s + sl.totalAntrian, 0) ?? 0
-  const isLoading = isLoadingActiveMeja || isLoadingJadwal
+  const isLoading = isLoadingActiveMeja || isLoadingJadwal || isLoadingStats
+
+  // Pie chart data — distribusiGiziBulanIni
+  const distribusiData = dashboardStats
+    ? [
+        { name: 'Normal', value: dashboardStats.distribusiGiziBulanIni.normal, color: '#16a34a' },
+        { name: 'Kurang', value: dashboardStats.distribusiGiziBulanIni.kurang, color: '#fbbf24' },
+        { name: 'Buruk', value: dashboardStats.distribusiGiziBulanIni.buruk, color: '#ef4444' },
+        { name: 'Pendek', value: dashboardStats.distribusiGiziBulanIni.pendek, color: '#f97316' },
+      ]
+    : []
 
   return (
     <div className="min-h-screen bg-[#f9fafb] flex flex-col">
 
-      {/* ── Header ──────────────────────────────────────────────────────── */}
+      {/* ── Header (Figma: green bg, kader name, logout, install) ─────── */}
       <div className="bg-[#008236] px-4 pt-12 pb-6">
-        <div className="flex items-start justify-between mb-5">
+        <div className="flex items-start justify-between">
           <div>
             <p className="text-[#7bf1a8] text-xs font-medium mb-0.5">Selamat datang,</p>
             <p className="text-white font-bold text-xl leading-tight">
@@ -115,105 +207,198 @@ export default function KaderDashboardPage() {
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Stats row */}
+      {/* ── Body ──────────────────────────────────────────────────────── */}
+      <div className="flex-1 px-4 py-4 space-y-3">
+
+        {/* ── Stats Row: Total Balita | Risiko Stunting | Hadir Hari Ini ─ */}
         {isLoading ? (
           <div className="grid grid-cols-3 gap-2">
             {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-[62px] rounded-[14px] bg-white/20" />
+              <Skeleton key={i} className="h-[72px] rounded-2xl" />
             ))}
           </div>
-        ) : todayJadwal ? (
-          <div className="grid grid-cols-3 gap-2">
-            <div className="bg-[rgba(255,255,255,0.15)] rounded-2xl px-3 py-3">
-              <p className="text-white font-bold text-2xl leading-none">{totalKuota}</p>
-              <p className="text-[#dcfce7] text-[10px] leading-tight mt-1">Total<br/>Kuota</p>
-            </div>
-            <div className="bg-[rgba(255,255,255,0.15)] rounded-2xl px-3 py-3">
-              <p className="text-white font-bold text-2xl leading-none">{totalTerdaftar}</p>
-              <p className="text-[#b9f8cf] text-[10px] leading-tight mt-1">Hadir<br/>Hari Ini</p>
-            </div>
-            <div className="bg-[rgba(255,255,255,0.15)] rounded-2xl px-3 py-3">
-              <p className="text-[#ffd230] font-bold text-2xl leading-none">{totalAntrian}</p>
-              <p className="text-[#dcfce7] text-[10px] leading-tight mt-1">Antrian<br/>Aktif</p>
-            </div>
-          </div>
         ) : (
-          <div className="bg-[rgba(255,255,255,0.12)] rounded-[14px] px-3 py-3 text-center">
-            <p className="text-[#b9f8cf] text-xs">Tidak ada jadwal hari ini</p>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-white border border-[#f3f4f6] rounded-2xl p-3 text-center shadow-sm">
+              <p className="text-[#1e2939] font-bold text-2xl leading-none">
+                {dashboardStats?.totalBalita ?? 0}
+              </p>
+              <p className="text-[#99a1af] text-xs leading-tight mt-1">Total<br />Balita</p>
+            </div>
+            <div className="bg-white border border-[#f3f4f6] rounded-2xl p-3 text-center shadow-sm">
+              <p className="text-[#e7000b] font-bold text-2xl leading-none">
+                {dashboardStats?.risikoStunting ?? 0}
+              </p>
+              <p className="text-[#99a1af] text-xs leading-tight mt-1">Risiko<br />Stunting</p>
+            </div>
+            <div className="bg-white border border-[#f3f4f6] rounded-2xl p-3 text-center shadow-sm">
+              <p className="text-[#1e2939] font-bold text-2xl leading-none">
+                {dashboardStats?.hadirHariIni ?? 0}
+              </p>
+              <p className="text-[#99a1af] text-xs leading-tight mt-1">Hadir<br />Hari Ini</p>
+            </div>
           </div>
         )}
-      </div>
 
-      {/* ── Body ───────────────────────────────────────────────────────── */}
-      <div className="flex-1 px-4 py-4 space-y-3">
+        {/* ── Mulai Pelayanan Hari-H ────────────────────────────────── */}
         {isLoading ? (
           <>
-            <Skeleton className="h-28 rounded-2xl" />
             <Skeleton className="h-16 rounded-2xl" />
           </>
         ) : !todayJadwal ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="flex flex-col items-center justify-center py-12 text-center">
             <ClipboardList className="text-gray-300 mb-3" size={48} />
             <p className="text-sm text-gray-500">Tidak ada jadwal pelayanan hari ini.</p>
             <p className="text-xs text-gray-400 mt-1">Hubungi Puskesmas untuk membuat jadwal.</p>
           </div>
         ) : (
-          <>
-            {/* JADWAL PELAYANAN card */}
-            <div className="bg-white rounded-2xl shadow-sm border border-[#f3f4f6] p-4">
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">
-                Jadwal Pelayanan
+          todayJadwal.slotSesi.map((slot) => (
+            <button
+              key={slot.id}
+              onClick={() =>
+                navigate('/kader/pelayanan', {
+                  state: { slotId: slot.id, slotLabel: slot.labelSesi },
+                })
+              }
+              className="w-full bg-white rounded-2xl shadow-sm border border-[#f3f4f6] px-4 py-3.5 flex items-center justify-between active:bg-[#f9fafb]"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-[#008236] rounded-xl flex items-center justify-center">
+                  <Play size={16} className="text-white fill-white" />
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-bold text-gray-800">Mulai Pelayanan Hari-H</p>
+                  <p className="text-xs text-gray-500">{slot.labelSesi} · {slot.jamMulai} WIB</p>
+                </div>
+              </div>
+              <ChevronRight size={18} className="text-gray-400" />
+            </button>
+          ))
+        )}
+
+        {/* ── Tabs: Ringkasan | Data Balita | Absensi ──────────────── */}
+        <Tabs defaultValue="ringkasan">
+          <TabsList className="w-full">
+            <TabsTrigger value="ringkasan" className="flex-1">Ringkasan</TabsTrigger>
+            <TabsTrigger value="data-balita" className="flex-1">Data Balita</TabsTrigger>
+            <TabsTrigger value="absensi" className="flex-1">Absensi</TabsTrigger>
+          </TabsList>
+
+          {/* Ringkasan tab */}
+          <TabsContent value="ringkasan" className="space-y-3 mt-3">
+
+            {/* TREN STATUS GIZI — BarChart 6 bulan */}
+            <div className="bg-white border border-[#f3f4f6] rounded-2xl p-4 shadow-sm">
+              <p className="text-[#99a1af] text-xs font-semibold tracking-wider mb-3 uppercase">
+                TREN STATUS GIZI
               </p>
-              {todayJadwal.slotSesi.map((slot) => {
-                const pct = slot.kuota > 0 ? Math.round((slot.terisi / slot.kuota) * 100) : 0
-                return (
-                  <div key={slot.id} className="mb-3 last:mb-0">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div>
-                        <p className="text-sm font-semibold text-gray-800">{slot.labelSesi}</p>
-                        <p className="text-xs text-gray-400">{slot.jamMulai} – {slot.jamSelesai} WIB</p>
-                      </div>
-                      <span className="text-xs text-gray-500 font-medium">
-                        {slot.terisi}/{slot.kuota}
-                      </span>
-                    </div>
-                    <div className="h-2 bg-[#f3f4f6] rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-[#00a63e] rounded-full transition-all"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
-                )
-              })}
+              {isLoadingStats ? (
+                <Skeleton className="h-[180px] rounded-xl" />
+              ) : (
+                <ResponsiveContainer width="100%" height={180}>
+                  <BarChart data={dashboardStats?.trenGiziBulanan ?? []}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                    <XAxis dataKey="bulan" tick={{ fontSize: 10 }} />
+                    <YAxis tick={{ fontSize: 10 }} />
+                    <Tooltip />
+                    <Bar dataKey="normal" fill="#16a34a" />
+                    <Bar dataKey="kurang" fill="#fbbf24" />
+                    <Bar dataKey="buruk" fill="#ef4444" />
+                    <Bar dataKey="pendek" fill="#f97316" />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
 
-            {/* Mulai Pelayanan per slot */}
-            {todayJadwal.slotSesi.map((slot) => (
-              <button
-                key={slot.id}
-                onClick={() =>
-                  navigate('/kader/pelayanan', {
-                    state: { slotId: slot.id, slotLabel: slot.labelSesi },
-                  })
-                }
-                className="w-full bg-white rounded-2xl shadow-sm border border-[#f3f4f6] px-4 py-3.5 flex items-center justify-between active:bg-[#f9fafb]"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[#008236] rounded-xl flex items-center justify-center">
-                    <Play size={16} className="text-white fill-white" />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-sm font-bold text-gray-800">Mulai Pelayanan Hari-H</p>
-                    <p className="text-xs text-gray-500">{slot.labelSesi} · {slot.jamMulai} WIB</p>
-                  </div>
+            {/* STATUS GIZI BULAN INI — PieChart donut */}
+            <div className="bg-white border border-[#f3f4f6] rounded-2xl p-4 shadow-sm">
+              <p className="text-[#99a1af] text-xs font-semibold tracking-wider mb-3 uppercase">
+                STATUS GIZI BULAN INI
+              </p>
+              {isLoadingStats ? (
+                <Skeleton className="h-[160px] rounded-xl" />
+              ) : (
+                <ResponsiveContainer width="100%" height={160}>
+                  <PieChart>
+                    <Pie
+                      data={distribusiData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={40}
+                      outerRadius={70}
+                      dataKey="value"
+                    >
+                      {distribusiData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+
+            {/* PERINGATAN RISIKO STUNTING — table */}
+            <div className="bg-white border border-[#f3f4f6] rounded-2xl p-4 shadow-sm">
+              <p className="text-[#e7000b] text-xs font-semibold tracking-wider mb-3 uppercase">
+                PERINGATAN RISIKO STUNTING
+              </p>
+              {isLoadingStats ? (
+                <Skeleton className="h-24 rounded-xl" />
+              ) : !dashboardStats || dashboardStats.peringatanRisiko.length === 0 ? (
+                <p className="text-[#99a1af] text-xs text-center py-4">
+                  Tidak ada balita berisiko tinggi
+                </p>
+              ) : (
+                <div className="space-y-0">
+                  {dashboardStats.peringatanRisiko.map((item) => (
+                    <div
+                      key={item.balitaId}
+                      className="flex items-center justify-between py-2.5 border-b border-[#f3f4f6] last:border-0"
+                    >
+                      <div>
+                        <p className="text-[#1e2939] text-sm font-semibold">{item.namaBalita}</p>
+                        <p className="text-[#99a1af] text-xs">
+                          BB/U: {item.zScoreBbU != null ? item.zScoreBbU.toFixed(1) : '–'}
+                        </p>
+                      </div>
+                      <span
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusGiziBadgeClass(item.statusGizi)}`}
+                      >
+                        {item.statusGizi.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-                <ChevronRight size={18} className="text-gray-400" />
-              </button>
-            ))}
-          </>
-        )}
+              )}
+            </div>
+
+          </TabsContent>
+
+          {/* Data Balita tab */}
+          <TabsContent value="data-balita" className="mt-3">
+            <div className="bg-white border border-[#f3f4f6] rounded-2xl p-4 text-center shadow-sm">
+              <p className="text-[#99a1af] text-xs">
+                Data lengkap tersedia di sistem Puskesmas.
+              </p>
+            </div>
+          </TabsContent>
+
+          {/* Absensi tab */}
+          <TabsContent value="absensi" className="mt-3">
+            <div className="bg-white border border-[#f3f4f6] rounded-2xl p-4 text-center shadow-sm">
+              <p className="text-[#99a1af] text-xs">
+                Lihat rekap kehadiran di halaman Rekap Harian.
+              </p>
+              <Link to="/kader/rekap" className="text-[#008236] text-xs font-medium mt-2 block">
+                Ke Rekap Harian →
+              </Link>
+            </div>
+          </TabsContent>
+
+        </Tabs>
       </div>
     </div>
   )
