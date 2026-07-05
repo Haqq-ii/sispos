@@ -174,11 +174,11 @@ export default function TiketAntrianPage() {
           </>
         ) : antrian ? (
           <>
-            {/* Socket disconnect alert */}
+            {/* Socket disconnect alert — non-dismissible (T-08-09-02) */}
             {slotId && socketStatus === 'disconnected' && (
               <Alert>
                 <AlertDescription>
-                  Koneksi terputus. Memuat ulang data...
+                  Koneksi realtime terputus. Data mungkin tidak terkini.
                 </AlertDescription>
               </Alert>
             )}

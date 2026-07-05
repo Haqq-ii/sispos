@@ -192,7 +192,7 @@ export default function KonfirmasiAntrianPage() {
           variant="ghost"
           size="icon"
           className="min-h-[44px] min-w-[44px] mb-2 -ml-2"
-          onClick={() => navigate('/citizen/antrian/pilih-sesi')}
+          onClick={() => navigate(-1)}
           aria-label="Kembali ke halaman sebelumnya"
         >
           <ChevronLeft size={20} />
@@ -336,18 +336,28 @@ export default function KonfirmasiAntrianPage() {
             {/* CTA */}
             <Button
               type="button"
-              className="w-full min-h-[44px]"
+              className="w-full min-h-[44px] bg-[#008236] text-white rounded-[14px] hover:bg-[#00a63e]"
               disabled={!canSubmit}
               onClick={handleSubmit}
             >
               {mutation.isPending ? (
                 <>
                   <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                  Mengambil antrian...
+                  Mendaftarkan antrian...
                 </>
               ) : (
-                'Ambil Antrian'
+                'Daftar Sekarang'
               )}
+            </Button>
+
+            {/* Batal — navigasi kembali */}
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full mt-2 min-h-[44px] text-gray-500"
+              onClick={() => navigate(-1)}
+            >
+              Batal
             </Button>
           </>
         )}
