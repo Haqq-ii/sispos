@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "lib": ["ES2022"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "typeRoots": ["./backend/node_modules/@types"],
+    "baseUrl": ".",
+    "paths": {
+      "@prisma/client": ["./backend/node_modules/@prisma/client"]
+    }
+  },
+  "include": ["prisma/**/*.ts"],
+  "exclude": ["node_modules", "backend", "frontend"]
+}
