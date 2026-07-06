@@ -88,7 +88,6 @@ function Meja1Content({ activeSlotId, clearActiveMejaMutation, resetStore }: Mej
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { toast } = useToast()
-  const { setActiveAntrian } = useKaderMejaStore()
   const isOnline = useOfflineStatus()
   const { enqueueOperation } = useOfflineSync()
 
@@ -116,17 +115,9 @@ function Meja1Content({ activeSlotId, clearActiveMejaMutation, resetStore }: Mej
   const hadirMutation = useMutation({
     mutationFn: (payload: { antrianId: string; balitaId: string; namaBalita: string }) =>
       apiClient.patch(`/antrian/${payload.antrianId}/hadir`).then((r) => r.data),
-    onSuccess: (_data, payload) => {
+    onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['antrian', 'kader', activeSlotId] })
-      toast({ description: 'Balita berhasil dipanggil. Lanjut ke Meja 2.' })
-      setActiveAntrian(payload.antrianId, payload.balitaId, payload.namaBalita)
-      navigate('/kader/meja/2', {
-        state: {
-          antrianId: payload.antrianId,
-          balitaId: payload.balitaId,
-          namaBalita: payload.namaBalita,
-        },
-      })
+      toast({ description: 'Kehadiran berhasil dicatat.' })
     },
     onError: (error) => {
       const msg = isAxiosLikeError(error) ? error.response.data.message : 'Terjadi kesalahan.'
@@ -176,10 +167,6 @@ function Meja1Content({ activeSlotId, clearActiveMejaMutation, resetStore }: Mej
           timestamp: Date.now(),
         })
         toast({ description: 'Tersimpan lokal, akan sync saat online' })
-        setActiveAntrian(payload.antrianId, payload.balitaId, payload.namaBalita)
-        navigate('/kader/meja/2', {
-          state: { antrianId: payload.antrianId, balitaId: payload.balitaId, namaBalita: payload.namaBalita },
-        })
       } catch {
         // WR-03: enqueue failed — IDB unavailable or quota exceeded; warn kader
         toast({ description: 'Gagal simpan offline — coba lagi', variant: 'destructive' })
@@ -423,14 +410,14 @@ function Meja1Content({ activeSlotId, clearActiveMejaMutation, resetStore }: Mej
             <div className="space-y-2">
               <input
                 type="text"
-                placeholder="UUID Balita"
+                placeholder="ID Balita"
                 value={goShowBalitaId}
                 onChange={(e) => setGoShowBalitaId(e.target.value)}
                 className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#008236]"
               />
               <input
                 type="text"
-                placeholder="UUID Warga (Orang Tua)"
+                placeholder="ID Warga (Orang Tua)"
                 value={goShowWargaId}
                 onChange={(e) => setGoShowWargaId(e.target.value)}
                 className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#008236]"

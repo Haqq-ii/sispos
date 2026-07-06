@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Navigate } from 'react-router-dom'
-import { MapPin, ChevronLeft } from 'lucide-react'
+import { ArrowLeft, Clock, AlertCircle } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
 import { AntrianKalender } from '@/components/antrian/AntrianKalender'
 import { useJadwalTersedia } from '@/hooks/useJadwalList'
 import { useAntrianStore } from '@/stores/useAntrianStore'
@@ -31,6 +30,14 @@ function formatMonth(date: Date): string {
   return `${y}-${m}`
 }
 
+// ── Stepper data ──────────────────────────────────────────────────
+
+const STEPS = [
+  { label: 'Pilih Tanggal', idx: 0 },
+  { label: 'Pilih Sesi', idx: 1 },
+  { label: 'Konfirmasi', idx: 2 },
+]
+
 // ── Component ─────────────────────────────────────────────────────
 
 export default function PilihTanggalPage() {
@@ -47,7 +54,6 @@ export default function PilihTanggalPage() {
   const { data: jadwalList, isLoading, error } = useJadwalTersedia(bulan)
 
   // ── D-02: Redirect ke onboarding jika posyandu belum dipilih ──
-  // Backend returns 422 POSYANDU_BELUM_DIPILIH jika citizen belum set posyanduUtamaId
   const isPosyanduBelumDipilih =
     isAxiosLikeError(error) &&
     error.response?.data?.error === 'POSYANDU_BELUM_DIPILIH'
@@ -60,12 +66,10 @@ export default function PilihTanggalPage() {
   const availableDates =
     jadwalList?.map((j) => j.tanggalPelaksanaan.substring(0, 10)) ?? []
 
-  // Cari jadwal yang cocok dengan tanggal terpilih (di bulan saat ini)
   const selectedJadwal = jadwalList?.find(
     (j) => j.tanggalPelaksanaan.substring(0, 10) === selectedDate
   )
 
-  // CTA aktif hanya jika tanggal terpilih dan ada jadwal-nya di bulan ini
   const canProceed = !!selectedDate && availableDates.includes(selectedDate)
 
   // ── Handlers ──────────────────────────────────────────────────
@@ -93,62 +97,118 @@ export default function PilihTanggalPage() {
     })
   }
 
+  const activeStep = 0
+
   // ── Render ────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-[400px] mx-auto px-4 py-6">
-        {/* Back button */}
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="min-h-[44px] min-w-[44px] mb-2 -ml-2"
-          onClick={() => navigate('/citizen/dashboard')}
-          aria-label="Kembali ke halaman sebelumnya"
-        >
-          <ChevronLeft size={20} />
-        </Button>
-
-        {/* Judul halaman */}
-        <h1 className="text-xl font-bold mb-4">Pilih Tanggal</h1>
-
-        {/* Kartu konteks posyandu */}
-        <div className="bg-green-50 rounded-lg p-4 mb-4 flex items-center gap-2">
-          <MapPin size={16} className="text-primary flex-shrink-0" />
-          <span className="text-sm text-gray-700">Posyandu Anda</span>
+    <div className="min-h-screen bg-gray-50 pb-24">
+      {/* Sticky header */}
+      <div className="bg-white sticky top-0 z-10 px-4 pt-10 pb-4 border-b border-gray-100">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            className="p-2 rounded-xl hover:bg-gray-100"
+            onClick={() => navigate('/citizen/dashboard')}
+            aria-label="Kembali ke halaman sebelumnya"
+          >
+            <ArrowLeft className="w-5 h-5 text-gray-700" />
+          </button>
+          <span className="font-bold text-gray-800">Ambil Nomor Antrian</span>
         </div>
 
-        {/* Kalender */}
-        <AntrianKalender
-          availableDates={availableDates}
-          selectedDate={selectedDate}
-          onDateSelect={handleDateSelect}
-          isLoading={isLoading}
-          currentMonth={currentMonth}
-          onMonthChange={handleMonthChange}
-        />
+        {/* Stepper */}
+        <div className="flex items-center gap-2 mt-3">
+          {STEPS.map(({ label, idx }) => {
+            const done = idx < activeStep
+            const active = idx === activeStep
+            return (
+              <div key={idx} className="flex items-center gap-1 flex-1">
+                <div
+                  className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                    done || active ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-400'
+                  }`}
+                >
+                  {done ? '✓' : idx + 1}
+                </div>
+                <span
+                  className={`text-xs flex-1 ${
+                    active ? 'text-green-600 font-semibold' : 'text-gray-400'
+                  }`}
+                >
+                  {label}
+                </span>
+                {idx < 2 && (
+                  <div
+                    className={`h-0.5 w-3 flex-shrink-0 ${
+                      idx < activeStep ? 'bg-green-400' : 'bg-gray-200'
+                    }`}
+                  />
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
 
-        {/* Empty state — tidak ada jadwal di bulan ini */}
-        {!isLoading && availableDates.length === 0 && !isPosyanduBelumDipilih && (
-          <p className="text-sm text-gray-500 text-center mt-4">
-            Belum ada jadwal Posyandu pada bulan ini. Coba bulan berikutnya.
-          </p>
-        )}
+      <div className="px-4 pt-4">
+        {/* White card wrapping calendar */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          {/* Legend */}
+          <div className="flex justify-end mb-2">
+            <div className="flex items-center gap-1 text-xs text-gray-500">
+              <div className="w-3 h-3 rounded-sm bg-green-500" />
+              <span>Jadwal tersedia</span>
+            </div>
+          </div>
 
-        {/* CTA */}
-        <div className="mt-6">
-          <Button
-            type="button"
-            className="w-full min-h-[44px] bg-[#008236] text-white rounded-[14px] hover:bg-[#00a63e]"
-            disabled={!canProceed}
-            onClick={handlePilihTanggal}
-          >
-            Lanjutkan
-          </Button>
-          <p className="text-xs text-gray-400 text-center mt-2">
-            Jadwal tersedia ditandai dengan titik hijau
-          </p>
+          {/* Calendar */}
+          <AntrianKalender
+            availableDates={availableDates}
+            selectedDate={selectedDate}
+            onDateSelect={handleDateSelect}
+            isLoading={isLoading}
+            currentMonth={currentMonth}
+            onMonthChange={handleMonthChange}
+          />
+
+          {/* Hint when no date selected */}
+          {!selectedDate && !isLoading && (
+            <div className="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-200 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+              <p className="text-amber-700 text-xs">
+                Pilih tanggal yang ditandai hijau untuk melihat sesi yang tersedia.
+              </p>
+            </div>
+          )}
+
+          {/* CTA inside card when date selected */}
+          {canProceed && (
+            <button
+              type="button"
+              onClick={handlePilihTanggal}
+              className="w-full mt-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl flex items-center justify-center gap-2 font-semibold text-sm"
+            >
+              <Clock className="w-4 h-4" />
+              Lihat Sesi Jam
+            </button>
+          )}
+          {!canProceed && !isLoading && availableDates.length > 0 && (
+            <button
+              type="button"
+              disabled
+              className="w-full mt-4 py-3 bg-green-200 text-white rounded-xl font-semibold text-sm cursor-not-allowed"
+            >
+              Pilih tanggal terlebih dahulu
+            </button>
+          )}
+
+          {/* Empty state — tidak ada jadwal di bulan ini */}
+          {!isLoading && availableDates.length === 0 && !isPosyanduBelumDipilih && (
+            <p className="text-sm text-gray-500 text-center mt-4">
+              Belum ada jadwal Posyandu pada bulan ini. Coba bulan berikutnya.
+            </p>
+          )}
         </div>
       </div>
     </div>

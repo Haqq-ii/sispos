@@ -19,7 +19,7 @@
 import { useState } from 'react'
 import { useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronLeft, MapPin, Calendar, Clock, Timer, Loader2 } from 'lucide-react'
+import { ChevronLeft, Loader2, MessageCircle } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -52,6 +52,14 @@ interface AmbilAntrianResponseData {
   tanggalPelaksanaan: string
 }
 
+// ── Stepper data ───────────────────────────────────────────────────────────────
+
+const STEPS = [
+  { label: 'Pilih Tanggal', idx: 0 },
+  { label: 'Pilih Sesi', idx: 1 },
+  { label: 'Konfirmasi', idx: 2 },
+]
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function formatTanggalPanjang(isoStr: string): string {
@@ -72,7 +80,6 @@ function formatTanggalPanjang(isoStr: string): string {
 
 function formatJam(timeStr: string): string {
   if (!timeStr) return ''
-  // Bisa "08:00" (sudah diformat backend) atau "08:00:00"
   return timeStr.substring(0, 5)
 }
 
@@ -136,12 +143,13 @@ export default function KonfirmasiAntrianPage() {
   const selectedSesi = sesiList?.find((s) => s.id === selectedSlotId)
   const estimasiDurasi = selectedSesi?.jadwal?.estimasiDurasiMenit ?? 7
   const terisi = selectedSesi?.terisi ?? 0
-  // Estimasi worst-case: nomorUrut = terisi + 1
   const estimasiMenit = Math.round((terisi + 1) * estimasiDurasi)
 
   const isLoading = isLoadingSesi || isLoadingBalita
   const hasBalita = (balitaList?.length ?? 0) > 0
   const canSubmit = hasBalita && !!selectedBalitaId && !mutation.isPending
+
+  const activeStep = 2
 
   // ── Handler ────────────────────────────────────────────────────────────────
 
@@ -184,83 +192,67 @@ export default function KonfirmasiAntrianPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-[400px] mx-auto px-4 py-6">
-        {/* Back button */}
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="min-h-[44px] min-w-[44px] mb-2 -ml-2"
-          onClick={() => navigate(-1)}
-          aria-label="Kembali ke halaman sebelumnya"
-        >
-          <ChevronLeft size={20} />
-        </Button>
+    <div className="min-h-screen bg-gray-50 pb-24">
+      {/* Sticky header */}
+      <div className="bg-white sticky top-0 z-10 px-4 pt-10 pb-4 border-b border-gray-100">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            className="p-2 rounded-xl hover:bg-gray-100"
+            onClick={() => navigate(-1)}
+            aria-label="Kembali ke halaman sebelumnya"
+          >
+            <ChevronLeft className="w-5 h-5 text-gray-700" />
+          </button>
+          <span className="font-bold text-gray-800">Ambil Nomor Antrian</span>
+        </div>
 
-        <h1 className="text-xl font-bold mb-4">Konfirmasi Antrian</h1>
+        {/* Stepper */}
+        <div className="flex items-center gap-2 mt-3">
+          {STEPS.map(({ label, idx }) => {
+            const done = idx < activeStep
+            const active = idx === activeStep
+            return (
+              <div key={idx} className="flex items-center gap-1 flex-1">
+                <div
+                  className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                    done || active ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-400'
+                  }`}
+                >
+                  {done ? '✓' : idx + 1}
+                </div>
+                <span
+                  className={`text-xs flex-1 ${
+                    active ? 'text-green-600 font-semibold' : 'text-gray-400'
+                  }`}
+                >
+                  {label}
+                </span>
+                {idx < 2 && (
+                  <div
+                    className={`h-0.5 w-3 flex-shrink-0 ${
+                      idx < activeStep ? 'bg-green-400' : 'bg-gray-200'
+                    }`}
+                  />
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
 
+      <div className="px-4 pt-4">
         {/* Loading state */}
         {isLoading && (
           <div className="space-y-3">
-            <Skeleton className="h-36 rounded-lg" />
-            <Skeleton className="h-24 rounded-lg" />
-            <Skeleton className="h-12 rounded-lg" />
+            <Skeleton className="h-36 rounded-2xl" />
+            <Skeleton className="h-24 rounded-2xl" />
+            <Skeleton className="h-12 rounded-2xl" />
           </div>
         )}
 
         {!isLoading && (
           <>
-            {/* Summary card */}
-            {selectedSesi && (
-              <div className="bg-green-50 rounded-lg p-4 space-y-3 mb-4">
-                {/* Posyandu */}
-                <div className="flex items-center gap-2">
-                  <MapPin size={14} className="text-primary flex-shrink-0" />
-                  <p className="text-sm font-bold">
-                    {selectedSesi.jadwal?.posyandu.namaPosyandu ?? 'Posyandu'}
-                  </p>
-                </div>
-
-                {/* Tanggal */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Calendar size={14} className="text-gray-400 flex-shrink-0" />
-                    <span className="text-xs text-gray-500">Tanggal</span>
-                  </div>
-                  <span className="text-sm font-bold">
-                    {formatTanggalPanjang(selectedSesi.jadwal?.tanggalPelaksanaan ?? '')}
-                  </span>
-                </div>
-
-                {/* Sesi */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Clock size={14} className="text-gray-400 flex-shrink-0" />
-                    <span className="text-xs text-gray-500">Sesi</span>
-                  </div>
-                  <span className="text-sm font-bold">
-                    {selectedSesi.labelSesi} &middot;{' '}
-                    {formatJam(selectedSesi.jamMulai)} – {formatJam(selectedSesi.jamSelesai)} WIB
-                  </span>
-                </div>
-
-                {/* Estimasi — WAJIB tanda ± dan disclaimer (QUEUE-03) */}
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    <Timer size={14} className="text-gray-400 flex-shrink-0" />
-                    <span className="text-xs text-gray-500">Estimasi</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-sm font-bold">±{estimasiMenit} menit</span>
-                    <p className="text-xs text-gray-400 italic">
-                      Estimasi dapat berubah sesuai kondisi pelayanan
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Error alert */}
             {mutationError && (
               <div className="mb-4">
@@ -282,9 +274,57 @@ export default function KonfirmasiAntrianPage() {
               </div>
             )}
 
-            {/* Pilih balita */}
-            <div className="mb-6">
-              <p className="text-sm font-bold mb-3">Untuk balita</p>
+            {/* Summary confirm card */}
+            {selectedSesi && (
+              <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mb-4">
+                <h2 className="text-gray-800 font-bold mb-4">Ringkasan Antrian</h2>
+
+                {[
+                  {
+                    label: 'Posyandu',
+                    value: selectedSesi.jadwal?.posyandu.namaPosyandu ?? 'Posyandu',
+                  },
+                  {
+                    label: 'Tanggal',
+                    value: formatTanggalPanjang(
+                      selectedSesi.jadwal?.tanggalPelaksanaan ?? ''
+                    ),
+                  },
+                  {
+                    label: 'Sesi',
+                    value: `${selectedSesi.labelSesi} · ${formatJam(selectedSesi.jamMulai)}–${formatJam(selectedSesi.jamSelesai)} WIB`,
+                  },
+                  {
+                    label: 'Estimasi Tunggu',
+                    value: `±${estimasiMenit} menit`,
+                  },
+                ].map((row) => (
+                  <div
+                    key={row.label}
+                    className="flex justify-between items-center py-2 border-b border-gray-50 last:border-0"
+                  >
+                    <span className="text-gray-500 text-sm">{row.label}</span>
+                    <span className="text-gray-800 text-sm font-semibold">{row.value}</span>
+                  </div>
+                ))}
+
+                {/* WA notice */}
+                <div className="p-3 bg-green-50 rounded-xl border border-green-200 mt-4">
+                  <div className="flex items-start gap-2">
+                    <MessageCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-green-700 text-xs">
+                      Struk antrian akan dikirim via{' '}
+                      <span className="font-bold">WhatsApp</span>. Jika WA gagal, kode
+                      antrian akan tampil di beranda aplikasi.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Balita selection */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-4">
+              <p className="text-sm font-bold text-gray-800 mb-3">Untuk balita</p>
 
               {!hasBalita ? (
                 <Alert>
@@ -313,10 +353,7 @@ export default function KonfirmasiAntrianPage() {
                       key={balita.id}
                       className="flex items-center gap-3 border rounded-lg p-3 hover:bg-gray-50 cursor-pointer"
                     >
-                      <RadioGroupItem
-                        value={balita.id}
-                        id={`balita-${balita.id}`}
-                      />
+                      <RadioGroupItem value={balita.id} id={`balita-${balita.id}`} />
                       <Label
                         htmlFor={`balita-${balita.id}`}
                         className="cursor-pointer flex-1"
@@ -333,32 +370,30 @@ export default function KonfirmasiAntrianPage() {
               )}
             </div>
 
-            {/* CTA */}
-            <Button
+            {/* CTAs */}
+            <button
               type="button"
-              className="w-full min-h-[44px] bg-[#008236] text-white rounded-[14px] hover:bg-[#00a63e]"
-              disabled={!canSubmit}
               onClick={handleSubmit}
+              disabled={!canSubmit}
+              className={`w-full py-3 rounded-xl font-semibold text-white flex items-center justify-center gap-2 ${
+                canSubmit
+                  ? 'bg-green-600 hover:bg-green-700'
+                  : 'bg-green-200 cursor-not-allowed'
+              }`}
             >
               {mutation.isPending ? (
-                <>
-                  <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                  Mendaftarkan antrian...
-                </>
+                <Loader2 className="animate-spin w-5 h-5" />
               ) : (
-                'Daftar Sekarang'
+                'Konfirmasi & Ambil Antrian'
               )}
-            </Button>
-
-            {/* Batal — navigasi kembali */}
-            <Button
+            </button>
+            <button
               type="button"
-              variant="ghost"
-              className="w-full mt-2 min-h-[44px] text-gray-500"
               onClick={() => navigate(-1)}
+              className="w-full mt-2 py-3 text-gray-500 text-sm hover:text-gray-700"
             >
               Batal
-            </Button>
+            </button>
           </>
         )}
       </div>

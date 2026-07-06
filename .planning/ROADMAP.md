@@ -19,7 +19,7 @@
 | 5 | Reports & Export | 2/2 | Complete   | 2026-07-04 |
 | 6 | PWA & Offline | Service Worker Workbox, IndexedDB sync Meja 1-5, auto-sync online | PWA-01 | Complete   | 2026-07-04 |
 | 7 | Seed Data Demo | 2/3 | In Progress|  |
-| 8 | UI Figma Alignment | 5/16 | In Progress|  |
+| 8 | UI Figma Alignment | 11/16 | In Progress|  |
 
 ---
 
@@ -418,7 +418,7 @@ Plans:
 - CLAUDE.md § Figma MCP
 - `docs/ROADMAP.md` (screen list per phase)
 
-**Plans:** 5/16 plans executed
+**Plans:** 11/16 plans executed
 
 Plans:
 
@@ -444,7 +444,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5)*
 
-- [ ] 08-06-PLAN.md — Backend GET /api/kader/dashboard-stats + KaderDashboardPage recharts redesign
+- [x] 08-06-PLAN.md — Backend GET /api/kader/dashboard-stats + KaderDashboardPage recharts redesign
 
 **Wave 7** *(blocked on Wave 6)* [has checkpoint]
 
@@ -452,15 +452,15 @@ Plans:
 
 **Wave 8** *(no dependencies)*
 
-- [ ] 08-08-PLAN.md — RegisterPage + VerifikasiOtpPage + OnboardingLokasiPage + LokasiSelesaiPage alignment
+- [x] 08-08-PLAN.md — RegisterPage + VerifikasiOtpPage + OnboardingLokasiPage + LokasiSelesaiPage alignment
 
 **Wave 9** *(blocked on Wave 8)*
 
-- [ ] 08-09-PLAN.md — Antrian flow: PilihTanggal + PilihSesi + KonfirmasiAntrian + TiketAntrian alignment
+- [x] 08-09-PLAN.md — Antrian flow: PilihTanggal + PilihSesi + KonfirmasiAntrian + TiketAntrian alignment
 
 **Wave 10** *(no dependencies)*
 
-- [ ] 08-10-PLAN.md — TumbuhKembangPage grafik+imunisasi real tabs + ChatAssistantPage alignment
+- [x] 08-10-PLAN.md — TumbuhKembangPage grafik+imunisasi real tabs + ChatAssistantPage alignment
 
 **Wave 11** *(blocked on Wave 7)*
 
@@ -476,11 +476,11 @@ Plans:
 
 **Wave 14** *(no dependencies)*
 
-- [ ] 08-14-PLAN.md — KaderProfilPage STUB—functional + AuditLogPage pagination + ManajemenJadwalPage + LaporanPage
+- [x] 08-14-PLAN.md — KaderProfilPage STUB—functional + AuditLogPage pagination + ManajemenJadwalPage + LaporanPage
 
 **Wave 15** *(no dependencies)*
 
-- [ ] 08-15-PLAN.md — LandingPage mobile-first Figma alignment (2001:691)
+- [x] 08-15-PLAN.md — LandingPage mobile-first Figma alignment (2001:691)
 
 **Wave 16** *(depends on all — FINAL GATE)* [has checkpoint]
 

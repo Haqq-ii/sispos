@@ -1,20 +1,25 @@
-﻿import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { useState } from 'react'
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
-  Users,
-  FileText,
   User,
   LogOut,
   MapPin,
+  Activity,
+  PlayCircle,
+  ChevronLeft,
+  ChevronRight,
+  Menu,
+  X,
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/useAuthStore'
 import apiClient from '@/lib/axios'
 
-// ── Nav items ─────────────────────────────────────────────────────────────────
+// ── Nav items (3 only — match Figma Make exactly) ────────────────────────────
 
 interface NavItem {
   label: string
-  labelMobile: string
+  labelShort: string
   to: string
   icon: React.ElementType
   end: boolean
@@ -24,35 +29,27 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   {
     label: 'Dashboard',
-    labelMobile: 'Dashboard',
+    labelShort: 'Dashboard',
     to: '/kader/dashboard',
     icon: LayoutDashboard,
     end: true,
   },
   {
     label: 'Pelayanan Hari-H',
-    labelMobile: 'Pelayanan',
+    labelShort: 'Pelayanan',
     to: '/kader/pelayanan',
-    icon: Users,
+    icon: PlayCircle,
     end: false,
-  },
-  {
-    label: 'Rekap Harian',
-    labelMobile: 'Rekap',
-    to: '/kader/rekap',
-    icon: FileText,
-    end: false,
+    activePrefix: '/kader/pelayanan',
   },
   {
     label: 'Profil Kader',
-    labelMobile: 'Profil',
+    labelShort: 'Profil',
     to: '/kader/profil',
     icon: User,
     end: false,
   },
 ]
-
-const MOBILE_NAV_ITEMS = NAV_ITEMS.slice(0, 4)
 
 // ── KaderLayout ───────────────────────────────────────────────────────────────
 
@@ -60,6 +57,8 @@ export default function KaderLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { clearAuth, user } = useAuthStore()
+  const [collapsed, setCollapsed] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   async function handleLogout() {
     try {
@@ -78,33 +77,51 @@ export default function KaderLayout() {
     return navLinkActive
   }
 
-  const firstLetter = user?.namaLengkap?.[0]?.toUpperCase() ?? 'K'
-  const isKetua = user?.role === 'ketua_kader'
+  const sidebarW = collapsed ? 'w-16' : 'w-64'
 
   return (
-    <div className="flex flex-col md:flex-row bg-[#f9fafb] h-screen overflow-hidden">
-      {/* ── Desktop Sidebar ─────────────────────────────────────────────────── */}
+    <div className="flex bg-[#f9fafb] h-screen overflow-hidden">
+
+      {/* Mobile dark overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-30 md:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* ── Sidebar ──────────────────────────────────────────────────────── */}
       <aside
-        className="hidden md:flex md:flex-col md:h-full bg-white border-r border-[#f3f4f6] flex-shrink-0"
-        style={{ width: '256px' }}
+        className={`fixed left-0 top-0 bottom-0 z-40 bg-white border-r border-[#f3f4f6] shadow-sm flex flex-col transition-all duration-300 ${sidebarW} ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
       >
+        {/* Desktop collapse toggle */}
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="hidden md:flex absolute -right-3 top-16 w-6 h-6 bg-white border border-gray-200 rounded-full items-center justify-center shadow-sm z-50"
+        >
+          {collapsed
+            ? <ChevronRight size={12} className="text-gray-500" />
+            : <ChevronLeft size={12} className="text-gray-500" />
+          }
+        </button>
+
         {/* Branding */}
-        <div className="px-5 pt-6 pb-5">
+        <div className={`pt-5 pb-4 flex-shrink-0 ${collapsed ? 'px-3' : 'px-4'}`}>
           <div className="flex items-center gap-3">
-            <div className="bg-[#00a63e] rounded-[14px] w-10 h-10 flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-bold text-sm">SP</span>
+            <div className="bg-green-700 rounded-xl w-10 h-10 flex items-center justify-center flex-shrink-0">
+              <Activity size={18} className="text-white" />
             </div>
-            <div>
-              <p className="text-[#1e2939] font-extrabold text-base leading-tight">SISPOS</p>
-              <p className="text-[#99a1af] text-xs leading-tight">
-                {isKetua ? 'Ketua Kader' : 'Portal Kader'}
-              </p>
-            </div>
+            {!collapsed && (
+              <div className="min-w-0 overflow-hidden">
+                <p className="text-[#1e2939] font-extrabold text-base leading-tight">SISPOS</p>
+                <p className="text-[#99a1af] text-xs leading-tight">Portal Kader</p>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-2 py-2 space-y-1 overflow-y-auto">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon
             return (
@@ -112,57 +129,88 @@ export default function KaderLayout() {
                 key={item.to}
                 to={item.to}
                 end={item.end}
+                onClick={() => setMobileOpen(false)}
                 className={({ isActive: navActive }) => {
                   const active = isActive(item, navActive)
-                  return active
-                    ? 'bg-[#f0fdf4] border border-[#b9f8cf] text-[#008236] font-semibold rounded-[14px] flex items-center gap-3 px-[13px] py-[11px] text-sm'
-                    : 'text-[#4a5565] rounded-[14px] flex items-center gap-3 px-3 py-2.5 text-sm hover:bg-gray-50 transition-colors'
+                  return [
+                    'flex items-center gap-3 rounded-xl transition-colors text-sm font-medium',
+                    collapsed ? 'px-3 py-3 justify-center' : 'px-3 py-2.5',
+                    active
+                      ? 'bg-green-50 text-green-700 border border-green-200'
+                      : 'text-gray-600 hover:bg-gray-50',
+                  ].join(' ')
                 }}
               >
                 <Icon size={18} className="flex-shrink-0" />
-                <span>{item.label}</span>
+                {!collapsed && <span>{item.label}</span>}
               </NavLink>
             )
           })}
         </nav>
 
         {/* User section at bottom */}
-        <div className="px-3 pb-5 pt-3 border-t border-[#f3f4f6] flex-shrink-0">
-          <div className="flex items-center gap-3 px-3 py-2 mb-2">
-            <div className="w-8 h-8 bg-[#008236] rounded-[10px] flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-semibold text-sm">{firstLetter}</span>
-            </div>
-            <div className="min-w-0">
-              <p className="text-[#364153] font-semibold text-sm truncate">
-                {user?.namaLengkap ?? 'Kader'}
-              </p>
-              <div className="flex items-center gap-1">
-                <MapPin size={10} className="text-[#99a1af] flex-shrink-0" />
-                <p className="text-[#99a1af] text-xs truncate">Posyandu Anda</p>
+        <div className="border-t border-[#f3f4f6] px-2 pb-4 pt-3 flex-shrink-0">
+          {!collapsed && (
+            <div className="flex items-center gap-2.5 px-3 py-2 mb-1">
+              <div className="w-8 h-8 bg-green-700 rounded-lg flex items-center justify-center flex-shrink-0">
+                <span className="text-white font-semibold text-xs">
+                  {user?.namaLengkap?.[0]?.toUpperCase() ?? 'K'}
+                </span>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[#364153] font-semibold text-sm truncate">
+                  {user?.namaLengkap ?? 'Kader'}
+                </p>
+                <div className="flex items-center gap-1">
+                  <MapPin size={10} className="text-[#99a1af] flex-shrink-0" />
+                  <p className="text-[#99a1af] text-xs truncate">Posyandu Anda</p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
           <button
             onClick={() => void handleLogout()}
-            className="text-[#fb2c36] hover:bg-red-50 flex items-center gap-2 px-3 py-2 rounded-[14px] text-sm w-full transition-colors"
+            className={[
+              'flex items-center gap-2 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 w-full transition-colors',
+              collapsed ? 'px-3 py-3 justify-center' : 'px-3 py-2',
+            ].join(' ')}
           >
             <LogOut size={16} className="flex-shrink-0" />
-            <span>Keluar</span>
+            {!collapsed && <span>Keluar</span>}
           </button>
         </div>
       </aside>
 
-      {/* ── Main content area ────────────────────────────────────────────────── */}
-      <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
+      {/* Mobile top bar */}
+      <div className="fixed top-0 left-0 right-0 z-20 md:hidden bg-white border-b border-[#f3f4f6] h-14 flex items-center px-4 gap-3">
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="p-2 rounded-xl text-gray-600 hover:bg-gray-100"
+          aria-label="Buka menu"
+        >
+          {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+        <div className="flex items-center gap-2">
+          <div className="bg-green-700 rounded-lg w-7 h-7 flex items-center justify-center">
+            <Activity size={14} className="text-white" />
+          </div>
+          <span className="font-bold text-[#1e2939] text-sm">SISPOS</span>
+        </div>
+      </div>
+
+      {/* ── Main content ─────────────────────────────────────────────────── */}
+      <main
+        className={`flex-1 flex flex-col min-h-0 overflow-hidden transition-all duration-300 pt-14 md:pt-0 ${collapsed ? 'md:ml-16' : 'md:ml-64'}`}
+      >
         {/* Scrollable content */}
         <div className="flex-1 flex flex-col min-h-0 overflow-y-auto pb-20 md:pb-0">
           <Outlet />
         </div>
 
-        {/* ── Mobile Bottom Navigation ─────────────────────────────────────── */}
+        {/* ── Mobile Bottom Navigation ──────────────────────────────────── */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[#f3f4f6] shadow-lg">
-          <div className="grid grid-cols-4 h-16">
-            {MOBILE_NAV_ITEMS.map((item) => {
+          <div className="grid grid-cols-3 h-16">
+            {NAV_ITEMS.map((item) => {
               const Icon = item.icon
               return (
                 <NavLink
@@ -173,14 +221,12 @@ export default function KaderLayout() {
                     const active = isActive(item, navActive)
                     return [
                       'flex flex-col items-center justify-center gap-0.5 transition-colors',
-                      active ? 'text-[#008236]' : 'text-[#4a5565]',
+                      active ? 'text-green-700' : 'text-gray-500',
                     ].join(' ')
                   }}
                 >
                   <Icon size={20} />
-                  <span className="text-[10px] text-center leading-tight max-w-[64px] truncate">
-                    {item.labelMobile}
-                  </span>
+                  <span className="text-[10px] leading-tight">{item.labelShort}</span>
                 </NavLink>
               )
             })}

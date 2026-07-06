@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { ChevronLeft, ChevronRight, Loader2, AlertTriangle } from 'lucide-react'
 
 import { useMutationSetActiveMeja } from '@/hooks/useActiveMeja'
 import { useKaderMejaStore } from '@/stores/useKaderMejaStore'
@@ -13,6 +14,20 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import apiClient from '@/lib/axios'
+
+interface TodaySlot {
+  id: string
+  nomorSesi: number
+  labelSesi: string
+  jamMulai: string
+  jamSelesai: string
+}
+
+interface TodayJadwal {
+  jadwalId: string
+  slotSesi: TodaySlot[]
+}
 
 const MEJA_INFO = [
   {
@@ -49,18 +64,28 @@ export default function PelayananHariHPage() {
   const setActiveMejaMutation = useMutationSetActiveMeja()
 
   const state = location.state as { slotId?: string; slotLabel?: string } | null
-  const slotId = state?.slotId
-  const slotLabel = state?.slotLabel ?? 'Sesi Pelayanan'
+  const stateSlotId = state?.slotId
+  const stateSlotLabel = state?.slotLabel
 
   const [pendingMeja, setPendingMeja] = useState<number | null>(null)
 
-  useEffect(() => {
-    if (!slotId) navigate('/kader/dashboard', { replace: true })
-  }, [slotId, navigate])
+  // Jika tidak ada slotId dari state (navigasi dari sidebar), load today's slots
+  const { data: todayJadwal, isLoading: isLoadingSlot } = useQuery<TodayJadwal | null>({
+    queryKey: ['kader', 'today-slots'],
+    queryFn: () =>
+      apiClient.get('/kader/today-slots').then((r) => r.data.data as TodayJadwal | null),
+    enabled: !stateSlotId,
+    staleTime: 30_000,
+  })
 
-  if (!slotId) return null
+  const firstSlot = todayJadwal?.slotSesi?.[0]
+  const slotId = stateSlotId ?? firstSlot?.id
+  const slotLabel =
+    stateSlotLabel ??
+    (firstSlot ? `${firstSlot.labelSesi} · ${firstSlot.jamMulai} WIB` : 'Sesi Pelayanan')
 
   const handleMejaSelect = (mejaNumber: number) => {
+    if (!slotId) return
     setActiveMejaMutation.mutate(
       { mejaNumber, slotId },
       {
@@ -70,6 +95,48 @@ export default function PelayananHariHPage() {
           navigate(`/kader/meja/${mejaNumber}`)
         },
       }
+    )
+  }
+
+  // Loading state saat fetch today-slots (hanya jika navigasi dari sidebar)
+  if (!stateSlotId && isLoadingSlot) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 size={32} className="animate-spin text-green-700" />
+      </div>
+    )
+  }
+
+  // Tidak ada jadwal hari ini
+  if (!slotId) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <div className="bg-[#008236] px-4 pt-12 pb-6">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/kader/dashboard')}
+              className="bg-[rgba(0,166,62,0.5)] rounded-xl p-2"
+            >
+              <ChevronLeft size={20} className="text-white" />
+            </button>
+            <p className="text-white font-bold text-2xl">Pelayanan Hari-H</p>
+          </div>
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-4">
+          <div className="w-14 h-14 bg-amber-100 rounded-full flex items-center justify-center">
+            <AlertTriangle size={28} className="text-amber-500" />
+          </div>
+          <p className="text-gray-700 font-semibold">Tidak ada jadwal hari ini</p>
+          <p className="text-gray-400 text-sm">Belum ada sesi pelayanan yang aktif untuk hari ini.</p>
+          <Button
+            variant="outline"
+            className="mt-2"
+            onClick={() => navigate('/kader/dashboard')}
+          >
+            Kembali ke Dashboard
+          </Button>
+        </div>
+      </div>
     )
   }
 
