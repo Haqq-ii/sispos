@@ -1,7 +1,8 @@
 import 'leaflet/dist/leaflet.css'
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet'
+import L from 'leaflet'
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -57,17 +58,25 @@ function getRisikoCount(breakdown: Record<string, number>): number {
   )
 }
 
-function getMarkerColor(breakdown: Record<string, number>): string {
-  if ((breakdown.buruk ?? 0) + (breakdown.sangat_pendek ?? 0) > 0) return '#ef4444'
-  if ((breakdown.kurang ?? 0) + (breakdown.pendek ?? 0) > 0) return '#f59e0b'
+function getRisikoLevel(breakdown: Record<string, number>, total: number): 'rendah' | 'sedang' | 'tinggi' {
+  if (total === 0) return 'rendah'
+  const pct = getRisikoCount(breakdown) / total
+  if (pct > 0.25) return 'tinggi'
+  if (pct > 0.15) return 'sedang'
+  return 'rendah'
+}
+
+function getMarkerColor(breakdown: Record<string, number>, total: number): string {
+  const level = getRisikoLevel(breakdown, total)
+  if (level === 'tinggi') return '#ef4444'
+  if (level === 'sedang') return '#f59e0b'
   return '#22c55e'
 }
 
-function getLevelBadge(breakdown: Record<string, number>): { label: string; cls: string } {
-  const buruk = (breakdown.buruk ?? 0) + (breakdown.sangat_pendek ?? 0)
-  const sedang = (breakdown.kurang ?? 0) + (breakdown.pendek ?? 0)
-  if (buruk > 0) return { label: 'Tinggi', cls: 'bg-red-100 text-red-700' }
-  if (sedang > 0) return { label: 'Sedang', cls: 'bg-amber-100 text-amber-700' }
+function getLevelBadge(breakdown: Record<string, number>, total: number): { label: string; cls: string } {
+  const level = getRisikoLevel(breakdown, total)
+  if (level === 'tinggi') return { label: 'Tinggi', cls: 'bg-red-100 text-red-700' }
+  if (level === 'sedang') return { label: 'Sedang', cls: 'bg-amber-100 text-amber-700' }
   return { label: 'Rendah', cls: 'bg-green-100 text-green-700' }
 }
 
@@ -86,10 +95,7 @@ export default function PetaStuntingPage() {
     [stuntingData],
   )
   const zonaKritis = useMemo(
-    () =>
-      (stuntingData ?? []).filter(
-        (p) => (p.breakdown.buruk ?? 0) + (p.breakdown.sangat_pendek ?? 0) > 0,
-      ).length,
+    () => (stuntingData ?? []).filter((p) => getRisikoLevel(p.breakdown, p.total) === 'tinggi').length,
     [stuntingData],
   )
 
@@ -165,9 +171,9 @@ export default function PetaStuntingPage() {
               <p className="text-gray-800 text-sm font-bold">Peta Wilayah Kerja</p>
               <div className="flex items-center gap-4 text-xs">
                 {[
-                  { color: '#22c55e', label: 'Normal' },
-                  { color: '#f59e0b', label: 'Sedang' },
-                  { color: '#ef4444', label: 'Tinggi' },
+                  { color: '#22c55e', label: 'Rendah (<15%)' },
+                  { color: '#f59e0b', label: 'Sedang (15–25%)' },
+                  { color: '#ef4444', label: 'Tinggi (>25%)' },
                 ].map(({ color, label }) => (
                   <div key={label} className="flex items-center gap-1.5">
                     <div
@@ -201,43 +207,47 @@ export default function PetaStuntingPage() {
                 />
                 {stuntingData?.map((point) => {
                   if (!point.lat || !point.lng) return null
+                  const risiko = getRisikoCount(point.breakdown)
+                  const level = getRisikoLevel(point.breakdown, point.total)
+                  const color = getMarkerColor(point.breakdown, point.total)
+                  const badge = getLevelBadge(point.breakdown, point.total)
+                  const size = Math.max(44, Math.min(72, Math.sqrt(point.total) * 5.5))
+                  const shortName = point.namaPosyandu.replace('Posyandu ', '').slice(0, 8)
+                  const pct = point.total > 0 ? ((risiko / point.total) * 100).toFixed(1) : '0'
+                  const icon = L.divIcon({
+                    className: '',
+                    html: `<div style="width:${size}px;height:${size}px;background:${color};border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;color:white;font-family:system-ui,sans-serif;font-weight:700;text-align:center;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.25);cursor:pointer"><span style="font-size:${Math.max(9, Math.floor(size * 0.2))}px;line-height:1.2;padding:0 4px">${shortName}</span><span style="font-size:${Math.max(8, Math.floor(size * 0.17))}px;opacity:0.9;font-weight:500">${risiko} risiko</span></div>`,
+                    iconSize: [size, size],
+                    iconAnchor: [size / 2, size / 2],
+                    popupAnchor: [0, -size / 2 - 4],
+                  })
+                  const headerBg = level === 'tinggi' ? '#ef4444' : level === 'sedang' ? '#f59e0b' : '#22c55e'
                   return (
-                    <CircleMarker
-                      key={point.posyanduId}
-                      center={[point.lat, point.lng]}
-                      radius={Math.max(8, Math.sqrt(point.total) * 3)}
-                      pathOptions={{
-                        color: getMarkerColor(point.breakdown),
-                        fillColor: getMarkerColor(point.breakdown),
-                        fillOpacity: 0.7,
-                        weight: 2,
-                      }}
-                    >
-                      <Popup>
-                        <div className="min-w-[180px]">
-                          <p className="font-semibold text-gray-900 mb-1">{point.namaPosyandu}</p>
-                          <p className="text-xs text-gray-500 mb-2">{point.kelurahan}</p>
-                          <div className="border-t pt-2 space-y-1 text-xs">
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Total balita:</span>
-                              <span className="font-medium">{point.total}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Risiko:</span>
-                              <span className="text-red-600 font-medium">
-                                {getRisikoCount(point.breakdown)}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Normal:</span>
-                              <span className="text-emerald-600 font-medium">
-                                {point.breakdown.normal ?? 0}
-                              </span>
+                    <Marker key={point.posyanduId} position={[point.lat, point.lng]} icon={icon}>
+                      <Popup maxWidth={220}>
+                        <div style={{ fontFamily: 'system-ui,sans-serif', minWidth: 190 }}>
+                          <div style={{ background: headerBg, margin: '-8px -12px 10px', padding: '10px 14px', borderRadius: '4px 4px 0 0' }}>
+                            <p style={{ color: 'white', fontWeight: 700, fontSize: 13, margin: 0 }}>{point.namaPosyandu}</p>
+                            <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, margin: '2px 0 0' }}>{point.kelurahan}</p>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                            {([
+                              { label: 'Total Balita', val: String(point.total), c: '#111827' },
+                              { label: 'Kasus Risiko', val: String(risiko), c: '#dc2626' },
+                              { label: 'Tingkat Risiko', val: `${pct}%`, c: '#111827' },
+                            ] as const).map(({ label, val, c }) => (
+                              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                                <span style={{ color: '#6b7280' }}>{label}</span>
+                                <span style={{ fontWeight: 600, color: c }}>{val}</span>
+                              </div>
+                            ))}
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 2 }}>
+                              <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: level === 'tinggi' ? '#fee2e2' : level === 'sedang' ? '#fef3c7' : '#dcfce7', color: level === 'tinggi' ? '#b91c1c' : level === 'sedang' ? '#b45309' : '#15803d' }}>{badge.label}</span>
                             </div>
                           </div>
                         </div>
                       </Popup>
-                    </CircleMarker>
+                    </Marker>
                   )
                 })}
               </MapContainer>
@@ -257,7 +267,7 @@ export default function PetaStuntingPage() {
               <div className="divide-y divide-gray-50">
                 {ranked.map((p, i) => {
                   const risiko = getRisikoCount(p.breakdown)
-                  const badge = getLevelBadge(p.breakdown)
+                  const badge = getLevelBadge(p.breakdown, p.total)
                   return (
                     <div key={p.posyanduId} className="px-4 py-3 flex items-center gap-3">
                       <span className="text-gray-400 text-sm font-bold w-5">{i + 1}</span>

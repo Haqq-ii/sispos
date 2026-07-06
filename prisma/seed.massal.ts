@@ -68,7 +68,7 @@ interface PosyanduEntry {
 }
 
 const POSYANDU_DATA: PosyanduEntry[] = [
-  // --- Mergangsan (5 posyandu) ---
+  // --- Mergangsan (5 posyandu, total 212) ---
   {
     puskesmasEmail: 'demo@puskesmas-mergangsan.go.id',
     namaPosyandu: 'Posyandu Mawar',
@@ -78,7 +78,7 @@ const POSYANDU_DATA: PosyanduEntry[] = [
     latitude: -7.8160,
     longitude: 110.3700,
     statusGroup: 'rawan',
-    targetBalita: 28,
+    targetBalita: 52,
   },
   {
     puskesmasEmail: 'demo@puskesmas-mergangsan.go.id',
@@ -89,7 +89,7 @@ const POSYANDU_DATA: PosyanduEntry[] = [
     latitude: -7.8190,
     longitude: 110.3680,
     statusGroup: 'sehat',
-    targetBalita: 26,
+    targetBalita: 38,
   },
   {
     puskesmasEmail: 'demo@puskesmas-mergangsan.go.id',
@@ -100,7 +100,7 @@ const POSYANDU_DATA: PosyanduEntry[] = [
     latitude: -7.8140,
     longitude: 110.3720,
     statusGroup: 'sedang',
-    targetBalita: 30,
+    targetBalita: 44,
   },
   {
     // D-13: Cluster stunting kritis di Wirogunan RW 007
@@ -112,7 +112,7 @@ const POSYANDU_DATA: PosyanduEntry[] = [
     latitude: -7.8175,
     longitude: 110.3710,
     statusGroup: 'kritis',
-    targetBalita: 27,
+    targetBalita: 36,
   },
   {
     puskesmasEmail: 'demo@puskesmas-mergangsan.go.id',
@@ -123,10 +123,10 @@ const POSYANDU_DATA: PosyanduEntry[] = [
     latitude: -7.8200,
     longitude: 110.3660,
     statusGroup: 'outlier',
-    targetBalita: 25,
+    targetBalita: 42,
   },
 
-  // --- Gedongtengen (5 posyandu) ---
+  // --- Gedongtengen (5 posyandu, total 208) ---
   {
     puskesmasEmail: 'admin@puskesmas-gedongtengen.go.id',
     namaPosyandu: 'Posyandu Seruni',
@@ -136,7 +136,7 @@ const POSYANDU_DATA: PosyanduEntry[] = [
     latitude: -7.7920,
     longitude: 110.3620,
     statusGroup: 'sehat',
-    targetBalita: 28,
+    targetBalita: 42,
   },
   {
     puskesmasEmail: 'admin@puskesmas-gedongtengen.go.id',
@@ -147,7 +147,7 @@ const POSYANDU_DATA: PosyanduEntry[] = [
     latitude: -7.7935,
     longitude: 110.3610,
     statusGroup: 'sedang',
-    targetBalita: 30,
+    targetBalita: 44,
   },
   {
     puskesmasEmail: 'admin@puskesmas-gedongtengen.go.id',
@@ -158,7 +158,7 @@ const POSYANDU_DATA: PosyanduEntry[] = [
     latitude: -7.7950,
     longitude: 110.3630,
     statusGroup: 'sedang',
-    targetBalita: 27,
+    targetBalita: 40,
   },
   {
     puskesmasEmail: 'admin@puskesmas-gedongtengen.go.id',
@@ -169,7 +169,7 @@ const POSYANDU_DATA: PosyanduEntry[] = [
     latitude: -7.7960,
     longitude: 110.3640,
     statusGroup: 'rawan',
-    targetBalita: 26,
+    targetBalita: 38,
   },
   {
     puskesmasEmail: 'admin@puskesmas-gedongtengen.go.id',
@@ -180,10 +180,10 @@ const POSYANDU_DATA: PosyanduEntry[] = [
     latitude: -7.7975,
     longitude: 110.3650,
     statusGroup: 'kritis',
-    targetBalita: 28,
+    targetBalita: 44,
   },
 
-  // --- Umbulharjo (5 posyandu) ---
+  // --- Umbulharjo (5 posyandu, total 208) ---
   {
     puskesmasEmail: 'admin@puskesmas-umbulharjo.go.id',
     namaPosyandu: 'Posyandu Flamboyan',
@@ -193,7 +193,7 @@ const POSYANDU_DATA: PosyanduEntry[] = [
     latitude: -7.8050,
     longitude: 110.3870,
     statusGroup: 'sehat',
-    targetBalita: 28,
+    targetBalita: 42,
   },
   {
     puskesmasEmail: 'admin@puskesmas-umbulharjo.go.id',
@@ -204,7 +204,7 @@ const POSYANDU_DATA: PosyanduEntry[] = [
     latitude: -7.8070,
     longitude: 110.3890,
     statusGroup: 'sedang',
-    targetBalita: 30,
+    targetBalita: 44,
   },
   {
     puskesmasEmail: 'admin@puskesmas-umbulharjo.go.id',
@@ -215,7 +215,7 @@ const POSYANDU_DATA: PosyanduEntry[] = [
     latitude: -7.8090,
     longitude: 110.3910,
     statusGroup: 'rawan',
-    targetBalita: 27,
+    targetBalita: 40,
   },
   {
     puskesmasEmail: 'admin@puskesmas-umbulharjo.go.id',
@@ -226,7 +226,7 @@ const POSYANDU_DATA: PosyanduEntry[] = [
     latitude: -7.8110,
     longitude: 110.3930,
     statusGroup: 'kritis',
-    targetBalita: 26,
+    targetBalita: 38,
   },
   {
     puskesmasEmail: 'admin@puskesmas-umbulharjo.go.id',
@@ -237,7 +237,7 @@ const POSYANDU_DATA: PosyanduEntry[] = [
     latitude: -7.8130,
     longitude: 110.3950,
     statusGroup: 'outlier',
-    targetBalita: 25,
+    targetBalita: 44,
   },
 ]
 
@@ -246,10 +246,10 @@ const POSYANDU_DATA: PosyanduEntry[] = [
 // ============================================================
 
 const STATUS_GIZI_DIST: Record<StatusGroup, { s: string; w: number }[]> = {
-  sehat:   [{ s: 'normal', w: 80 }, { s: 'kurang', w: 10 }, { s: 'pendek', w: 5 }, { s: 'lebih', w: 5 }],
-  sedang:  [{ s: 'normal', w: 60 }, { s: 'kurang', w: 25 }, { s: 'pendek', w: 10 }, { s: 'buruk', w: 5 }],
-  rawan:   [{ s: 'normal', w: 40 }, { s: 'kurang', w: 30 }, { s: 'pendek', w: 20 }, { s: 'buruk', w: 10 }],
-  kritis:  [{ s: 'normal', w: 30 }, { s: 'kurang', w: 25 }, { s: 'pendek', w: 25 }, { s: 'buruk', w: 15 }, { s: 'sangat_pendek', w: 5 }],
+  sehat:   [{ s: 'normal', w: 84 }, { s: 'kurang', w: 5 }, { s: 'pendek', w: 3 }, { s: 'lebih', w: 8 }],
+  sedang:  [{ s: 'normal', w: 82 }, { s: 'kurang', w: 8 }, { s: 'pendek', w: 5 }, { s: 'buruk', w: 1 }, { s: 'lebih', w: 4 }],
+  rawan:   [{ s: 'normal', w: 78 }, { s: 'kurang', w: 12 }, { s: 'pendek', w: 7 }, { s: 'buruk', w: 3 }],
+  kritis:  [{ s: 'normal', w: 71 }, { s: 'kurang', w: 14 }, { s: 'pendek', w: 10 }, { s: 'buruk', w: 4 }, { s: 'sangat_pendek', w: 1 }],
   outlier: [{ s: 'lebih', w: 60 }, { s: 'obesitas', w: 25 }, { s: 'normal', w: 15 }],
 }
 
@@ -362,9 +362,9 @@ const IMUNISASI_SCHEDULE = [
 // HELPER FUNCTIONS
 // ============================================================
 
-/** Weighted random pick using deterministic seed (seed % 100 as roll) */
-function pickWeighted(dist: { s: string; w: number }[], seed: number): string {
-  const roll = seed % 100
+/** Weighted random pick — deterministic via prime-scrambled index, spreads 0-99 evenly */
+function pickWeighted(dist: { s: string; w: number }[], posIdx: number, balIdx: number): string {
+  const roll = (posIdx * 37 + balIdx * 13) % 100
   let cumulative = 0
   for (const item of dist) {
     cumulative += item.w
@@ -584,8 +584,7 @@ export async function seedMassal(prisma: PrismaClient): Promise<void> {
     for (let balitaIdx = 0; balitaIdx < entry.targetBalita; balitaIdx++) {
       const nik = genNIK(posIdx, balitaIdx)
       const hp = genHP(posIdx, balitaIdx)
-      const seed = posIdx * 100 + balitaIdx
-      const statusGizi = pickWeighted(STATUS_GIZI_DIST[entry.statusGroup], seed)
+      const statusGizi = pickWeighted(STATUS_GIZI_DIST[entry.statusGroup], posIdx, balitaIdx)
       const tanggalLahir = genTanggalLahirBalita(posIdx * 1000 + balitaIdx)
       const jenisKelamin: JenisKelamin =
         balitaIdx % 2 === 0 ? JenisKelamin.laki_laki : JenisKelamin.perempuan
@@ -641,7 +640,7 @@ export async function seedMassal(prisma: PrismaClient): Promise<void> {
           const nik2 = genNIK(posIdx, balitaIdx + 500)
           let balita2 = await prisma.balita.findFirst({ where: { nikBalita: nik2 } })
           if (!balita2) {
-            const sg2 = pickWeighted(STATUS_GIZI_DIST[entry.statusGroup], posIdx * 200 + balitaIdx)
+            const sg2 = pickWeighted(STATUS_GIZI_DIST[entry.statusGroup], posIdx + 15, balitaIdx)
             balita2 = await prisma.balita.create({
               data: {
                 wargaId: warga.id,
