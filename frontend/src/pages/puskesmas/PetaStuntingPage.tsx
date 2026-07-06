@@ -139,7 +139,7 @@ export default function PetaStuntingPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
             <p className="text-3xl font-bold text-gray-800 leading-none">{totalBalita}</p>
-            <p className="text-gray-500 text-sm mt-1">Total Balita</p>
+            <p className="text-gray-500 text-sm mt-1">Total Balita Terukur</p>
           </div>
           <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
             <p className="text-3xl font-bold text-red-600 leading-none">{totalRisiko}</p>

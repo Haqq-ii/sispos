@@ -56,61 +56,88 @@ function parseBulan(bulan: string): { startOfMonth: Date; startOfNextMonth: Date
   return { startOfMonth, startOfNextMonth }
 }
 
-// ── Prisma aggregation query ───────────────────────────────────────────────
-// Shared between xlsx and pdf generators to avoid code duplication.
-async function getPosyanduData(puskesmasId: string, startOfMonth: Date, startOfNextMonth: Date) {
-  // IDOR: puskesmasId always from JWT parameter, never from client
-  return prisma.posyandu.findMany({
+// ── PemRow type (flat, direct query — no antrian chain) ───────────────────
+type PemRow = {
+  posyanduId: string
+  namaPosyandu: string
+  kelurahan: string
+  pem: {
+    beratBadan: number | null
+    tinggiBadan: number | null
+    lingkarLengan: number | null
+    zScoreBbU: number | null
+    zScoreTbU: number | null
+    zScoreBbTb: number | null
+    statusGizi: string | null
+    statusGiziOverride: string | null
+    tanggalPemeriksaan: Date
+    balita: {
+      namaBalita: string
+      nikBalita: string | null
+      tanggalLahir: Date
+      jenisKelamin: string
+      warga: { namaLengkap: string } | null
+    }
+  }
+}
+
+// ── getPemeriksaanData — direct query (mirrors dashboard.service.ts approach) ─
+// Fixes root cause of empty export: seed massal creates pemeriksaan with antrianId=null,
+// so traversing jadwal→slotSesi→antrian chain always returns 0 rows for historical data.
+async function getPemeriksaanData(
+  puskesmasId: string,
+  startOfMonth: Date,
+  startOfNextMonth: Date
+): Promise<PemRow[]> {
+  const posyanduRows = await prisma.posyandu.findMany({
     where: { puskesmasId },
+    select: { id: true, namaPosyandu: true, kelurahan: true },
+  })
+  if (posyanduRows.length === 0) return []
+
+  const posyanduMap = new Map(posyanduRows.map(p => [p.id, p]))
+  const posyanduIds = posyanduRows.map(p => p.id)
+
+  const pemeriksaanList = await prisma.pemeriksaan.findMany({
+    where: {
+      tanggalPemeriksaan: { gte: startOfMonth, lt: startOfNextMonth },
+      balita: { warga: { posyanduUtamaId: { in: posyanduIds } } },
+    },
     select: {
-      id: true,
-      namaPosyandu: true,
-      kelurahan: true,
-      rw: true,
-      jadwal: {
-        where: {
-          tanggalPelaksanaan: { gte: startOfMonth, lt: startOfNextMonth }, // Pitfall 5: lt not lte
-        },
+      beratBadan: true,
+      tinggiBadan: true,
+      lingkarLengan: true,
+      zScoreBbU: true,
+      zScoreTbU: true,
+      zScoreBbTb: true,
+      statusGizi: true,
+      statusGiziOverride: true,
+      tanggalPemeriksaan: true,
+      // T-05-04: encrypted PDP fields deliberately excluded (UU PDP No. 27/2022)
+      balita: {
         select: {
-          tanggalPelaksanaan: true,
-          slotSesi: {
-            select: {
-              antrian: {
-                where: {
-                  pemeriksaan: { some: {} }, // include any antrian that has pemeriksaan (Pitfall 4)
-                },
-                select: {
-                  pemeriksaan: {
-                    select: {
-                      beratBadan: true,
-                      tinggiBadan: true,
-                      lingkarLengan: true,
-                      zScoreBbU: true,
-                      zScoreTbU: true,
-                      zScoreBbTb: true,
-                      statusGizi: true,
-                      statusGiziOverride: true,
-                      tanggalPemeriksaan: true,
-                      // T-05-04: encrypted PDP fields deliberately excluded from this select (UU PDP No. 27/2022)
-                      balita: {
-                        select: {
-                          namaBalita: true,
-                          nikBalita: true,
-                          tanggalLahir: true,
-                          jenisKelamin: true,
-                          warga: { select: { namaLengkap: true } },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
+          namaBalita: true,
+          nikBalita: true,
+          tanggalLahir: true,
+          jenisKelamin: true,
+          warga: { select: { namaLengkap: true, posyanduUtamaId: true } },
         },
       },
     },
+    orderBy: { tanggalPemeriksaan: 'asc' },
   })
+
+  return pemeriksaanList
+    .filter(p => p.balita.warga?.posyanduUtamaId != null)
+    .map(p => {
+      const posyanduId = p.balita.warga!.posyanduUtamaId!
+      return {
+        posyanduId,
+        namaPosyandu: posyanduMap.get(posyanduId)?.namaPosyandu ?? '',
+        kelurahan: posyanduMap.get(posyanduId)?.kelurahan ?? '',
+        pem: p,
+      }
+    })
 }
 
 // ── generateLaporanBulananXlsx ────────────────────────────────────────────
@@ -138,34 +165,8 @@ export async function generateLaporanBulananXlsx(puskesmasId: string, bulan: str
   // 2. Compute date range (Pitfall 5: lt startOfNextMonth)
   const { startOfMonth, startOfNextMonth } = parseBulan(bulan)
 
-  // 3. Run nested Prisma query
-  const posyanduList = await getPosyanduData(puskesmasId, startOfMonth, startOfNextMonth)
-
-  // 4. Flatten to individual pemeriksaan rows
-  type FlatRow = {
-    namaPosyandu: string
-    kelurahan: string
-    tanggalPelaksanaan: Date
-    pem: (typeof posyanduList)[0]['jadwal'][0]['slotSesi'][0]['antrian'][0]['pemeriksaan'][0]
-  }
-
-  const flatRows: FlatRow[] = []
-  for (const posyandu of posyanduList) {
-    for (const jadwal of posyandu.jadwal) {
-      for (const sesi of jadwal.slotSesi) {
-        for (const antrian of sesi.antrian) {
-          for (const pem of antrian.pemeriksaan) {
-            flatRows.push({
-              namaPosyandu: posyandu.namaPosyandu,
-              kelurahan: posyandu.kelurahan,
-              tanggalPelaksanaan: jadwal.tanggalPelaksanaan,
-              pem,
-            })
-          }
-        }
-      }
-    }
-  }
+  // 3. Direct query — bypasses antrian chain (handles seed data with antrianId=null)
+  const flatRows = await getPemeriksaanData(puskesmasId, startOfMonth, startOfNextMonth)
 
   // 5. Build ExcelJS workbook with 2 sheets
   const workbook = new ExcelJS.Workbook()
@@ -249,38 +250,41 @@ export async function generateLaporanBulananXlsx(puskesmasId: string, bulan: str
   h2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F5E9' } }
   sheet2.views = [{ state: 'frozen', ySplit: 1, xSplit: 0, activeCell: 'A2' }]
 
-  let rekapNo = 1
-  for (const posyandu of posyanduList) {
-    let diperiksa = 0, buruk = 0, kurang = 0, normal = 0
-    let lebihObesi = 0, sangatPendek = 0, pendek = 0
-
-    for (const jadwal of posyandu.jadwal) {
-      for (const sesi of jadwal.slotSesi) {
-        for (const antrian of sesi.antrian) {
-          for (const pem of antrian.pemeriksaan) {
-            diperiksa++
-            const status = pem.statusGiziOverride ?? pem.statusGizi ?? ''
-            if (status === 'buruk') buruk++
-            else if (status === 'kurang') kurang++
-            else if (status === 'normal') normal++
-            else if (status === 'lebih' || status === 'obesitas') lebihObesi++
-            else if (status === 'sangat_pendek') sangatPendek++
-            else if (status === 'pendek') pendek++
-          }
-        }
-      }
+  // Group flatRows by posyanduId for rekap
+  const rekapMap = new Map<string, {
+    namaPosyandu: string; diperiksa: number; buruk: number; kurang: number
+    normal: number; lebihObesi: number; sangatPendek: number; pendek: number
+  }>()
+  for (const row of flatRows) {
+    if (!rekapMap.has(row.posyanduId)) {
+      rekapMap.set(row.posyanduId, {
+        namaPosyandu: row.namaPosyandu, diperiksa: 0, buruk: 0, kurang: 0,
+        normal: 0, lebihObesi: 0, sangatPendek: 0, pendek: 0,
+      })
     }
+    const r = rekapMap.get(row.posyanduId)!
+    r.diperiksa++
+    const status = row.pem.statusGiziOverride ?? row.pem.statusGizi ?? ''
+    if (status === 'buruk') r.buruk++
+    else if (status === 'kurang') r.kurang++
+    else if (status === 'normal') r.normal++
+    else if (status === 'lebih' || status === 'obesitas') r.lebihObesi++
+    else if (status === 'sangat_pendek') r.sangatPendek++
+    else if (status === 'pendek') r.pendek++
+  }
 
+  let rekapNo = 1
+  for (const r of rekapMap.values()) {
     sheet2.addRow({
       no: rekapNo++,
-      namaPosyandu: safeCell(posyandu.namaPosyandu),
-      diperiksa,
-      buruk,
-      kurang,
-      normal,
-      lebihObesi,
-      sangatPendek,
-      pendek,
+      namaPosyandu: safeCell(r.namaPosyandu),
+      diperiksa: r.diperiksa,
+      buruk: r.buruk,
+      kurang: r.kurang,
+      normal: r.normal,
+      lebihObesi: r.lebihObesi,
+      sangatPendek: r.sangatPendek,
+      pendek: r.pendek,
     })
   }
 
@@ -314,26 +318,7 @@ export async function generateLaporanBulananPdf(puskesmasId: string, bulan: stri
   const { namaPuskesmas } = puskesmas
 
   const { startOfMonth, startOfNextMonth } = parseBulan(bulan)
-  const posyanduList = await getPosyanduData(puskesmasId, startOfMonth, startOfNextMonth)
-
-  // Flatten to individual pemeriksaan rows (same as xlsx)
-  type FlatRow = {
-    namaPosyandu: string
-    tanggalPelaksanaan: Date
-    pem: (typeof posyanduList)[0]['jadwal'][0]['slotSesi'][0]['antrian'][0]['pemeriksaan'][0]
-  }
-  const flatRows: FlatRow[] = []
-  for (const posyandu of posyanduList) {
-    for (const jadwal of posyandu.jadwal) {
-      for (const sesi of jadwal.slotSesi) {
-        for (const antrian of sesi.antrian) {
-          for (const pem of antrian.pemeriksaan) {
-            flatRows.push({ namaPosyandu: posyandu.namaPosyandu, tanggalPelaksanaan: jadwal.tanggalPelaksanaan, pem })
-          }
-        }
-      }
-    }
-  }
+  const flatRows = await getPemeriksaanData(puskesmasId, startOfMonth, startOfNextMonth)
 
   // A4 landscape: 841.89 x 595.28pt, margin 30pt → usable width ~781pt
   const MARGIN = 30

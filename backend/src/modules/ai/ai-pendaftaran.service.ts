@@ -39,7 +39,11 @@ export const PENDAFTARAN_SYSTEM_PROMPT =
   '\'ya\', \'oke\', \'setuju\', \'benar\', \'daftar\', \'batalkan\', atau ungkapan serupa.\n' +
   '- Jika citizen TIDAK mengonfirmasi secara eksplisit, JANGAN panggil fungsi aksi — tanyakan kembali.\n' +
   '- get_jadwal_tersedia dan get_profil_balita boleh dipanggil tanpa konfirmasi (hanya baca data).\n' +
-  '- Data jadwal dari get_jadwal_tersedia: gunakan field "slotId" saat memanggil daftar_antrian.\n' +
+  '- KRITIS: Sebelum memanggil daftar_antrian, batalkan_antrian, atau reschedule_antrian, ' +
+  'WAJIB panggil get_jadwal_tersedia dan get_profil_balita terlebih dahulu dalam giliran yang sama ' +
+  'untuk mendapatkan slotId dan balitaId yang valid. Jangan gunakan ID dari pesan sebelumnya.\n' +
+  '- Gunakan field "hari" dan "tanggalTampil" dari respons get_jadwal_tersedia untuk menampilkan ' +
+  'tanggal. Jangan hitung nama hari sendiri.\n' +
   '\nATURAN FORMAT (WAJIB):\n' +
   '- JANGAN gunakan markdown seperti **bold**, *italic*, atau tanda # heading.\n' +
   '- Gunakan karakter • untuk setiap poin dalam daftar.\n' +
@@ -213,17 +217,30 @@ async function getJadwalTersedia(wargaId: string, tanggal?: string): Promise<obj
     orderBy: { tanggalPelaksanaan: 'asc' },
   })
 
-  return jadwalList.map((j: typeof jadwalList[0]) => ({
-    jadwalId: j.id,
-    namaPosyandu: j.posyandu.namaPosyandu,
-    tanggalPelaksanaan: j.tanggalPelaksanaan,
-    sesi: j.slotSesi.map((s: typeof jadwalList[0]['slotSesi'][0]) => ({
-      slotId: s.id,
-      labelSesi: s.labelSesi,
-      jamMulai: s.jamMulai,
-      tersedia: s.kuota - s.terisi,
-    })),
-  }))
+  return jadwalList.map((j: typeof jadwalList[0]) => {
+    const tanggalISO = j.tanggalPelaksanaan.toISOString().split('T')[0]
+    const dateWIB = new Date(tanggalISO + 'T00:00:00+07:00')
+    const hari = dateWIB.toLocaleDateString('id-ID', { weekday: 'long', timeZone: 'Asia/Jakarta' })
+    const tanggalTampil = dateWIB.toLocaleDateString('id-ID', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+      timeZone: 'Asia/Jakarta',
+    })
+    return {
+      jadwalId: j.id,
+      tanggalISO,
+      hari,
+      tanggalTampil,
+      namaPosyandu: j.posyandu.namaPosyandu,
+      sesi: j.slotSesi.map((s: typeof jadwalList[0]['slotSesi'][0]) => ({
+        slotId: s.id,
+        labelSesi: s.labelSesi,
+        jamMulai: new Date(s.jamMulai).toLocaleTimeString('id-ID', {
+          hour: '2-digit', minute: '2-digit', timeZone: 'UTC',
+        }),
+        tersedia: s.kuota - s.terisi,
+      })),
+    }
+  })
 }
 
 // ── Internal: getProfilBalita ─────────────────────────────────────────────────

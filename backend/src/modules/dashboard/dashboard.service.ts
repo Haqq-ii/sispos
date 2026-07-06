@@ -20,11 +20,11 @@ export interface DashboardStats {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function parseBulan(bulan: string): { startOfMonth: Date; endOfMonth: Date } {
+function parseBulan(bulan: string): { startOfMonth: Date; startOfNextMonth: Date } {
   const [year, month] = bulan.split('-').map(Number)
   const startOfMonth = new Date(year, month - 1, 1)
-  const endOfMonth = new Date(year, month, 0, 23, 59, 59)
-  return { startOfMonth, endOfMonth }
+  const startOfNextMonth = new Date(year, month, 1)
+  return { startOfMonth, startOfNextMonth }
 }
 
 // ── getStuntingMapData ────────────────────────────────────────────────────────
@@ -34,7 +34,7 @@ export async function getStuntingMapData(
   puskesmasId: string,
   bulan: string
 ): Promise<StuntingMapPoint[]> {
-  const { startOfMonth, endOfMonth } = parseBulan(bulan)
+  const { startOfMonth, startOfNextMonth } = parseBulan(bulan)
 
   // Query pemeriksaan directly (same pattern as getDashboardStats).
   // Seed massal creates pemeriksaan with antrianId: null, so traversing antrian chain returns 0.
@@ -48,20 +48,31 @@ export async function getStuntingMapData(
 
   const allPemeriksaan = await prisma.pemeriksaan.findMany({
     where: {
-      tanggalPemeriksaan: { gte: startOfMonth, lte: endOfMonth },
+      tanggalPemeriksaan: { gte: startOfMonth, lt: startOfNextMonth },
       balita: { warga: { posyanduUtamaId: { in: posyanduIds } } },
       statusGizi: { not: null },
     },
     select: {
+      balitaId: true,
+      tanggalPemeriksaan: true,
       statusGizi: true,
       statusGiziOverride: true,
       balita: { select: { warga: { select: { posyanduUtamaId: true } } } },
     },
   })
 
-  // Group by posyanduId
-  const groupedMap = new Map<string, Record<string, number>>()
+  // Dedup: per balitaId gunakan pemeriksaan terbaru — 1 anak dihitung 1 kali
+  const latestByBalita = new Map<string, typeof allPemeriksaan[0]>()
   for (const pm of allPemeriksaan) {
+    const ex = latestByBalita.get(pm.balitaId)
+    if (!ex || pm.tanggalPemeriksaan > ex.tanggalPemeriksaan) {
+      latestByBalita.set(pm.balitaId, pm)
+    }
+  }
+
+  // Group unique balita by posyanduId
+  const groupedMap = new Map<string, Record<string, number>>()
+  for (const pm of latestByBalita.values()) {
     const pid = pm.balita.warga.posyanduUtamaId
     if (!pid) continue
     const status = pm.statusGiziOverride ?? pm.statusGizi
@@ -95,7 +106,7 @@ export async function getDashboardStats(
   puskesmasId: string,
   bulan: string
 ): Promise<DashboardStats> {
-  const { startOfMonth, endOfMonth } = parseBulan(bulan)
+  const { startOfMonth, startOfNextMonth } = parseBulan(bulan)
 
   // Query pemeriksaan directly via balita → warga (posyanduUtamaId) under this puskesmas.
   // Seed massal creates pemeriksaan without antrian (antrianId: null), so traversing
@@ -111,16 +122,16 @@ export async function getDashboardStats(
 
   const allPemeriksaan = await prisma.pemeriksaan.findMany({
     where: {
-      tanggalPemeriksaan: { gte: startOfMonth, lte: endOfMonth },
+      tanggalPemeriksaan: { gte: startOfMonth, lt: startOfNextMonth },
       balita: {
         warga: { posyanduUtamaId: { in: posyanduIds } },
       },
       statusGizi: { not: null },
     },
     select: {
+      balitaId: true,
       statusGizi: true,
       statusGiziOverride: true,
-      balita: { select: { wargaId: true } },
     },
   })
 
@@ -133,11 +144,11 @@ export async function getDashboardStats(
     {} as Record<string, number>
   )
 
-  const uniqueWargaIds = new Set(allPemeriksaan.map((pm) => pm.balita.wargaId))
+  const uniqueBalitaIds = new Set(allPemeriksaan.map((pm) => pm.balitaId))
 
   return {
     totalPemeriksaan: allPemeriksaan.length,
-    totalBalita: uniqueWargaIds.size,
+    totalBalita: uniqueBalitaIds.size,
     breakdown,
   }
 }
