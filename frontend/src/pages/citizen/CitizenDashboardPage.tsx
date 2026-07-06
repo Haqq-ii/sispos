@@ -132,6 +132,7 @@ export default function CitizenDashboardPage() {
   const navigate = useNavigate()
   const { user } = useAuthStore()
   const [notifOpen, setNotifOpen] = useState(false)
+  const [selectedBalitaId, setSelectedBalitaId] = useState<string | null>(null)
 
   // Fetch daftar balita untuk chip selector di header
   const { data: balitaList } = useQuery<BalitaChip[]>({
@@ -140,15 +141,19 @@ export default function CitizenDashboardPage() {
     staleTime: 60_000,
   })
 
-  // Fetch antrian aktif hari ini
+  // Auto-select balita pertama saat list loaded
+  const effectiveBalitaId = selectedBalitaId ?? balitaList?.[0]?.id ?? null
+  const selectedBalita = balitaList?.find((b) => b.id === effectiveBalitaId) ?? balitaList?.[0]
+
+  // Fetch antrian aktif hari ini — filter by balitaId yang dipilih
   const { data: antrian, isLoading } = useQuery<AntrianAktif | null>({
-    queryKey: ['antrian', 'saya'],
+    queryKey: ['antrian', 'saya', effectiveBalitaId],
     queryFn: () =>
-      apiClient.get('/antrian/saya').then((r) => {
-        const d = r.data.data as AntrianAktif | null
-        return d
-      }),
+      apiClient
+        .get('/antrian/saya', { params: effectiveBalitaId ? { balitaId: effectiveBalitaId } : {} })
+        .then((r) => r.data.data as AntrianAktif | null),
     staleTime: 30_000,
+    enabled: !!balitaList,
   })
 
   // Tentukan apakah antrian aktif (menunggu atau dipanggil)
@@ -197,25 +202,33 @@ export default function CitizenDashboardPage() {
         {/* Child selector chips */}
         {balitaList && balitaList.length > 0 && (
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 mt-4 scrollbar-none">
-            {balitaList.map((b) => (
-              <Link
-                key={b.id}
-                to="/citizen/tumbuh-kembang"
-                className="flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl bg-white/15 border border-white/20 hover:bg-white/25 transition"
-              >
-                <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold text-white">
-                  {b.namaBalita.charAt(0).toUpperCase()}
-                </div>
-                <div className="text-left">
-                  <p className="text-white text-xs font-semibold leading-none">
-                    {b.namaBalita.split(' ')[0]}
-                  </p>
-                  <p className="text-green-200 text-[10px] mt-0.5">
-                    {b.jenisKelamin === 'laki_laki' ? 'Laki-laki' : 'Perempuan'}
-                  </p>
-                </div>
-              </Link>
-            ))}
+            {balitaList.map((b) => {
+              const isSelected = b.id === effectiveBalitaId
+              return (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => setSelectedBalitaId(b.id)}
+                  className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl border transition ${
+                    isSelected
+                      ? 'bg-white border-white'
+                      : 'bg-white/15 border-white/20 hover:bg-white/25'
+                  }`}
+                >
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isSelected ? 'bg-green-700 text-white' : 'bg-white/20 text-white'}`}>
+                    {b.namaBalita.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="text-left">
+                    <p className={`text-xs font-semibold leading-none ${isSelected ? 'text-green-700' : 'text-white'}`}>
+                      {b.namaBalita.split(' ')[0]}
+                    </p>
+                    <p className={`text-[10px] mt-0.5 ${isSelected ? 'text-green-500' : 'text-green-200'}`}>
+                      {b.jenisKelamin === 'laki_laki' ? 'Laki-laki' : 'Perempuan'}
+                    </p>
+                  </div>
+                </button>
+              )
+            })}
             <Link
               to="/citizen/family-account"
               className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 border border-dashed border-white/30 hover:bg-white/20 transition"
@@ -377,11 +390,19 @@ export default function CitizenDashboardPage() {
             </div>
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center text-gray-500 font-bold text-lg flex-shrink-0">
-                B
+                {selectedBalita?.namaBalita.charAt(0).toUpperCase() ?? 'B'}
               </div>
               <div>
-                <p className="text-gray-800 font-bold text-base">Balita Anda</p>
-                <p className="text-gray-400 text-xs">Balita</p>
+                <p className="text-gray-800 font-bold text-base">
+                  {selectedBalita?.namaBalita ?? 'Balita Anda'}
+                </p>
+                <p className="text-gray-400 text-xs">
+                  {selectedBalita
+                    ? selectedBalita.jenisKelamin === 'laki_laki'
+                      ? 'Laki-laki'
+                      : 'Perempuan'
+                    : 'Balita'}
+                </p>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="bg-green-100 text-green-700 text-xs font-medium px-2 py-0.5 rounded-full">
                     Gizi Normal

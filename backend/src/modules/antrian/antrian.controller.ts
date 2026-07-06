@@ -126,7 +126,8 @@ export async function batalkanAntrianHandler(req: AuthRequest, res: Response): P
 // ── GET /api/antrian/saya ─────────────────────────────────────────────────
 export async function getAntrianSayaHandler(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const antrian = await getAntrianSaya(req.user!.userId)
+    const balitaId = typeof req.query.balitaId === 'string' ? req.query.balitaId : undefined
+    const antrian = await getAntrianSaya(req.user!.userId, balitaId)
 
     res.status(200).json({
       success: true,

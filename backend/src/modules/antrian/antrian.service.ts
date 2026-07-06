@@ -241,13 +241,14 @@ export async function batalkanAntrian(
  * Mengembalikan antrian dengan status menunggu/dipanggil yang dibuat hari ini.
  * Untuk citizen dashboard card dan tiket screen.
  */
-export async function getAntrianSaya(wargaId: string) {
+export async function getAntrianSaya(wargaId: string, balitaId?: string) {
   const startOfToday = new Date()
   startOfToday.setUTCHours(0, 0, 0, 0)
 
   const antrian = await prisma.antrian.findFirst({
     where: {
       wargaId,
+      ...(balitaId ? { balitaId } : {}),
       statusAntrian: { in: ['menunggu', 'dipanggil'] },
       createdAt: { gte: startOfToday },
     },
