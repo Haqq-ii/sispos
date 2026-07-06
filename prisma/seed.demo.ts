@@ -39,8 +39,15 @@ export async function seedDemo(prisma: PrismaClient): Promise<void> {
         kecamatan: 'Mergangsan',
         kelurahan: 'Wirogunan',
         rw: '003',
+        latitude: -7.8014,
+        longitude: 110.3647,
         jamOperasional: '08:00 - 12:00',
       },
+    })
+  } else if (!posyandu.latitude) {
+    posyandu = await prisma.posyandu.update({
+      where: { id: posyandu.id },
+      data: { latitude: -7.8014, longitude: 110.3647 },
     })
   }
   console.log('✓ Posyandu:', posyandu.namaPosyandu)

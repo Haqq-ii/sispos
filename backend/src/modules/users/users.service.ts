@@ -108,3 +108,73 @@ export async function unlockKader(
 
   logger.info({ kaderId, puskesmasId }, 'Master overrule: kader unlocked')
 }
+
+// ── resetKaderPin ─────────────────────────────────────────────────────────────
+
+export async function resetKaderPin(
+  kaderId: string,
+  puskesmasId: string,
+  newPinHash: string,
+  meta: { ip?: string; userAgent?: string }
+): Promise<void> {
+  const kader = await prisma.kader.findUnique({
+    where: { id: kaderId },
+    include: { posyandu: { select: { puskesmasId: true } } },
+  })
+  if (!kader) throw Object.assign(new Error('Kader tidak ditemukan'), { code: 'KADER_TIDAK_DITEMUKAN' })
+  if (kader.posyandu.puskesmasId !== puskesmasId) throw Object.assign(new Error('Akses ditolak'), { code: 'AKSES_DITOLAK' })
+
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    await tx.kader.update({
+      where: { id: kaderId },
+      data: { pinHash: newPinHash, gagalLogin: 0, terkunciSampai: null },
+    })
+    await tx.auditLog.create({
+      data: {
+        userId: puskesmasId,
+        userRole: 'puskesmas',
+        aksi: 'PIN_RESET',
+        tabelTerkait: 'kader',
+        recordId: kaderId,
+        dataSebelum: {},
+        dataSesudah: { pinHash: '[REDACTED]', gagalLogin: 0 },
+        ipAddress: meta.ip ?? null,
+        userAgent: meta.userAgent ?? null,
+      },
+    })
+  })
+  logger.info({ kaderId, puskesmasId }, 'PIN reset by puskesmas')
+}
+
+// ── getProfilCitizen ──────────────────────────────────────────────────────────
+
+export interface ProfilCitizenResult {
+  namaLengkap: string
+  nikIbu: string
+  nomorPonsel: string
+  provinsi: string | null
+  kabupaten: string | null
+  kecamatan: string | null
+  kelurahan: string | null
+  rw: string | null
+  rt: string | null
+  posyanduUtama: { namaPosyandu: string } | null
+}
+
+export async function getProfilCitizen(wargaId: string): Promise<ProfilCitizenResult | null> {
+  return prisma.warga.findUnique({
+    where: { id: wargaId },
+    select: {
+      namaLengkap: true,
+      nikIbu: true,
+      nomorPonsel: true,
+      provinsi: true,
+      kabupaten: true,
+      kecamatan: true,
+      kelurahan: true,
+      rw: true,
+      rt: true,
+      posyanduUtama: { select: { namaPosyandu: true } },
+    },
+  })
+}

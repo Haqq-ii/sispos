@@ -36,60 +36,53 @@ export async function getStuntingMapData(
 ): Promise<StuntingMapPoint[]> {
   const { startOfMonth, endOfMonth } = parseBulan(bulan)
 
-  const posyanduList = await prisma.posyandu.findMany({
+  // Query pemeriksaan directly (same pattern as getDashboardStats).
+  // Seed massal creates pemeriksaan with antrianId: null, so traversing antrian chain returns 0.
+  const posyanduRows = await prisma.posyandu.findMany({
     where: { puskesmasId },
+    select: { id: true, namaPosyandu: true, kelurahan: true, latitude: true, longitude: true },
+  })
+  const posyanduIds = posyanduRows.map((p) => p.id)
+
+  if (posyanduIds.length === 0) return []
+
+  const allPemeriksaan = await prisma.pemeriksaan.findMany({
+    where: {
+      tanggalPemeriksaan: { gte: startOfMonth, lte: endOfMonth },
+      balita: { warga: { posyanduUtamaId: { in: posyanduIds } } },
+      statusGizi: { not: null },
+    },
     select: {
-      id: true,
-      namaPosyandu: true,
-      kelurahan: true,
-      latitude: true,
-      longitude: true,
-      jadwal: {
-        where: {
-          tanggalPelaksanaan: { gte: startOfMonth, lte: endOfMonth },
-        },
-        select: {
-          slotSesi: {
-            select: {
-              antrian: {
-                where: { statusAntrian: 'selesai' },
-                select: {
-                  pemeriksaan: {
-                    select: { statusGizi: true },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
+      statusGizi: true,
+      statusGiziOverride: true,
+      balita: { select: { warga: { select: { posyanduUtamaId: true } } } },
     },
   })
 
-  return posyanduList
+  // Group by posyanduId
+  const groupedMap = new Map<string, Record<string, number>>()
+  for (const pm of allPemeriksaan) {
+    const pid = pm.balita.warga.posyanduUtamaId
+    if (!pid) continue
+    const status = pm.statusGiziOverride ?? pm.statusGizi
+    if (!status) continue
+    const acc = groupedMap.get(pid) ?? {}
+    acc[status] = (acc[status] ?? 0) + 1
+    groupedMap.set(pid, acc)
+  }
+
+  return posyanduRows
     .filter((p) => p.latitude !== null && p.longitude !== null)
     .map((p) => {
-      const allPemeriksaan = p.jadwal
-        .flatMap((j) => j.slotSesi)
-        .flatMap((s) => s.antrian)
-        .flatMap((a) => a.pemeriksaan)
-        .filter((pm) => pm.statusGizi !== null)
-
-      const breakdown = allPemeriksaan.reduce(
-        (acc, pm) => {
-          if (pm.statusGizi) acc[pm.statusGizi] = (acc[pm.statusGizi] ?? 0) + 1
-          return acc
-        },
-        {} as Record<string, number>
-      )
-
+      const breakdown = groupedMap.get(p.id) ?? {}
+      const total = Object.values(breakdown).reduce((s, n) => s + n, 0)
       return {
         posyanduId: p.id,
         namaPosyandu: p.namaPosyandu,
         kelurahan: p.kelurahan,
         lat: p.latitude!,
         lng: p.longitude!,
-        total: allPemeriksaan.length,
+        total,
         breakdown,
       }
     })

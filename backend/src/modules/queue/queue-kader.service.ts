@@ -80,6 +80,7 @@ export async function getSlotAntrian(slotId: string) {
  * template literals — Prisma otomatis parameterisasi nilai interpolasi.
  */
 export async function getKaderDashboardStats(kaderId: string): Promise<{
+  posyanduNama: string
   totalBalita: number
   risikoStunting: number
   hadirHariIni: number
@@ -96,7 +97,7 @@ export async function getKaderDashboardStats(kaderId: string): Promise<{
   // Step A: posyanduId dari kader (sumber: JWT via kaderId — IDOR guard T-08-06-01)
   const kader = await prisma.kader.findUnique({
     where: { id: kaderId },
-    select: { posyanduId: true },
+    select: { posyanduId: true, posyandu: { select: { namaPosyandu: true } } },
   })
   if (!kader) {
     throw Object.assign(new Error('Kader tidak ditemukan'), { code: 'KADER_TIDAK_DITEMUKAN' })
@@ -248,6 +249,7 @@ export async function getKaderDashboardStats(kaderId: string): Promise<{
   logger.debug({ kaderId }, 'getKaderDashboardStats called')
 
   return {
+    posyanduNama: kader.posyandu.namaPosyandu,
     totalBalita,
     risikoStunting,
     hadirHariIni,

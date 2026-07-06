@@ -62,6 +62,7 @@ interface TodayJadwal {
 }
 
 interface KaderDashboardStats {
+  posyanduNama: string
   totalBalita: number
   risikoStunting: number
   hadirHariIni: number
@@ -177,7 +178,7 @@ export default function KaderDashboardPage() {
               {user?.namaLengkap ?? 'Kader'}
             </p>
             <div className="flex items-center gap-2 mt-0.5">
-              <p className="text-green-200 text-xs">Posyandu Anda</p>
+              <p className="text-green-200 text-xs">{dashboardStats?.posyanduNama ?? 'Posyandu Anda'}</p>
               {user?.role === 'ketua_kader' && (
                 <span className="bg-amber-400 text-amber-900 text-[10px] font-bold px-1.5 py-0.5 rounded">
                   KETUA

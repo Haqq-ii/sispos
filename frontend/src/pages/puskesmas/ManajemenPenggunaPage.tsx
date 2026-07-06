@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Shield, Unlock, AlertTriangle, CheckCircle,
-  Search, Phone, Building2, X, Loader2,
+  Search, Phone, Building2, X, Loader2, Key,
 } from 'lucide-react'
 import apiClient from '@/lib/axios'
 import { useToast } from '@/hooks/use-toast'
@@ -35,11 +35,28 @@ export default function ManajemenPenggunaPage() {
 
   const [search, setSearch] = useState('')
   const [overruleTarget, setOverruleTarget] = useState<string | null>(null)
+  const [resetTarget, setResetTarget] = useState<string | null>(null)
+  const [newPin, setNewPin] = useState('')
 
   const { data: kaderList, isLoading, isError } = useQuery<KaderListItem[]>({
     queryKey: ['users', 'kader'],
     queryFn: () => apiClient.get('/users/kader').then((r) => r.data.data as KaderListItem[]),
     staleTime: 30_000,
+  })
+
+  const resetPinMutation = useMutation({
+    mutationFn: ({ kaderId, pin }: { kaderId: string; pin: string }) =>
+      apiClient.patch(`/users/kader/${kaderId}/reset-pin`, { newPin: pin }).then((r) => r.data),
+    onSuccess: (_, { kaderId }) => {
+      void queryClient.invalidateQueries({ queryKey: ['users', 'kader'] })
+      const kader = kaderList?.find((k) => k.id === kaderId)
+      toast({ description: `PIN ${kader?.namaLengkap ?? 'kader'} berhasil direset.` })
+      setResetTarget(null)
+      setNewPin('')
+    },
+    onError: () => {
+      toast({ description: 'Gagal reset PIN. Coba lagi.', variant: 'destructive' })
+    },
   })
 
   const unlockMutation = useMutation({
@@ -228,7 +245,7 @@ export default function ManajemenPenggunaPage() {
                       </div>
 
                       {/* Aksi */}
-                      <div className="col-span-2 flex gap-2 justify-end">
+                      <div className="col-span-2 flex gap-1.5 justify-end flex-wrap">
                         {locked && (
                           <button
                             onClick={() => setOverruleTarget(kader.id)}
@@ -243,8 +260,15 @@ export default function ManajemenPenggunaPage() {
                             Buka Akun
                           </button>
                         )}
+                        <button
+                          onClick={() => { setResetTarget(kader.id); setNewPin('') }}
+                          className="flex items-center gap-1 px-3 py-1.5 border border-gray-200 text-gray-600 hover:bg-gray-50 text-xs rounded-lg font-semibold"
+                        >
+                          <Key className="w-3.5 h-3.5" />
+                          Reset PIN
+                        </button>
                         {kader.gagalLogin > 0 && !locked && (
-                          <span className="text-xs text-amber-600 font-medium">
+                          <span className="text-xs text-amber-600 font-medium self-center">
                             {kader.gagalLogin}/10 gagal
                           </span>
                         )}
@@ -307,6 +331,65 @@ export default function ManajemenPenggunaPage() {
           </div>
         )}
       </div>
+
+      {/* ── Reset PIN Modal ──────────────────────────────────────────────── */}
+      {resetTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+                  <Key className="w-5 h-5 text-green-700" />
+                </div>
+                <p className="text-gray-800 font-bold">Reset PIN Kader</p>
+              </div>
+              <button
+                onClick={() => { setResetTarget(null); setNewPin('') }}
+                className="p-1.5 hover:bg-gray-100 rounded-lg transition"
+              >
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+            <p className="text-sm text-gray-500 mb-1">
+              PIN baru untuk{' '}
+              <span className="font-semibold text-gray-700">
+                {kaderList?.find((k) => k.id === resetTarget)?.namaLengkap}
+              </span>:
+            </p>
+            <p className="text-xs text-gray-400 mb-3">Kader wajib mengubah PIN setelah login.</p>
+            <input
+              type="password"
+              inputMode="numeric"
+              maxLength={6}
+              value={newPin}
+              onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))}
+              placeholder="••••••"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-center text-2xl tracking-widest mb-4 outline-none focus:border-green-400"
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => { setResetTarget(null); setNewPin('') }}
+                className="py-3 border border-gray-200 text-gray-600 rounded-xl font-semibold"
+              >
+                Batal
+              </button>
+              <button
+                onClick={() => resetPinMutation.mutate({ kaderId: resetTarget, pin: newPin })}
+                disabled={newPin.length !== 6 || resetPinMutation.isPending}
+                className="py-3 bg-green-700 hover:bg-green-800 disabled:bg-green-300 text-white rounded-xl flex items-center justify-center gap-2 font-semibold"
+              >
+                {resetPinMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <Key className="w-4 h-4" /> Reset PIN
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Master Overrule Confirm Modal ────────────────────────────────── */}
       {overruleTarget && overruleKader && (

@@ -5,6 +5,7 @@
  */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import {
   ArrowLeft,
   User,
@@ -21,14 +22,33 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { useToast } from '@/hooks/use-toast'
 import apiClient from '@/lib/axios'
 
+interface ProfilData {
+  namaLengkap: string
+  nikIbu: string
+  nomorPonsel: string
+  provinsi: string
+  kabupaten: string
+  kecamatan: string
+  kelurahan: string
+  rw: string | null
+  rt: string | null
+  posyanduUtama: { namaPosyandu: string } | null
+}
+
 export default function ProfilSayaPage() {
   const navigate = useNavigate()
   const { user, clearAuth } = useAuthStore()
   const { toast } = useToast()
   const [editingLocation, setEditingLocation] = useState(false)
 
+  const { data: profil } = useQuery<ProfilData>({
+    queryKey: ['profil', 'saya'],
+    queryFn: () => apiClient.get('/users/profil').then((r) => r.data.data as ProfilData),
+    staleTime: 60_000,
+  })
+
   // NIK masking: show first 8 + ... + last 4 chars
-  const rawNik = (user as { nik?: string } | null)?.nik ?? ''
+  const rawNik = profil?.nikIbu ?? ''
   const maskedNik =
     rawNik.length >= 12
       ? `${rawNik.slice(0, 8)}...${rawNik.slice(-4)}`
@@ -98,12 +118,15 @@ export default function ProfilSayaPage() {
           {!editingLocation ? (
             <div className="px-4 py-3 space-y-2">
               {[
-                { label: 'Provinsi', value: '—' },
-                { label: 'Kabupaten', value: '—' },
-                { label: 'Kecamatan', value: '—' },
-                { label: 'Kelurahan', value: '—' },
-                { label: 'RW/RT', value: '—' },
-                { label: 'Posyandu', value: '—' },
+                { label: 'Provinsi', value: profil?.provinsi ?? '—' },
+                { label: 'Kabupaten', value: profil?.kabupaten ?? '—' },
+                { label: 'Kecamatan', value: profil?.kecamatan ?? '—' },
+                { label: 'Kelurahan', value: profil?.kelurahan ?? '—' },
+                {
+                  label: 'RW/RT',
+                  value: [profil?.rw, profil?.rt].filter(Boolean).join('/') || '—',
+                },
+                { label: 'Posyandu', value: profil?.posyanduUtama?.namaPosyandu ?? '—' },
               ].map((row) => (
                 <div key={row.label} className="flex justify-between items-center py-1">
                   <span className="text-gray-400 text-xs">{row.label}</span>
@@ -142,7 +165,7 @@ export default function ProfilSayaPage() {
             <div className="flex justify-between items-center py-1">
               <span className="text-gray-400 text-xs">No. HP</span>
               <span className="text-gray-700 text-xs font-medium">
-                {(user as { noHp?: string } | null)?.noHp ?? '—'}
+                {profil?.nomorPonsel ?? '—'}
               </span>
             </div>
             <div className="flex justify-between items-center py-1">
