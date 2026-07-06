@@ -258,20 +258,88 @@ const STATUS_GIZI_DIST: Record<StatusGroup, { s: string; w: number }[]> = {
 // ============================================================
 
 const WARGA_IBU_NAMES = [
-  'Siti Aminah', 'Dewi Lestari', 'Sri Wahyuni', 'Rini Handayani', 'Yuni Astuti',
-  'Eni Susanti', 'Wati Rahayu', 'Anik Suryani', 'Tutik Wulandari', 'Sari Utami',
-  'Endah Priyatni', 'Ning Raharti', 'Retno Widayati', 'Umi Kulsum', 'Puji Lestari',
+  'Siti Aminah Rahayu', 'Dewi Lestari Handayani', 'Sri Wahyuni', 'Rini Handayani Putri', 'Yuni Astuti Wibowo',
+  'Eni Susanti', 'Wati Rahayu Saputri', 'Anik Suryani', 'Tutik Wulandari', 'Sari Utami Dewi',
+  'Endah Priyatni', 'Ning Raharti Susilo', 'Retno Widayati', 'Umi Kulsum', 'Puji Lestari Wahyu',
   'Hartini Soewondo', 'Kustiyah Broto', 'Lastri Mulyani', 'Sumarni Dwiputri', 'Niken Cahyani',
+  'Fitri Nurhalimah', 'Anisa Rachmawati', 'Lilis Sulistyowati', 'Murni Setyaningrum', 'Wiwik Handayani',
+  'Rina Kusumastuti', 'Tri Wahyuningsih', 'Nanik Prihatiningsih', 'Devi Kurniasari', 'Riska Oktaviani',
+  'Suci Ramadhani', 'Yayuk Setiawati', 'Ika Nuryati', 'Lia Febrianti', 'Mila Agustina',
+  'Nita Permatasari', 'Ratih Puspitasari', 'Vera Kusumawati', 'Dian Pramesti', 'Hesti Widyastuti',
+  'Aprilia Ratnasari', 'Erna Wahyuningsih', 'Kristina Dewi', 'Lutviana Sari', 'Melinda Cahyani',
+  'Novi Andriani', 'Oktaviana Putri', 'Priyanti Lestari', 'Qomariyah Hidayah', 'Rukayah Susanti',
 ]
 
 const BALITA_NAMES_L = [
-  'Bima Prakoso', 'Aldi Susanto', 'Fajar Nugroho', 'Rizki Hidayat', 'Bayu Setiawan',
-  'Dimas Wicaksono', 'Agus Prasetyo', 'Hendra Gunawan', 'Wahyu Santoso', 'Teguh Kurniawan',
+  'Muhammad Alfatih Ramadhan', 'Raka Aditya Pratama', 'Zhafran Malik Fawwaz',
+  'Arsyad Fikri Maulana', 'Alvaro Rizky Mahendra', 'Daffa Putra Nugraha',
+  'Faiz Ardiansyah', 'Ghazy Naufal Pratama', 'Haikal Mubaraq', 'Ilham Ferdianto',
+  'Javier Aldo Santoso', 'Kevin Ardika Putra', 'Luthfi Hamdani', 'Maulana Yusuf',
+  'Naufal Abidzar Rahman', 'Octa Bagus Prasetyo', 'Pandu Wicaksono', 'Qadafi Rizky',
+  'Raditya Surya Prabowo', 'Sultan Farhan Akbar', 'Tirto Adi Nugroho', 'Umar Haidar',
+  'Vito Bintang Erlangga', 'Wahyu Dian Saputra', 'Xander Arya Kusuma', 'Yoga Pratama',
+  'Zidan Fadhilah Putra', 'Abyan Nabil Hafizh', 'Bintang Cahya Ramadhan', 'Candra Eka Putra',
 ]
 
 const BALITA_NAMES_P = [
-  'Ayu Puspita', 'Rini Cahyanti', 'Dewi Kusuma', 'Sari Wulandari', 'Indah Permatasari',
-  'Bunga Rahayu', 'Tari Handayani', 'Laras Pertiwi', 'Citra Dewi', 'Melati Suci',
+  'Aisyah Humaira Putri', 'Kayla Nasywa Azzahra', 'Naila Khairunnisa',
+  'Keisya Anindita Prameswari', 'Salsabila Nur Aini', 'Zahra Aulia Ramadhani',
+  'Alya Fadhilah Sari', 'Bunga Citra Lestari', 'Cantika Dwi Rahayu', 'Delia Putri Anjani',
+  'Elsa Nurrahma', 'Fiona Maharani', 'Gita Ayu Puspita', 'Hana Safira Dewi',
+  'Intan Permata Sari', 'Jasmine Revalina', 'Kirana Ayu Wulandari', 'Lalita Nindya Putri',
+  'Maheswari Aditya', 'Nadia Zahra Fitri', 'Olivia Citra Dewi', 'Putri Raisa Amelia',
+  'Qisthi Nur Aisyah', 'Raisa Andini Putri', 'Salwa Nabila Husna', 'Tiara Nadindra',
+  'Ulfah Zulaikha', 'Vanya Aurelia', 'Wafda Nur Hikmah', 'Xena Callista Dewi',
+]
+
+// ============================================================
+// NAMA KADER (dipakai untuk seed kader per posyandu)
+// ============================================================
+
+const KADER_NAMES = [
+  'Sumiyati Rahayu', 'Endang Sulistyowati', 'Kristanti Dewi', 'Wahyuni Hartono',
+  'Sri Mulyani', 'Parti Lestari', 'Murti Handayani', 'Suprapti Winarni',
+  'Katmi Sutrisno', 'Lasmi Wahyudi', 'Darwati Sudarmono', 'Harni Supriyadi',
+  'Lilik Suryani', 'Tukini Rahardjo', 'Sarmi Wibowo', 'Watini Sukamto',
+  'Sukini Priyatno', 'Tarmi Soetomo', 'Ngatini Hartojo', 'Karmini Subagyo',
+  'Sugiyanti Supardi', 'Tumini Wiryanto', 'Rusmini Suwanto', 'Kartini Suharto',
+  'Martini Soedibjo', 'Suratmi Wiryo', 'Parmi Sunarto', 'Sutarmi Basuki',
+  'Warsini Santoso', 'Jumini Haryadi',
+]
+
+// Kader config per posyandu (index sesuai POSYANDU_DATA)
+// Format: [{ nama, role }] — HP + kaderIdx di-generate otomatis
+const KADER_CONFIG: Array<Array<{ nama: string; role: 'kader' | 'ketua_kader' }>> = [
+  // 0: Posyandu Mawar (Mergangsan) — seed.demo.ts sudah buat 2 kader; massal tambah 1
+  [{ nama: 'Sumiyati Rahayu', role: 'kader' }],
+  // 1: Posyandu Melati
+  [{ nama: 'Endang Sulistyowati', role: 'ketua_kader' }, { nama: 'Kristanti Dewi', role: 'kader' }, { nama: 'Wahyuni Hartono', role: 'kader' }],
+  // 2: Posyandu Anggrek
+  [{ nama: 'Sri Mulyani', role: 'ketua_kader' }, { nama: 'Parti Lestari', role: 'kader' }, { nama: 'Murti Handayani', role: 'kader' }],
+  // 3: Posyandu Dahlia
+  [{ nama: 'Suprapti Winarni', role: 'ketua_kader' }, { nama: 'Katmi Sutrisno', role: 'kader' }],
+  // 4: Posyandu Kenanga
+  [{ nama: 'Lasmi Wahyudi', role: 'ketua_kader' }, { nama: 'Darwati Sudarmono', role: 'kader' }, { nama: 'Harni Supriyadi', role: 'kader' }],
+  // 5: Posyandu Seruni (Gedongtengen)
+  [{ nama: 'Lilik Suryani', role: 'ketua_kader' }, { nama: 'Tukini Rahardjo', role: 'kader' }, { nama: 'Sarmi Wibowo', role: 'kader' }],
+  // 6: Posyandu Cempaka
+  [{ nama: 'Watini Sukamto', role: 'ketua_kader' }, { nama: 'Sukini Priyatno', role: 'kader' }],
+  // 7: Posyandu Kamboja
+  [{ nama: 'Tarmi Soetomo', role: 'ketua_kader' }, { nama: 'Ngatini Hartojo', role: 'kader' }, { nama: 'Karmini Subagyo', role: 'kader' }],
+  // 8: Posyandu Aster
+  [{ nama: 'Sugiyanti Supardi', role: 'ketua_kader' }, { nama: 'Tumini Wiryanto', role: 'kader' }],
+  // 9: Posyandu Bougenville
+  [{ nama: 'Rusmini Suwanto', role: 'ketua_kader' }, { nama: 'Kartini Suharto', role: 'kader' }, { nama: 'Martini Soedibjo', role: 'kader' }],
+  // 10: Posyandu Flamboyan (Umbulharjo)
+  [{ nama: 'Suratmi Wiryo', role: 'ketua_kader' }, { nama: 'Parmi Sunarto', role: 'kader' }, { nama: 'Sutarmi Basuki', role: 'kader' }],
+  // 11: Posyandu Teratai
+  [{ nama: 'Warsini Santoso', role: 'ketua_kader' }, { nama: 'Jumini Haryadi', role: 'kader' }],
+  // 12: Posyandu Wijayakusuma
+  [{ nama: 'Suratmi Wiryo', role: 'ketua_kader' }, { nama: 'Katmi Sutrisno', role: 'kader' }],
+  // 13: Posyandu Tulip
+  [{ nama: 'Endang Sulistyowati', role: 'ketua_kader' }, { nama: 'Lilik Suryani', role: 'kader' }, { nama: 'Parti Lestari', role: 'kader' }],
+  // 14: Posyandu Lavender
+  [{ nama: 'Sri Mulyani', role: 'ketua_kader' }, { nama: 'Darwati Sudarmono', role: 'kader' }],
 ]
 
 // ============================================================
@@ -429,6 +497,7 @@ export async function seedMassal(prisma: PrismaClient): Promise<void> {
   const demoHash = await bcrypt.hash('Demo1234!', BCRYPT_ROUNDS)
   const massalHash = await bcrypt.hash('Warga1234!', BCRYPT_ROUNDS)
   const puskHash = await bcrypt.hash('Massal1234!', BCRYPT_ROUNDS)
+  const pinHash = await bcrypt.hash('123456', BCRYPT_ROUNDS)
 
   // ---- 1. Upsert 3 Puskesmas ----
   const puskesmasMap = new Map<string, { id: string }>()
@@ -482,6 +551,29 @@ export async function seedMassal(prisma: PrismaClient): Promise<void> {
     posyanduList.push(posyandu)
   }
 
+  // ---- 2b. Create Kader per posyandu ----
+  let totalKader = 0
+  for (const [posIdx, posyandu] of posyanduList.entries()) {
+    const kaders = KADER_CONFIG[posIdx] ?? []
+    for (const [kIdx, kConf] of kaders.entries()) {
+      const hp = '0821' + String(posIdx).padStart(2, '0') + String(kIdx).padStart(2, '0') + '0000'
+      const existing = await prisma.kader.findFirst({ where: { nomorHp: hp } })
+      if (!existing) {
+        await prisma.kader.create({
+          data: {
+            posyanduId: posyandu.id,
+            namaLengkap: kConf.nama,
+            nomorHp: hp,
+            pinHash,
+            role: kConf.role,
+          },
+        })
+        totalKader++
+      }
+    }
+  }
+  console.log(`✓ Kader dibuat/dilewati (sudah ada): ${totalKader} baru`)
+
   // ---- 3. Create Warga + Balita per posyandu ----
   let totalBalita = 0
   const balitaRecords: BalitaRecord[] = []
@@ -528,8 +620,8 @@ export async function seedMassal(prisma: PrismaClient): Promise<void> {
             nikBalita: balitaNik,
             namaBalita:
               jenisKelamin === JenisKelamin.laki_laki
-                ? BALITA_NAMES_L[balitaIdx % 10]
-                : BALITA_NAMES_P[balitaIdx % 10],
+                ? BALITA_NAMES_L[balitaIdx % 30]
+                : BALITA_NAMES_P[balitaIdx % 30],
             tanggalLahir,
             jenisKelamin,
           },
@@ -539,6 +631,33 @@ export async function seedMassal(prisma: PrismaClient): Promise<void> {
       // Kumpulkan untuk loop Pemeriksaan + Imunisasi di bawah
       balitaRecords.push({ balita, statusGizi, tanggalLahir, posIdx, balitaIdx })
       totalBalita++
+
+      // ~10% warga punya anak ke-2 (balitaIdx % 10 === 5)
+      if (balitaIdx % 10 === 5) {
+        const jk2: JenisKelamin = balitaIdx % 4 === 1 ? JenisKelamin.laki_laki : JenisKelamin.perempuan
+        const lahir2 = new Date(tanggalLahir.getTime() + (18 + (posIdx % 12)) * 30 * 24 * 60 * 60 * 1000)
+        if (lahir2 > new Date()) { /* anak ke-2 belum lahir, skip */ }
+        else {
+          const nik2 = genNIK(posIdx, balitaIdx + 500)
+          let balita2 = await prisma.balita.findFirst({ where: { nikBalita: nik2 } })
+          if (!balita2) {
+            const sg2 = pickWeighted(STATUS_GIZI_DIST[entry.statusGroup], posIdx * 200 + balitaIdx)
+            balita2 = await prisma.balita.create({
+              data: {
+                wargaId: warga.id,
+                nikBalita: nik2,
+                namaBalita: jk2 === JenisKelamin.laki_laki
+                  ? BALITA_NAMES_L[(balitaIdx + 15) % 30]
+                  : BALITA_NAMES_P[(balitaIdx + 15) % 30],
+                tanggalLahir: lahir2,
+                jenisKelamin: jk2,
+              },
+            })
+            balitaRecords.push({ balita: balita2, statusGizi: sg2, tanggalLahir: lahir2, posIdx, balitaIdx: balitaIdx + 500 })
+            totalBalita++
+          }
+        }
+      }
     }
 
     console.log('✓', entry.namaPosyandu, '—', entry.targetBalita, 'balita')

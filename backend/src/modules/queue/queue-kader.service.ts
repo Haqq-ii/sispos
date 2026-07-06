@@ -189,16 +189,28 @@ export async function getKaderDashboardStats(kaderId: string): Promise<{
       GROUP BY p."statusGizi"
     `,
 
-    // G: peringatanRisiko — ambil 20, dedup ke 10 (lebih dari 10 untuk ruang dedup)
-    prisma.pemeriksaan.findMany({
-      where: {
-        statusGizi: { in: ['kurang', 'buruk', 'pendek', 'sangat_pendek'] },
-        balita: { warga: { posyanduUtamaId: posyanduId } },
-      },
-      orderBy: { zScoreBbU: 'asc' },
-      take: 20,
-      include: { balita: { select: { namaBalita: true } } },
-    }),
+    // G: peringatanRisiko — latest pemeriksaan per balita, hanya yang berisiko
+    prisma.$queryRaw<Array<{
+      balitaId: string
+      namaBalita: string
+      zScoreBbU: number | null
+      zScoreTbU: number | null
+      statusGizi: string
+    }>>`
+      SELECT DISTINCT ON (b.id)
+        b.id AS "balitaId",
+        b."namaBalita",
+        p."zScoreBbU",
+        p."zScoreTbU",
+        p."statusGizi"
+      FROM balita b
+      JOIN warga w ON b."wargaId" = w.id
+      JOIN pemeriksaan p ON p."balitaId" = b.id
+      WHERE w."posyanduUtamaId" = ${posyanduId}
+        AND p."statusGizi" IN ('kurang', 'buruk', 'pendek', 'sangat_pendek')
+      ORDER BY b.id, p."tanggalPemeriksaan" DESC
+      LIMIT 10
+    `,
   ])
 
   // D: risikoStunting
@@ -229,21 +241,15 @@ export async function getKaderDashboardStats(kaderId: string): Promise<{
     else if (row.statusGizi === 'pendek' || row.statusGizi === 'sangat_pendek') distribusiGiziBulanIni.pendek += jumlah
   }
 
-  // G: dedup by balitaId, slice ke 10
-  const seenBalita = new Set<string>()
+  // G: sudah DISTINCT ON dari query — sort by zScoreBbU ascending (terburuk duluan)
   const peringatanRisiko = pemeriksaanRisiko
-    .filter((p) => {
-      if (seenBalita.has(p.balitaId)) return false
-      seenBalita.add(p.balitaId)
-      return true
-    })
-    .slice(0, 10)
+    .sort((a, b) => (a.zScoreBbU ?? 0) - (b.zScoreBbU ?? 0))
     .map((p) => ({
       balitaId: p.balitaId,
-      namaBalita: p.balita.namaBalita,
-      zScoreBbU: p.zScoreBbU,
-      zScoreTbU: p.zScoreTbU,
-      statusGizi: p.statusGizi as string,
+      namaBalita: p.namaBalita,
+      zScoreBbU: p.zScoreBbU !== null ? Number(p.zScoreBbU) : null,
+      zScoreTbU: p.zScoreTbU !== null ? Number(p.zScoreTbU) : null,
+      statusGizi: p.statusGizi,
     }))
 
   logger.debug({ kaderId }, 'getKaderDashboardStats called')
