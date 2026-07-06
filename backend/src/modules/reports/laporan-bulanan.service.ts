@@ -140,6 +140,137 @@ async function getPemeriksaanData(
     })
 }
 
+// ── Types for preview endpoint ────────────────────────────────────────────
+export type PreviewRow = {
+  namaBalita: string
+  nikBalita: string | null
+  namaOrangTua: string
+  tanggalLahir: string
+  jenisKelamin: string
+  usiaBulan: number
+  beratBadan: number | null
+  tinggiBadan: number | null
+  zScoreBbU: number | null
+  zScoreTbU: number | null
+  zScoreBbTb: number | null
+  statusGizi: string
+  namaPosyandu: string
+  tanggalPemeriksaan: string
+}
+
+export type PreviewStats = {
+  totalPemeriksaan: number
+  buruk: number; kurang: number; normal: number
+  lebih: number; obesitas: number
+  pendek: number; sangatPendek: number
+  posyanduList: { id: string; nama: string }[]
+}
+
+export type PreviewBulananResult = {
+  rows: PreviewRow[]
+  stats: PreviewStats
+  meta: { total: number; page: number; limit: number }
+}
+
+// ── getPreviewBulanan ─────────────────────────────────────────────────────
+export async function getPreviewBulanan(
+  puskesmasId: string,
+  bulan: string,
+  posyanduIdFilter: string | undefined,
+  page: number,
+  limit: number,
+): Promise<PreviewBulananResult> {
+  const { startOfMonth, startOfNextMonth } = parseBulan(bulan)
+
+  const allPosyandu = await prisma.posyandu.findMany({
+    where: { puskesmasId },
+    select: { id: true, namaPosyandu: true },
+    orderBy: { namaPosyandu: 'asc' },
+  })
+  if (allPosyandu.length === 0) {
+    const empty: PreviewStats = { totalPemeriksaan: 0, buruk: 0, kurang: 0, normal: 0, lebih: 0, obesitas: 0, pendek: 0, sangatPendek: 0, posyanduList: [] }
+    return { rows: [], stats: empty, meta: { total: 0, page, limit } }
+  }
+
+  const posyanduMap = new Map(allPosyandu.map(p => [p.id, p.namaPosyandu]))
+  const filteredIds = posyanduIdFilter
+    ? allPosyandu.filter(p => p.id === posyanduIdFilter).map(p => p.id)
+    : allPosyandu.map(p => p.id)
+
+  const whereClause = {
+    tanggalPemeriksaan: { gte: startOfMonth, lt: startOfNextMonth },
+    balita: { warga: { posyanduUtamaId: { in: filteredIds } } },
+  }
+
+  const [total, statusGroups] = await Promise.all([
+    prisma.pemeriksaan.count({ where: whereClause }),
+    prisma.pemeriksaan.groupBy({
+      by: ['statusGizi'],
+      where: whereClause,
+      _count: { id: true },
+    }),
+  ])
+
+  const sm: Record<string, number> = {}
+  for (const g of statusGroups) sm[g.statusGizi ?? ''] = (sm[g.statusGizi ?? ''] ?? 0) + g._count.id
+
+  const rows: PreviewRow[] = (await prisma.pemeriksaan.findMany({
+    where: whereClause,
+    skip: (page - 1) * limit,
+    take: limit,
+    orderBy: [{ tanggalPemeriksaan: 'desc' }],
+    select: {
+      beratBadan: true, tinggiBadan: true,
+      zScoreBbU: true, zScoreTbU: true, zScoreBbTb: true,
+      statusGizi: true, statusGiziOverride: true, tanggalPemeriksaan: true,
+      balita: {
+        select: {
+          namaBalita: true, nikBalita: true, tanggalLahir: true, jenisKelamin: true,
+          warga: { select: { namaLengkap: true, posyanduUtamaId: true } },
+        },
+      },
+    },
+  }))
+    .filter(p => p.balita.warga?.posyanduUtamaId != null)
+    .map(p => {
+      const usiaBulan = ageInMonths(new Date(p.balita.tanggalLahir), new Date(p.tanggalPemeriksaan))
+      const statusEfektif = p.statusGiziOverride ?? p.statusGizi ?? ''
+      const posId = p.balita.warga!.posyanduUtamaId!
+      return {
+        namaBalita: p.balita.namaBalita,
+        nikBalita: p.balita.nikBalita ?? null,
+        namaOrangTua: p.balita.warga?.namaLengkap ?? '',
+        tanggalLahir: formatTanggal(new Date(p.balita.tanggalLahir)),
+        jenisKelamin: p.balita.jenisKelamin === 'laki_laki' ? 'L' : 'P',
+        usiaBulan,
+        beratBadan: p.beratBadan,
+        tinggiBadan: p.tinggiBadan,
+        zScoreBbU: p.zScoreBbU !== null ? Math.round(p.zScoreBbU * 100) / 100 : null,
+        zScoreTbU: p.zScoreTbU !== null ? Math.round(p.zScoreTbU * 100) / 100 : null,
+        zScoreBbTb: p.zScoreBbTb !== null ? Math.round(p.zScoreBbTb * 100) / 100 : null,
+        statusGizi: statusEfektif,
+        namaPosyandu: posyanduMap.get(posId) ?? '',
+        tanggalPemeriksaan: formatTanggal(new Date(p.tanggalPemeriksaan)),
+      }
+    })
+
+  return {
+    rows,
+    stats: {
+      totalPemeriksaan: total,
+      buruk: sm['buruk'] ?? 0,
+      kurang: sm['kurang'] ?? 0,
+      normal: sm['normal'] ?? 0,
+      lebih: sm['lebih'] ?? 0,
+      obesitas: sm['obesitas'] ?? 0,
+      pendek: sm['pendek'] ?? 0,
+      sangatPendek: sm['sangat_pendek'] ?? 0,
+      posyanduList: allPosyandu.map(p => ({ id: p.id, nama: p.namaPosyandu })),
+    },
+    meta: { total, page, limit },
+  }
+}
+
 // ── generateLaporanBulananXlsx ────────────────────────────────────────────
 
 /**

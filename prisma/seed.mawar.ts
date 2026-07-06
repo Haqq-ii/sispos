@@ -145,6 +145,23 @@ function pemDate(birthDate: Date, monthOffset: number): Date {
   return d
 }
 
+// Jadwal imunisasi nasional (urutan bulan usia → vaksin + dosis)
+const IMUNISASI_SCHEDULE: Array<{ bulan: number; vaksin: string; dosis: number }> = [
+  { bulan: 0,  vaksin: 'Hepatitis B',  dosis: 1 },
+  { bulan: 1,  vaksin: 'BCG',          dosis: 1 },
+  { bulan: 1,  vaksin: 'Polio',        dosis: 1 },
+  { bulan: 2,  vaksin: 'DPT-HB-Hib',  dosis: 1 },
+  { bulan: 2,  vaksin: 'Polio',        dosis: 2 },
+  { bulan: 3,  vaksin: 'DPT-HB-Hib',  dosis: 2 },
+  { bulan: 3,  vaksin: 'Polio',        dosis: 3 },
+  { bulan: 4,  vaksin: 'DPT-HB-Hib',  dosis: 3 },
+  { bulan: 4,  vaksin: 'Polio',        dosis: 4 },
+  { bulan: 4,  vaksin: 'IPV',          dosis: 1 },
+  { bulan: 9,  vaksin: 'MR',           dosis: 1 },
+  { bulan: 18, vaksin: 'DPT-HB-Hib',  dosis: 4 },
+  { bulan: 18, vaksin: 'MR',           dosis: 2 },
+]
+
 // ════════════════════════════════════════════════════════════════════════════
 // MAIN EXPORT
 // ════════════════════════════════════════════════════════════════════════════
@@ -152,7 +169,7 @@ function pemDate(birthDate: Date, monthOffset: number): Date {
 export async function seedMawar(prisma: PrismaClient): Promise<void> {
   console.log('🌱 Seeding Posyandu Mawar (riwayat pemeriksaan realistis)...')
 
-  const TODAY = new Date('2026-07-06')
+  const TODAY = new Date()
 
   const posyanduRow = await prisma.posyandu.findFirst({ where: { namaPosyandu: 'Posyandu Mawar' } })
   if (!posyanduRow) throw new Error('Posyandu Mawar tidak ditemukan — jalankan seedDemo dulu')
@@ -191,6 +208,31 @@ export async function seedMawar(prisma: PrismaClient): Promise<void> {
       })
     }
     return totalMonths
+  }
+
+  // ── generateImunisasi: hapus lama, buat baru sesuai usia balita ─────────
+
+  async function generateImunisasi(balitaId: string, birthDate: Date): Promise<number> {
+    await prisma.imunisasi.deleteMany({ where: { balitaId } })
+    const ageNow = ageInMonths(birthDate, TODAY)
+    let count = 0
+    for (const sch of IMUNISASI_SCHEDULE) {
+      if (sch.bulan > ageNow) break
+      const tgl = new Date(birthDate)
+      tgl.setMonth(tgl.getMonth() + sch.bulan)
+      tgl.setDate(10)
+      await prisma.imunisasi.create({
+        data: {
+          balitaId,
+          kaderId,
+          namaVaksin: sch.vaksin,
+          dosisKe: sch.dosis,
+          tanggalInjeksi: tgl,
+        },
+      })
+      count++
+    }
+    return count
   }
 
   // ── upsertKeluarga: buat warga + balita jika belum ada ──────────────────
@@ -247,7 +289,8 @@ export async function seedMawar(prisma: PrismaClient): Promise<void> {
       if (age <= 21) return 'kurang'          // mulai stabil
       return 'kurang_ringan'                  // pemulihan bertahap (masih kurang, tren naik)
     })
-    console.log(`  ✓ Budi Santoso: ${n} pemeriksaan — normal→kurang_berat→kurang_ringan`)
+    const ni = await generateImunisasi(budiBalita.id, new Date('2024-01-15'))
+    console.log(`  ✓ Budi Santoso: ${n} pemeriksaan, ${ni} imunisasi — normal→kurang_berat→kurang_ringan`)
   } else {
     console.log('  ⚠ Budi Santoso tidak ditemukan (nikBalita 3471012345670002)')
   }
@@ -264,7 +307,8 @@ export async function seedMawar(prisma: PrismaClient): Promise<void> {
       if (age <= 3) return 'normal'
       return 'pendek'
     })
-    console.log(`  ✓ Sari Dewi: ${n} pemeriksaan — TB/U pendek, BB relatif normal`)
+    const ni = await generateImunisasi(sariBalita.id, new Date('2024-10-01'))
+    console.log(`  ✓ Sari Dewi: ${n} pemeriksaan, ${ni} imunisasi — TB/U pendek, BB relatif normal`)
   } else {
     console.log('  ⚠ Sari Dewi tidak ditemukan (nikBalita 3471012345670003)')
   }
@@ -386,8 +430,9 @@ export async function seedMawar(prisma: PrismaClient): Promise<void> {
   for (const fam of families) {
     const { balita } = await upsertKeluarga(fam)
     const n = await generateRiwayat(balita.id, fam.gender, fam.lahir, fam.profileFn)
+    const ni = await generateImunisasi(balita.id, fam.lahir)
     const age = ageInMonths(fam.lahir, TODAY)
-    console.log(`  ✓ ${fam.namaBalita} (${age} bln, ${n} pemeriksaan)`)
+    console.log(`  ✓ ${fam.namaBalita} (${age} bln, ${n} pemeriksaan, ${ni} imunisasi)`)
   }
 
   // ── Summary ──────────────────────────────────────────────────────────────

@@ -17,7 +17,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronRight, AlertTriangle, Download } from 'lucide-react'
+import { ChevronRight, AlertTriangle, Download, Info } from 'lucide-react'
 import {
   BarChart,
   Bar,
@@ -213,7 +213,19 @@ export default function KaderDashboardPage() {
               <p className="text-white text-xl font-extrabold leading-none">
                 {dashboardStats?.totalBalita ?? '—'}
               </p>
-              <p className="text-green-200 text-xs mt-1 leading-tight">Total<br />Balita</p>
+              <p className="text-green-200 text-xs mt-1 leading-tight">Balita<br />Terdaftar</p>
+              <button
+                type="button"
+                onClick={() => alert(
+                  'Balita Terdaftar: jumlah balita yang terdaftar di posyandu ini (termasuk yang tidak hadir).\n\n' +
+                  'Berbeda dengan "Total Balita" di laporan e-PPGBM yang hanya menghitung balita yang diperiksa pada bulan berjalan.'
+                )}
+                className="text-green-300 mt-0.5 mx-auto block"
+                title="Info definisi Balita Terdaftar"
+                aria-label="Info definisi Balita Terdaftar"
+              >
+                <Info size={9} />
+              </button>
             </div>
             <div className="bg-white/15 rounded-xl p-3 text-center">
               <p className="text-amber-300 text-xl font-extrabold leading-none">

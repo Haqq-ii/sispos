@@ -557,15 +557,15 @@ export async function seedMassal(prisma: PrismaClient): Promise<void> {
     const kaders = KADER_CONFIG[posIdx] ?? []
     for (const [kIdx, kConf] of kaders.entries()) {
       const hp = '0821' + String(posIdx).padStart(2, '0') + String(kIdx).padStart(2, '0') + '0000'
-      const existing = await prisma.kader.findFirst({ where: { nomorHp: hp } })
+      const existing = await prisma.kader.findFirst({ where: { nomorPonsel: hp } })
       if (!existing) {
         await prisma.kader.create({
           data: {
             posyanduId: posyandu.id,
             namaLengkap: kConf.nama,
-            nomorHp: hp,
+            nomorPonsel: hp,
             pinHash,
-            role: kConf.role,
+            isKetua: kConf.role === 'ketua_kader',
           },
         })
         totalKader++

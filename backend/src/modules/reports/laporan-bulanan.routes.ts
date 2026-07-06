@@ -17,7 +17,7 @@ import type { Response } from 'express'
 import { authMiddleware } from '../../shared/middleware/auth.middleware'
 import { requireRole } from '../../shared/middleware/require-role.middleware'
 import type { AuthRequest } from '../../shared/middleware/auth.middleware'
-import { generateLaporanBulananXlsx, generateLaporanBulananPdf } from './laporan-bulanan.service'
+import { generateLaporanBulananXlsx, generateLaporanBulananPdf, getPreviewBulanan } from './laporan-bulanan.service'
 
 export const laporanBulananRouter = Router()
 
@@ -85,3 +85,43 @@ async function laporanBulananHandler(req: AuthRequest, res: Response): Promise<v
 }
 
 laporanBulananRouter.get('/laporan-bulanan', ...puskesmasAuth, laporanBulananHandler)
+
+/**
+ * GET /preview-bulanan
+ * Query params:
+ *   bulan      (required): YYYY-MM format
+ *   posyanduId (optional): filter per posyandu
+ *   page       (optional, default 1)
+ *   limit      (optional, default 20, max 50)
+ */
+async function previewBulananHandler(req: AuthRequest, res: Response): Promise<void> {
+  const { bulan, posyanduId, page: pageStr, limit: limitStr } =
+    req.query as Record<string, string | undefined>
+
+  if (!bulan || !/^\d{4}-\d{2}$/.test(bulan)) {
+    res.status(400).json({
+      success: false,
+      error: 'VALIDASI_GAGAL',
+      message: "Parameter 'bulan' wajib diisi dalam format YYYY-MM.",
+    })
+    return
+  }
+
+  const page = Math.max(1, parseInt(pageStr ?? '1') || 1)
+  const limit = Math.min(50, Math.max(1, parseInt(limitStr ?? '20') || 20))
+  const puskesmasId = req.user!.userId
+
+  try {
+    const result = await getPreviewBulanan(puskesmasId, bulan, posyanduId, page, limit)
+    res.json({ success: true, data: result.rows, stats: result.stats, meta: result.meta })
+  } catch (err) {
+    const e = err as { code?: string }
+    res.status(500).json({
+      success: false,
+      error: e.code ?? 'INTERNAL_ERROR',
+      message: 'Gagal memuat preview laporan.',
+    })
+  }
+}
+
+laporanBulananRouter.get('/preview-bulanan', ...puskesmasAuth, previewBulananHandler)
