@@ -1,13 +1,5 @@
-/**
- * FamilyAccountPage — Halaman daftar balita citizen (Keluarga Saya).
- *
- * Route: /citizen/family-account
- *
- * Menampilkan daftar balita yang terdaftar milik citizen yang sedang login,
- * diambil dari GET /api/balita. Fitur add/edit/delete balita out of scope (Tier 4).
- */
 import { Link } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Plus } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
 import { Skeleton } from '@/components/ui/skeleton'
@@ -20,6 +12,13 @@ interface BalitaItem {
   namaBalita: string
   tanggalLahir: string
   jenisKelamin: 'laki_laki' | 'perempuan' | string
+}
+
+interface ActiveAntrian {
+  id: string
+  balitaId: string
+  statusAntrian: string
+  nomorUrut: number
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -36,14 +35,42 @@ function labelJenisKelamin(jk: string): string {
   return jk === 'laki_laki' ? 'Laki-laki' : 'Perempuan'
 }
 
-// ── Component ──────────────────────────────────────────────────────────────────
+function getInitialBg(nama: string): string {
+  const colors = ['bg-green-100', 'bg-blue-100', 'bg-purple-100', 'bg-amber-100', 'bg-pink-100']
+  return colors[nama.charCodeAt(0) % colors.length]
+}
+
+function getInitialText(nama: string): string {
+  const colors = [
+    'text-green-700',
+    'text-blue-700',
+    'text-purple-700',
+    'text-amber-700',
+    'text-pink-700',
+  ]
+  return colors[nama.charCodeAt(0) % colors.length]
+}
+
+// ── FamilyAccountPage ──────────────────────────────────────────────────────────
 
 export default function FamilyAccountPage() {
-  const { data: balitaList, isLoading } = useQuery<BalitaItem[]>({
+  const { data: balitaList, isLoading: loadingBalita } = useQuery<BalitaItem[]>({
     queryKey: ['balita', 'saya'],
     queryFn: () => apiClient.get('/balita').then((r) => r.data.data as BalitaItem[]),
     staleTime: 60_000,
   })
+
+  const { data: activeAntrian } = useQuery<ActiveAntrian | null>({
+    queryKey: ['antrian', 'saya'],
+    queryFn: () =>
+      apiClient
+        .get('/antrian/saya')
+        .then((r) => (r.data.data as ActiveAntrian) ?? null)
+        .catch(() => null),
+    staleTime: 30_000,
+  })
+
+  const isLoading = loadingBalita
 
   return (
     <div className="min-h-full bg-[#f9fafb] pb-8">
@@ -58,8 +85,8 @@ export default function FamilyAccountPage() {
             <ArrowLeft size={20} className="text-white" />
           </Link>
           <div>
-            <h1 className="text-white font-bold text-xl leading-tight">Keluarga Saya</h1>
-            <p className="text-[#b9f8cf] text-xs mt-0.5">Daftar balita terdaftar</p>
+            <h1 className="text-white font-bold text-xl leading-tight">Family Account</h1>
+            <p className="text-[#b9f8cf] text-xs mt-0.5">Multi-profil balita dalam satu akun</p>
           </div>
         </div>
       </div>
@@ -69,9 +96,9 @@ export default function FamilyAccountPage() {
         {/* Loading state */}
         {isLoading && (
           <>
-            <Skeleton className="h-[80px] rounded-2xl" />
-            <Skeleton className="h-[80px] rounded-2xl" />
-            <Skeleton className="h-[80px] rounded-2xl" />
+            <Skeleton className="h-[88px] rounded-2xl" />
+            <Skeleton className="h-[88px] rounded-2xl" />
+            <Skeleton className="h-[88px] rounded-2xl" />
           </>
         )}
 
@@ -89,34 +116,83 @@ export default function FamilyAccountPage() {
         {!isLoading &&
           balitaList &&
           balitaList.length > 0 &&
-          balitaList.map((balita) => (
-            <div
-              key={balita.id}
-              className="bg-white border border-[#f3f4f6] rounded-2xl shadow-sm px-4 py-4 flex items-center gap-3"
-            >
-              {/* Avatar — first letter */}
-              <div className="w-10 h-10 rounded-full bg-[#dcfce7] flex items-center justify-center flex-shrink-0">
-                <span className="text-[#008236] font-bold text-sm">
-                  {balita.namaBalita[0]?.toUpperCase() ?? '?'}
-                </span>
-              </div>
+          balitaList.map((balita) => {
+            const hasAntrian =
+              activeAntrian?.balitaId === balita.id &&
+              activeAntrian.statusAntrian !== 'selesai' &&
+              activeAntrian.statusAntrian !== 'dibatalkan'
 
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <p className="text-[#1e2939] font-semibold text-sm leading-tight truncate">
-                  {balita.namaBalita}
-                </p>
-                <p className="text-[#99a1af] text-xs mt-0.5">
-                  {formatTanggal(balita.tanggalLahir)}
-                </p>
-              </div>
+            const bg = getInitialBg(balita.namaBalita)
+            const textColor = getInitialText(balita.namaBalita)
 
-              {/* Gender badge */}
-              <span className="bg-[#f3f4f6] text-[#364153] rounded-[10px] px-2 py-0.5 text-xs flex-shrink-0">
-                {labelJenisKelamin(balita.jenisKelamin)}
-              </span>
-            </div>
-          ))}
+            return (
+              <div
+                key={balita.id}
+                className={`bg-white border-2 rounded-2xl shadow-sm px-4 py-4 flex items-center gap-3 transition-colors ${
+                  hasAntrian ? 'border-[#008236]' : 'border-[#f3f4f6]'
+                }`}
+              >
+                {/* Avatar */}
+                <div
+                  className={`w-12 h-12 rounded-2xl ${bg} flex items-center justify-center flex-shrink-0`}
+                >
+                  <span className={`${textColor} font-extrabold text-xl`}>
+                    {balita.namaBalita[0]?.toUpperCase() ?? '?'}
+                  </span>
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-[#1e2939] font-bold text-sm leading-tight truncate">
+                    {balita.namaBalita}
+                  </p>
+                  <p className="text-[#99a1af] text-xs mt-0.5">
+                    {labelJenisKelamin(balita.jenisKelamin)} · Lahir {formatTanggal(balita.tanggalLahir)}
+                  </p>
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full mt-1 inline-block font-semibold ${
+                      hasAntrian
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-gray-100 text-gray-500'
+                    }`}
+                  >
+                    {hasAntrian
+                      ? `Antrian Aktif · No. ${activeAntrian!.nomorUrut}`
+                      : 'Belum Antri'}
+                  </span>
+                </div>
+
+                {/* Detail link */}
+                <Link
+                  to="/citizen/tumbuh-kembang"
+                  className={`px-3 py-2 rounded-xl text-xs font-semibold flex-shrink-0 transition-colors ${
+                    hasAntrian
+                      ? 'bg-[#008236] text-white'
+                      : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {hasAntrian ? '✓ Aktif' : 'Lihat'}
+                </Link>
+              </div>
+            )
+          })}
+
+        {/* Tambah Profil Anak — informational */}
+        {!isLoading && (
+          <button
+            disabled
+            className="w-full py-3.5 border-2 border-dashed border-[#b9f8cf] text-[#008236] rounded-2xl text-sm flex items-center justify-center gap-2 font-semibold opacity-60 cursor-not-allowed"
+          >
+            <Plus size={16} />
+            Tambah Profil Anak
+          </button>
+        )}
+
+        {!isLoading && (
+          <p className="text-center text-[#99a1af] text-xs">
+            Untuk menambah profil anak, hubungi petugas Posyandu.
+          </p>
+        )}
       </div>
     </div>
   )
