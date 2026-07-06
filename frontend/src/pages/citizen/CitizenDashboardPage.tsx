@@ -26,6 +26,7 @@ import {
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { useBalitaStore } from '@/stores/useBalitaStore'
 import { computeCountdown } from '@/hooks/useCountdownEstimasi'
 import apiClient from '@/lib/axios'
 
@@ -132,7 +133,7 @@ export default function CitizenDashboardPage() {
   const navigate = useNavigate()
   const { user } = useAuthStore()
   const [notifOpen, setNotifOpen] = useState(false)
-  const [selectedBalitaId, setSelectedBalitaId] = useState<string | null>(null)
+  const { selectedBalitaId, setSelectedBalitaId } = useBalitaStore()
 
   // Fetch daftar balita untuk chip selector di header
   const { data: balitaList } = useQuery<BalitaChip[]>({

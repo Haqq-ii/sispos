@@ -75,7 +75,8 @@ export async function createPemeriksaanHandler(req: AuthRequest, res: Response):
 export async function getCitizenRiwayatHandler(req: AuthRequest, res: Response): Promise<void> {
   const userId = req.user!.userId
   try {
-    const result = await getCitizenGrowthRiwayat(userId)
+    const balitaId = typeof req.query.balitaId === 'string' ? req.query.balitaId : undefined
+    const result = await getCitizenGrowthRiwayat(userId, balitaId)
     res.json({ success: true, data: result })
   } catch {
     res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: 'Terjadi kesalahan internal.' })

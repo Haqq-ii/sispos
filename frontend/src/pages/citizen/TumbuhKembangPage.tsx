@@ -27,6 +27,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { ZScoreChart, type ZScoreDataPoint } from '@/components/kader/ZScoreChart'
 import apiClient from '@/lib/axios'
+import { useBalitaStore } from '@/stores/useBalitaStore'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -82,13 +83,17 @@ export default function TumbuhKembangPage() {
   const [chartType, setChartType] = useState<'zscore' | 'bb' | 'tb'>('zscore')
 
   // Fetch riwayat pemeriksaan — GET /api/growth/riwayat
+  const { selectedBalitaId } = useBalitaStore()
+
   const { data: riwayatData, isLoading } = useQuery<RiwayatRecord[]>({
-    queryKey: ['growth', 'riwayat'],
+    queryKey: ['growth', 'riwayat', selectedBalitaId],
     queryFn: () =>
-      apiClient.get('/growth/riwayat').then((r) => {
-        const d = r.data.data
-        return Array.isArray(d) ? d : []
-      }),
+      apiClient
+        .get('/growth/riwayat', { params: selectedBalitaId ? { balitaId: selectedBalitaId } : {} })
+        .then((r) => {
+          const d = r.data.data
+          return Array.isArray(d) ? d : []
+        }),
     staleTime: 60_000,
     retry: false,
   })

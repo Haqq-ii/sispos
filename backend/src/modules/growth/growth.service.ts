@@ -342,7 +342,7 @@ export async function getPemeriksaanHistory(balitaId: string) {
  * IDOR-safe: filter via wargaId dari JWT, bukan dari client-supplied balitaId.
  * catatanKonsultasi / rekomendasiAi: TIDAK dikembalikan (encrypted, bukan untuk citizen).
  */
-export async function getCitizenGrowthRiwayat(wargaId: string): Promise<
+export async function getCitizenGrowthRiwayat(wargaId: string, balitaId?: string): Promise<
   {
     id: string
     tanggalPemeriksaan: string
@@ -354,17 +354,21 @@ export async function getCitizenGrowthRiwayat(wargaId: string): Promise<
     statusGizi: string
   }[]
 > {
-  // Ambil balita pertama milik warga (asc createdAt)
-  const balita = await prisma.balita.findFirst({
-    where: { wargaId },
-    orderBy: { createdAt: 'asc' },
-    select: { id: true },
-  })
-
-  if (!balita) return []
+  // Jika balitaId disuplai, verifikasi kepemilikan via wargaId (IDOR guard)
+  let resolvedBalitaId = balitaId
+  if (balitaId) {
+    const owned = await prisma.balita.findFirst({ where: { id: balitaId, wargaId }, select: { id: true } })
+    resolvedBalitaId = owned?.id
+  }
+  if (!resolvedBalitaId) {
+    // fallback: balita pertama milik warga
+    const balita = await prisma.balita.findFirst({ where: { wargaId }, orderBy: { createdAt: 'asc' }, select: { id: true } })
+    if (!balita) return []
+    resolvedBalitaId = balita.id
+  }
 
   const records = await prisma.pemeriksaan.findMany({
-    where: { balitaId: balita.id },
+    where: { balitaId: resolvedBalitaId },
     orderBy: { tanggalPemeriksaan: 'desc' },
     select: {
       id: true,
