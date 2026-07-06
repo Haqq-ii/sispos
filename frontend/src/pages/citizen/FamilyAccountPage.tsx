@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, Plus } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
 import { Skeleton } from '@/components/ui/skeleton'
+import { TambahBalitaModal } from '@/components/citizen/TambahBalitaModal'
 import apiClient from '@/lib/axios'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -71,8 +73,10 @@ export default function FamilyAccountPage() {
   })
 
   const isLoading = loadingBalita
+  const [showTambah, setShowTambah] = useState(false)
 
   return (
+    <>
     <div className="min-h-full bg-[#f9fafb] pb-8">
       {/* Green header */}
       <div className="bg-[#008236] px-4 pt-10 pb-5">
@@ -177,23 +181,20 @@ export default function FamilyAccountPage() {
             )
           })}
 
-        {/* Tambah Profil Anak — informational */}
+        {/* Tambah Profil Anak */}
         {!isLoading && (
           <button
-            disabled
-            className="w-full py-3.5 border-2 border-dashed border-[#b9f8cf] text-[#008236] rounded-2xl text-sm flex items-center justify-center gap-2 font-semibold opacity-60 cursor-not-allowed"
+            onClick={() => setShowTambah(true)}
+            className="w-full py-3.5 border-2 border-dashed border-[#b9f8cf] text-[#008236] rounded-2xl text-sm flex items-center justify-center gap-2 font-semibold hover:bg-green-50 transition-colors active:scale-95"
           >
             <Plus size={16} />
             Tambah Profil Anak
           </button>
         )}
-
-        {!isLoading && (
-          <p className="text-center text-[#99a1af] text-xs">
-            Untuk menambah profil anak, hubungi petugas Posyandu.
-          </p>
-        )}
       </div>
     </div>
+
+    <TambahBalitaModal open={showTambah} onClose={() => setShowTambah(false)} />
+    </>
   )
 }

@@ -25,6 +25,7 @@ import {
   goShowAntrianHandler,
   getAntrianDetailHandler,
   getKaderDashboardStatsHandler,
+  searchBalitaHandler,
 } from './queue-kader.controller'
 
 export const queueKaderRouter = Router()
@@ -54,6 +55,9 @@ queueKaderRouter.patch('/antrian/:id/selesai', ...kaderAuth, selesaikanAntrianHa
 
 // Go-show: daftar manual oleh kader
 queueKaderRouter.post('/kader/go-show', ...kaderAuth, goShowAntrianHandler)
+
+// Search balita by nama/NIK/nama warga/HP — untuk form go-show Meja 1
+queueKaderRouter.get('/kader/search-balita', ...kaderAuth, searchBalitaHandler)
 
 // Antrian detail (Meja 2: balita info) — WAJIB setelah /antrian/:id/hadir & /tangguhkan
 // agar Express tidak matching 'hadir' atau 'tangguhkan' sebagai ':id'

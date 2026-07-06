@@ -26,6 +26,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
+import { TambahBalitaModal } from '@/components/citizen/TambahBalitaModal'
 import { useAntrianStore } from '@/stores/useAntrianStore'
 import { useAmbilAntrian, useSesiAvailability } from '@/hooks/useSesiAvailability'
 import apiClient from '@/lib/axios'
@@ -119,6 +120,7 @@ export default function KonfirmasiAntrianPage() {
   const [selectedBalitaId, setSelectedBalitaId] = useState<string>('')
   const [mutationError, setMutationError] = useState<string | null>(null)
   const [errorCode, setErrorCode] = useState<string | null>(null)
+  const [showTambahBalita, setShowTambahBalita] = useState(false)
 
   // Semua hooks WAJIB dipanggil sebelum conditional return (Rules of Hooks)
   const { data: sesiList, isLoading: isLoadingSesi } = useSesiAvailability(jadwalId)
@@ -329,16 +331,16 @@ export default function KonfirmasiAntrianPage() {
               {!hasBalita ? (
                 <Alert>
                   <AlertDescription>
-                    Belum ada data balita. Tambahkan balita terlebih dahulu.
+                    Belum ada data balita. Tambahkan profil anak terlebih dahulu.
                   </AlertDescription>
                   <div className="mt-2">
                     <Button
                       type="button"
                       variant="ghost"
-                      className="h-auto p-0 text-sm text-primary"
-                      disabled
+                      className="h-auto p-0 text-sm text-green-700 hover:text-green-800"
+                      onClick={() => setShowTambahBalita(true)}
                     >
-                      Tambah Balita
+                      + Tambah Profil Anak
                     </Button>
                   </div>
                 </Alert>
@@ -397,6 +399,12 @@ export default function KonfirmasiAntrianPage() {
           </>
         )}
       </div>
+
+      <TambahBalitaModal
+        open={showTambahBalita}
+        onClose={() => setShowTambahBalita(false)}
+        onSuccess={(id) => setSelectedBalitaId(id)}
+      />
     </div>
   )
 }

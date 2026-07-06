@@ -7,9 +7,12 @@
 import { Router } from 'express'
 import { authMiddleware } from '../../shared/middleware/auth.middleware'
 import { requireRole } from '../../shared/middleware/require-role.middleware'
-import { getBalitaSayaHandler } from './child.controller'
+import { getBalitaSayaHandler, createBalitaHandler } from './child.controller'
 
 export const childRouter = Router()
 
 // GET /api/balita — Daftar balita milik citizen yang sedang login
 childRouter.get('/', authMiddleware, requireRole('citizen'), getBalitaSayaHandler)
+
+// POST /api/balita — Tambah profil balita baru oleh citizen
+childRouter.post('/', authMiddleware, requireRole('citizen'), createBalitaHandler)

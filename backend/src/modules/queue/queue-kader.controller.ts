@@ -14,6 +14,7 @@ import {
   getAntrianDetail,
   getKaderDashboardStats,
 } from './queue-kader.service'
+import { prisma } from '../../config/db'
 
 const SetActiveMejaSchema = z.object({
   mejaNumber: z.number({ required_error: 'mejaNumber wajib diisi' }).int().min(1).max(5, { message: 'Nomor meja harus 1-5' }),
@@ -134,6 +135,62 @@ export async function getKaderDashboardStatsHandler(req: AuthRequest, res: Respo
     res.status(200).json({ success: true, data, message: 'Statistik dashboard berhasil diambil.' })
   } catch (err) { handleErr(err, res) }
 }
+
+// ── GET /api/kader/search-balita ─────────────────────────────────────────────
+
+export async function searchBalitaHandler(req: AuthRequest, res: Response): Promise<void> {
+  const q = typeof req.query.q === 'string' ? req.query.q.trim() : ''
+  if (q.length < 2) {
+    res.json({ success: true, data: [] })
+    return
+  }
+  try {
+    const kaderId = req.user!.userId
+    const kader = await prisma.kader.findUnique({
+      where: { id: kaderId },
+      select: { posyanduId: true },
+    })
+    if (!kader) {
+      res.status(403).json({ success: false, error: 'AKSES_DITOLAK', message: 'Kader tidak ditemukan.' })
+      return
+    }
+    const results = await prisma.balita.findMany({
+      where: {
+        OR: [
+          { namaBalita: { contains: q, mode: 'insensitive' } },
+          { nikBalita: { contains: q } },
+          { warga: { namaLengkap: { contains: q, mode: 'insensitive' } } },
+          { warga: { nomorPonsel: { contains: q } } },
+        ],
+        warga: { posyanduUtamaId: kader.posyanduId },
+      },
+      select: {
+        id: true,
+        namaBalita: true,
+        nikBalita: true,
+        tanggalLahir: true,
+        jenisKelamin: true,
+        warga: { select: { id: true, namaLengkap: true, nomorPonsel: true } },
+      },
+      take: 10,
+    })
+    res.json({
+      success: true,
+      data: results.map((b) => ({
+        balitaId: b.id,
+        namaBalita: b.namaBalita,
+        nikBalita: b.nikBalita ?? null,
+        wargaId: b.warga.id,
+        namaWarga: b.warga.namaLengkap,
+        nomorPonsel: b.warga.nomorPonsel,
+      })),
+    })
+  } catch {
+    res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: 'Terjadi kesalahan internal.' })
+  }
+}
+
+// ── POST /api/kader/go-show ───────────────────────────────────────────────────
 
 export async function goShowAntrianHandler(req: AuthRequest, res: Response): Promise<void> {
   const parsed = GoShowSchema.safeParse(req.body)

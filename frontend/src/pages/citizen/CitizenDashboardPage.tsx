@@ -30,6 +30,30 @@ import { useBalitaStore } from '@/stores/useBalitaStore'
 import { computeCountdown } from '@/hooks/useCountdownEstimasi'
 import apiClient from '@/lib/axios'
 
+// ── Gizi helpers ───────────────────────────────────────────────────────────────
+
+function giziLabel(s: string): string {
+  const map: Record<string, string> = {
+    normal: 'Gizi Normal',
+    kurang: 'Gizi Kurang',
+    buruk: 'Gizi Buruk',
+    lebih: 'Gizi Lebih',
+    obesitas: 'Obesitas',
+    pendek: 'Pendek',
+    sangat_pendek: 'Sangat Pendek',
+  }
+  return map[s] ?? s
+}
+
+function giziClass(s: string): string {
+  if (s === 'normal') return 'bg-green-100 text-green-700'
+  if (s === 'kurang' || s === 'pendek') return 'bg-amber-100 text-amber-700'
+  if (s === 'buruk' || s === 'sangat_pendek') return 'bg-red-100 text-red-700'
+  if (s === 'lebih') return 'bg-orange-100 text-orange-700'
+  if (s === 'obesitas') return 'bg-red-100 text-red-700'
+  return 'bg-gray-100 text-gray-600'
+}
+
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface BalitaChip {
@@ -145,6 +169,21 @@ export default function CitizenDashboardPage() {
   // Auto-select balita pertama saat list loaded
   const effectiveBalitaId = selectedBalitaId ?? balitaList?.[0]?.id ?? null
   const selectedBalita = balitaList?.find((b) => b.id === effectiveBalitaId) ?? balitaList?.[0]
+
+  // Fetch status gizi terbaru untuk balita yang dipilih
+  const { data: riwayatGizi } = useQuery<Array<{ statusGizi: string }>>({
+    queryKey: ['growth', 'riwayat', effectiveBalitaId],
+    queryFn: () =>
+      apiClient
+        .get('/growth/riwayat', {
+          params: effectiveBalitaId ? { balitaId: effectiveBalitaId } : {},
+        })
+        .then((r) => r.data.data as Array<{ statusGizi: string }>),
+    staleTime: 5 * 60_000,
+    enabled: !!effectiveBalitaId,
+  })
+
+  const latestStatusGizi = riwayatGizi?.[0]?.statusGizi ?? null
 
   // Fetch antrian aktif hari ini — filter by balitaId yang dipilih
   const { data: antrian, isLoading } = useQuery<AntrianAktif | null>({
@@ -404,11 +443,15 @@ export default function CitizenDashboardPage() {
                       : 'Perempuan'
                     : 'Balita'}
                 </p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="bg-green-100 text-green-700 text-xs font-medium px-2 py-0.5 rounded-full">
-                    Gizi Normal
-                  </span>
-                </div>
+                {latestStatusGizi && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <span
+                      className={`text-xs font-medium px-2 py-0.5 rounded-full ${giziClass(latestStatusGizi)}`}
+                    >
+                      {giziLabel(latestStatusGizi)}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

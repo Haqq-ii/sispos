@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Lock, UserPlus, Loader2 } from 'lucide-react'
+import { Lock, UserPlus, Loader2, Search, X } from 'lucide-react'
 
 import { useToast } from '@/hooks/use-toast'
 import { useKaderSocket } from '@/hooks/useKaderSocket'
@@ -15,6 +15,15 @@ import { generateTempId } from '@/lib/offline-db'
 import { TukarMejaModal } from '@/components/kader/TukarMejaModal'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
+
+interface SearchBalitaResult {
+  balitaId: string
+  namaBalita: string
+  nikBalita: string | null
+  wargaId: string
+  namaWarga: string
+  nomorPonsel: string
+}
 
 type StatusAntrianValue =
   | 'menunggu'
@@ -97,9 +106,35 @@ function Meja1Content({ activeSlotId, clearActiveMejaMutation, resetStore }: Mej
   const [showGoShow, setShowGoShow] = useState(false)
   const [goShowBalitaId, setGoShowBalitaId] = useState('')
   const [goShowWargaId, setGoShowWargaId] = useState('')
+  const [goShowQuery, setGoShowQuery] = useState('')
+  const [goShowSelected, setGoShowSelected] = useState<SearchBalitaResult | null>(null)
+  const [showDropdown, setShowDropdown] = useState(false)
+  const searchRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
 
   // Realtime
   useKaderSocket(activeSlotId)
+
+  // Search balita untuk go-show
+  const { data: searchResults = [], isFetching: isSearching } = useQuery<SearchBalitaResult[]>({
+    queryKey: ['kader', 'search-balita', goShowQuery],
+    queryFn: () =>
+      apiClient
+        .get('/kader/search-balita', { params: { q: goShowQuery } })
+        .then((r) => r.data.data as SearchBalitaResult[]),
+    enabled: goShowQuery.length >= 2,
+    staleTime: 10_000,
+  })
 
   // Antrian list
   const { data: antrianList = [], isLoading } = useQuery<AntrianItem[]>({
@@ -144,9 +179,7 @@ function Meja1Content({ activeSlotId, clearActiveMejaMutation, resetStore }: Mej
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['antrian', 'kader', activeSlotId] })
       toast({ description: 'Antrian go-show berhasil dibuat.' })
-      setGoShowBalitaId('')
-      setGoShowWargaId('')
-      setShowGoShow(false)
+      resetGoShow()
     },
     onError: (error) => {
       const msg = isAxiosLikeError(error) ? error.response.data.message : 'Terjadi kesalahan.'
@@ -194,6 +227,23 @@ function Meja1Content({ activeSlotId, clearActiveMejaMutation, resetStore }: Mej
       return
     }
     tangguhkanMutation.mutate(antrianId)
+  }
+
+  function resetGoShow() {
+    setGoShowBalitaId('')
+    setGoShowWargaId('')
+    setGoShowQuery('')
+    setGoShowSelected(null)
+    setShowDropdown(false)
+    setShowGoShow(false)
+  }
+
+  function selectBalita(item: SearchBalitaResult) {
+    setGoShowSelected(item)
+    setGoShowBalitaId(item.balitaId)
+    setGoShowWargaId(item.wargaId)
+    setGoShowQuery('')
+    setShowDropdown(false)
   }
 
   const handleKeluarMeja = () => {
@@ -407,31 +457,71 @@ function Meja1Content({ activeSlotId, clearActiveMejaMutation, resetStore }: Mej
         {showGoShow && (
           <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-3 mb-2">
             <p className="text-sm font-semibold text-gray-700">Daftar Manual (Go-Show)</p>
-            <div className="space-y-2">
-              <input
-                type="text"
-                placeholder="ID Balita"
-                value={goShowBalitaId}
-                onChange={(e) => setGoShowBalitaId(e.target.value)}
-                className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#008236]"
-              />
-              <input
-                type="text"
-                placeholder="ID Warga (Orang Tua)"
-                value={goShowWargaId}
-                onChange={(e) => setGoShowWargaId(e.target.value)}
-                className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#008236]"
-              />
-            </div>
+
+            {/* Selected balita chip */}
+            {goShowSelected ? (
+              <div className="bg-white border border-[#b9f8cf] rounded-xl px-3 py-2.5 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-bold text-gray-800">{goShowSelected.namaBalita}</p>
+                  <p className="text-xs text-gray-500">{goShowSelected.namaWarga} · {goShowSelected.nomorPonsel}</p>
+                </div>
+                <button
+                  onClick={() => { setGoShowSelected(null); setGoShowBalitaId(''); setGoShowWargaId('') }}
+                  className="p-1 text-gray-400 hover:text-gray-600"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ) : (
+              /* Search input */
+              <div ref={searchRef} className="relative">
+                <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2">
+                  <Search size={14} className="text-gray-400 flex-shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="Cari nama anak, NIK, nama ibu, atau HP..."
+                    value={goShowQuery}
+                    onChange={(e) => { setGoShowQuery(e.target.value); setShowDropdown(true) }}
+                    onFocus={() => setShowDropdown(true)}
+                    className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 focus:outline-none"
+                  />
+                  {isSearching && <Loader2 size={12} className="animate-spin text-gray-400 flex-shrink-0" />}
+                </div>
+
+                {showDropdown && goShowQuery.length >= 2 && (
+                  <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
+                    {searchResults.length === 0 && !isSearching ? (
+                      <p className="text-xs text-gray-400 px-3 py-3 text-center">Tidak ada hasil</p>
+                    ) : (
+                      searchResults.map((item) => (
+                        <button
+                          key={item.balitaId}
+                          type="button"
+                          onClick={() => selectBalita(item)}
+                          className="w-full text-left px-3 py-2.5 hover:bg-gray-50 border-b border-gray-50 last:border-0"
+                        >
+                          <p className="text-sm font-semibold text-gray-800">{item.namaBalita}</p>
+                          <p className="text-xs text-gray-400">
+                            {item.namaWarga} · {item.nomorPonsel}
+                            {item.nikBalita ? ` · NIK ${item.nikBalita}` : ''}
+                          </p>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex gap-2">
               <button
-                onClick={() => { setShowGoShow(false); setGoShowBalitaId(''); setGoShowWargaId('') }}
+                onClick={resetGoShow}
                 className="flex-1 border border-gray-200 rounded-xl py-2 text-sm font-semibold text-gray-500"
               >
                 Batal
               </button>
               <button
-                disabled={goShowMutation.isPending || !goShowBalitaId.trim() || !goShowWargaId.trim()}
+                disabled={goShowMutation.isPending || !goShowBalitaId || !goShowWargaId}
                 onClick={() =>
                   goShowMutation.mutate({
                     slotId: activeSlotId,
