@@ -374,12 +374,14 @@ function Meja1Content({ activeSlotId, clearActiveMejaMutation, resetStore }: Mej
           filtered.map((antrian) => {
             const status = antrian.statusAntrian
             const isHadir = status === 'selesai' || status === 'dipanggil'
-            const isBelum = status === 'menunggu' || status === 'ditangguhkan'
+            const isTangguhkan = status === 'ditangguhkan'
+            const isMenunggu = status === 'menunggu'
             const isTidakHadir = status === 'tidak_hadir' || status === 'dibatalkan'
             const usia = ageInMonths(antrian.balita.tanggalLahir)
 
             let borderClass = 'border-[#dcfce7]'
             if (isHadir) borderClass = 'border-[#b9f8cf]'
+            if (isTangguhkan) borderClass = 'border-[#fed7aa]'
             if (isTidakHadir) borderClass = 'border-[#e5e7eb] opacity-60'
 
             return (
@@ -408,7 +410,8 @@ function Meja1Content({ activeSlotId, clearActiveMejaMutation, resetStore }: Mej
                     Hadir ✓
                   </span>
                 )}
-                {isBelum && (
+                {/* menunggu: Hadir + Tangguhkan */}
+                {isMenunggu && (
                   <div className="flex gap-1.5 flex-shrink-0">
                     <button
                       onClick={() =>
@@ -436,6 +439,31 @@ function Meja1Content({ activeSlotId, clearActiveMejaMutation, resetStore }: Mej
                         <Loader2 size={12} className="animate-spin" />
                       ) : (
                         'Tangguhkan'
+                      )}
+                    </button>
+                  </div>
+                )}
+                {/* ditangguhkan: hanya Hadir (bisa dipanggil lagi), badge Ditangguhkan */}
+                {isTangguhkan && (
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <span className="bg-[#fff7ed] text-[#ea580c] text-xs font-semibold px-2 py-0.5 rounded-full">
+                      Ditunda
+                    </span>
+                    <button
+                      onClick={() =>
+                        handleHadir({
+                          antrianId: antrian.id,
+                          balitaId: antrian.balitaId,
+                          namaBalita: antrian.balita.namaBalita,
+                        })
+                      }
+                      disabled={hadirMutation.isPending}
+                      className="bg-[#f0fdf4] border border-[#b9f8cf] text-[#008236] text-xs font-semibold px-3 py-1.5 rounded-full disabled:opacity-50 active:bg-[#dcfce7]"
+                    >
+                      {hadirMutation.isPending && hadirMutation.variables?.antrianId === antrian.id ? (
+                        <Loader2 size={12} className="animate-spin" />
+                      ) : (
+                        'Hadir'
                       )}
                     </button>
                   </div>

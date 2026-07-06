@@ -22,6 +22,9 @@ interface TodaySlot {
   labelSesi: string
   jamMulai: string
   jamSelesai: string
+  kuota: number
+  terisi: number
+  totalAntrian: number
 }
 
 interface TodayJadwal {
@@ -63,34 +66,40 @@ export default function PelayananHariHPage() {
   const { setActiveMeja, setLocked } = useKaderMejaStore()
   const setActiveMejaMutation = useMutationSetActiveMeja()
 
-  const state = location.state as { slotId?: string; slotLabel?: string } | null
+  const state = location.state as { slotId?: string } | null
   const stateSlotId = state?.slotId
-  const stateSlotLabel = state?.slotLabel
 
   const [pendingMeja, setPendingMeja] = useState<number | null>(null)
+  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(stateSlotId ?? null)
 
-  // Jika tidak ada slotId dari state (navigasi dari sidebar), load today's slots
+  // Always fetch today-slots so all sesi are available
   const { data: todayJadwal, isLoading: isLoadingSlot } = useQuery<TodayJadwal | null>({
     queryKey: ['kader', 'today-slots'],
     queryFn: () =>
-      apiClient.get('/kader/today-slots').then((r) => r.data.data as TodayJadwal | null),
-    enabled: !stateSlotId,
+      apiClient.get('/kader/today-slots').then((r) => {
+        const data = r.data.data as TodayJadwal | null
+        // Auto-select: prefer stateSlotId, then first sesi
+        if (data?.slotSesi?.length && !selectedSlotId) {
+          const match = stateSlotId
+            ? data.slotSesi.find((s) => s.id === stateSlotId)
+            : null
+          setSelectedSlotId(match?.id ?? data.slotSesi[0].id)
+        }
+        return data
+      }),
     staleTime: 30_000,
   })
 
-  const firstSlot = todayJadwal?.slotSesi?.[0]
-  const slotId = stateSlotId ?? firstSlot?.id
-  const slotLabel =
-    stateSlotLabel ??
-    (firstSlot ? `${firstSlot.labelSesi} · ${firstSlot.jamMulai} WIB` : 'Sesi Pelayanan')
+  const activeSlot = todayJadwal?.slotSesi?.find((s) => s.id === selectedSlotId)
+    ?? todayJadwal?.slotSesi?.[0]
 
   const handleMejaSelect = (mejaNumber: number) => {
-    if (!slotId) return
+    if (!activeSlot?.id) return
     setActiveMejaMutation.mutate(
-      { mejaNumber, slotId },
+      { mejaNumber, slotId: activeSlot.id },
       {
         onSuccess: () => {
-          setActiveMeja(mejaNumber, slotId)
+          setActiveMeja(mejaNumber, activeSlot.id)
           setLocked(true)
           navigate(`/kader/meja/${mejaNumber}`)
         },
@@ -98,8 +107,7 @@ export default function PelayananHariHPage() {
     )
   }
 
-  // Loading state saat fetch today-slots (hanya jika navigasi dari sidebar)
-  if (!stateSlotId && isLoadingSlot) {
+  if (isLoadingSlot) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Loader2 size={32} className="animate-spin text-green-700" />
@@ -107,8 +115,7 @@ export default function PelayananHariHPage() {
     )
   }
 
-  // Tidak ada jadwal hari ini
-  if (!slotId) {
+  if (!todayJadwal || todayJadwal.slotSesi.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <div className="bg-[#008236] px-4 pt-12 pb-6">
@@ -140,12 +147,14 @@ export default function PelayananHariHPage() {
     )
   }
 
+  const slotSesi = todayJadwal.slotSesi
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div className="bg-[#008236] px-4 pt-12 pb-6">
-        <div className="flex items-center gap-3 mb-5">
+      <div className="bg-[#008236] px-4 pt-12 pb-5">
+        <div className="flex items-center gap-3 mb-4">
           <button
             onClick={() => navigate('/kader/dashboard')}
             className="bg-[rgba(0,166,62,0.5)] rounded-xl p-2"
@@ -154,17 +163,54 @@ export default function PelayananHariHPage() {
           </button>
           <div>
             <p className="text-white font-bold text-2xl leading-tight">Pelayanan Hari-H</p>
-            <p className="text-[#7bf1a8] text-xs mt-0.5">{slotLabel}</p>
+            {activeSlot && (
+              <p className="text-[#7bf1a8] text-xs mt-0.5">
+                {activeSlot.labelSesi} · {activeSlot.jamMulai} WIB
+              </p>
+            )}
           </div>
         </div>
 
+        {/* Sesi selector chips — hanya tampil jika ada lebih dari 1 sesi */}
+        {slotSesi.length > 1 && (
+          <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
+            {slotSesi.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => setSelectedSlotId(s.id)}
+                className={[
+                  'flex-shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold border transition-colors',
+                  s.id === (selectedSlotId ?? activeSlot?.id)
+                    ? 'bg-white text-[#008236] border-white'
+                    : 'bg-[rgba(255,255,255,0.15)] text-white border-[rgba(255,255,255,0.3)]',
+                ].join(' ')}
+              >
+                {s.labelSesi} · {s.jamMulai}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Warning card */}
-        <div className="bg-[rgba(255,255,255,0.1)] rounded-2xl px-4 py-3">
+        <div className="bg-[rgba(255,255,255,0.1)] rounded-2xl px-4 py-3 mt-3">
           <p className="text-[#ffd230] text-xs font-medium leading-relaxed">
             ⚠️ Setiap kader pilih meja yang berbeda. Layar akan terkunci saat pelayanan aktif.
           </p>
         </div>
       </div>
+
+      {/* ── Sesi info strip ──────────────────────────────────────────────── */}
+      {activeSlot && (
+        <div className="bg-white border-b border-gray-100 px-4 py-2.5 flex items-center justify-between">
+          <p className="text-xs text-gray-500">
+            <span className="font-semibold text-gray-700">{activeSlot.labelSesi}</span>
+            {' '}· {activeSlot.jamMulai}–{activeSlot.jamSelesai} WIB
+          </p>
+          <span className="text-xs text-gray-400">
+            {activeSlot.totalAntrian}/{activeSlot.kuota} terdaftar
+          </span>
+        </div>
+      )}
 
       {/* ── Meja list ──────────────────────────────────────────────────── */}
       <div className="flex-1 px-4 py-4 space-y-2.5">
@@ -176,7 +222,7 @@ export default function PelayananHariHPage() {
           <button
             key={n}
             onClick={() => setPendingMeja(n)}
-            disabled={setActiveMejaMutation.isPending}
+            disabled={setActiveMejaMutation.isPending || !activeSlot}
             className="w-full bg-white rounded-[14px] border border-gray-100 shadow-sm px-4 py-3.5 flex items-center gap-3 text-left active:bg-gray-50 disabled:opacity-60 transition-colors"
           >
             {/* Icon box */}
@@ -211,6 +257,9 @@ export default function PelayananHariHPage() {
             <DialogDescription>
               Kamu akan masuk ke Meja {pendingMeja} —{' '}
               {MEJA_INFO.find((m) => m.n === pendingMeja)?.nama}.
+              {activeSlot && (
+                <> Sesi: <strong>{activeSlot.labelSesi}</strong> · {activeSlot.jamMulai} WIB.</>
+              )}{' '}
               Layar akan terkunci. Lanjutkan?
             </DialogDescription>
           </DialogHeader>

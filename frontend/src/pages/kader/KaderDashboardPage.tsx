@@ -145,7 +145,7 @@ export default function KaderDashboardPage() {
     if (!isLoadingActiveMeja && activeMejaData) {
       setActiveMeja(activeMejaData.activeMeja, activeMejaData.slotId)
       setLocked(true)
-      navigate('/kader/meja/1', { replace: true })
+      navigate(`/kader/meja/${activeMejaData.activeMeja}`, { replace: true })
     }
   }, [isLoadingActiveMeja, activeMejaData, navigate, setActiveMeja, setLocked])
 
@@ -237,23 +237,14 @@ export default function KaderDashboardPage() {
         {/* Pelayanan button */}
         <div className="mb-4">
           <button
-            onClick={() =>
-              navigate('/kader/pelayanan', {
-                state: {
-                  slotId: firstSlot?.id,
-                  slotLabel: firstSlot
-                    ? `${firstSlot.labelSesi} · ${firstSlot.jamMulai} WIB`
-                    : undefined,
-                },
-              })
-            }
+            onClick={() => navigate('/kader/pelayanan')}
             className="w-full bg-white border border-gray-200 rounded-2xl p-4 flex items-center justify-between shadow-sm active:scale-95 transition-transform"
           >
             <div className="text-left">
               <p className="text-gray-800 text-sm font-bold">Mulai Pelayanan Hari-H</p>
               <p className="text-gray-400 text-xs mt-0.5">
-                {firstSlot
-                  ? `${firstSlot.labelSesi} · ${firstSlot.jamMulai} WIB`
+                {todayJadwal
+                  ? `${todayJadwal.slotSesi.length} sesi tersedia · Pilih meja tugas`
                   : 'Pilih meja tugas & aktifkan Lock-Screen'}
               </p>
             </div>

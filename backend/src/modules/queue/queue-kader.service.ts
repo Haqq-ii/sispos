@@ -344,8 +344,8 @@ export async function tangguhkanAntrian(antrianId: string, kaderId: string): Pro
     if (!row) {
       throw Object.assign(new Error('Antrian tidak ditemukan'), { code: 'ANTRIAN_TIDAK_DITEMUKAN' })
     }
-    if (row.statusAntrian !== 'dipanggil') {
-      throw Object.assign(new Error('Hanya antrian dengan status dipanggil yang bisa ditangguhkan'), {
+    if (!['menunggu', 'dipanggil'].includes(row.statusAntrian)) {
+      throw Object.assign(new Error('Hanya antrian menunggu atau dipanggil yang bisa ditangguhkan'), {
         code: 'ANTRIAN_STATUS_TIDAK_VALID',
       })
     }
