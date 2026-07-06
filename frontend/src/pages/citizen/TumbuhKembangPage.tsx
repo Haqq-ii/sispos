@@ -158,6 +158,20 @@ export default function TumbuhKembangPage() {
     value: record.tinggiBadan,
   }))
 
+  // Z-Score trigger: which indicator drove the statusGizi badge?
+  const latestRecord = riwayatData?.[0]
+  const triggerIndicator = (() => {
+    if (!latestRecord) return null
+    const { zScoreBbU, zScoreTbU, zScoreBbTb } = latestRecord
+    if (zScoreBbU != null && zScoreBbU < -3) return { ind: 'BB/U', z: zScoreBbU }
+    if (zScoreBbTb != null && zScoreBbTb < -3) return { ind: 'BB/TB', z: zScoreBbTb }
+    if (zScoreTbU != null && zScoreTbU < -3) return { ind: 'TB/U', z: zScoreTbU }
+    if (zScoreBbU != null && zScoreBbU < -2) return { ind: 'BB/U', z: zScoreBbU }
+    if (zScoreBbTb != null && zScoreBbTb < -2) return { ind: 'BB/TB', z: zScoreBbTb }
+    if (zScoreTbU != null && zScoreTbU < -2) return { ind: 'TB/U', z: zScoreTbU }
+    return null
+  })()
+
   const statCards = [
     {
       label: 'BB',
@@ -168,8 +182,10 @@ export default function TumbuhKembangPage() {
       value: latest.tinggiBadan !== undefined ? `${latest.tinggiBadan} cm` : '—',
     },
     {
-      label: 'Z-Score',
-      value: latest.zScoreBbU != null ? latest.zScoreBbU.toFixed(2) : '—',
+      label: triggerIndicator ? `Z (${triggerIndicator.ind})` : 'Z-Score BB/U',
+      value: triggerIndicator
+        ? triggerIndicator.z.toFixed(2)
+        : (latest.zScoreBbU != null ? latest.zScoreBbU.toFixed(2) : '—'),
     },
   ]
 
@@ -386,7 +402,7 @@ export default function TumbuhKembangPage() {
                       {record.statusGizi}
                     </span>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 mt-2">
+                  <div className="grid grid-cols-2 gap-2 mt-2">
                     <div className="bg-gray-50 border border-gray-100 rounded-xl p-2 text-center">
                       <p className="text-gray-700 font-bold text-sm">{record.beratBadan} kg</p>
                       <p className="text-gray-400 text-xs">BB</p>
@@ -395,12 +411,26 @@ export default function TumbuhKembangPage() {
                       <p className="text-gray-700 font-bold text-sm">{record.tinggiBadan} cm</p>
                       <p className="text-gray-400 text-xs">TB</p>
                     </div>
-                    <div className="bg-green-50 rounded-xl p-2 text-center">
-                      <p className="text-green-700 font-bold text-sm">
-                        {record.zScoreBbU != null ? record.zScoreBbU.toFixed(2) : '—'}
-                      </p>
-                      <p className="text-gray-400 text-xs">Z-Score</p>
-                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 mt-1.5">
+                    {([
+                      { label: 'BB/U', val: record.zScoreBbU },
+                      { label: 'TB/U', val: record.zScoreTbU },
+                      { label: 'BB/TB', val: record.zScoreBbTb },
+                    ] as const).map(({ label, val }) => {
+                      const v = val ?? null
+                      const isCritical = v !== null && v < -3
+                      const isWarn = v !== null && v < -2 && !isCritical
+                      const color = isCritical
+                        ? 'bg-red-50 text-red-700'
+                        : isWarn ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'
+                      return (
+                        <div key={label} className={`${color} rounded-xl p-2 text-center`}>
+                          <p className="font-bold text-sm">{v != null ? v.toFixed(2) : '—'}</p>
+                          <p className="text-xs opacity-70">{label}</p>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               ))}

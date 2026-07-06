@@ -75,6 +75,26 @@ export function ageInMonths(tanggalLahir: Date, tanggalPemeriksaan: Date): numbe
  * @param zTbU   Z-Score TB/U (height-for-age)
  * @param zBbTb  Z-Score BB/TB (weight-for-height)
  */
+/**
+ * getStatusTrigger — Kembalikan indikator Z-Score yang men-trigger statusGizi.
+ * Dipakai UI agar badge status bisa menjelaskan MENGAPA status tersebut muncul.
+ */
+export function getStatusTrigger(
+  zBbU: number | null,
+  zTbU: number | null,
+  zBbTb: number | null,
+): { indicator: 'BB/U' | 'TB/U' | 'BB/TB'; zScore: number } | null {
+  if (zBbU !== null && zBbU < -3) return { indicator: 'BB/U', zScore: zBbU }
+  if (zBbTb !== null && zBbTb < -3) return { indicator: 'BB/TB', zScore: zBbTb }
+  if (zTbU !== null && zTbU < -3) return { indicator: 'TB/U', zScore: zTbU }
+  if (zBbU !== null && zBbU < -2) return { indicator: 'BB/U', zScore: zBbU }
+  if (zBbTb !== null && zBbTb < -2) return { indicator: 'BB/TB', zScore: zBbTb }
+  if (zTbU !== null && zTbU < -2) return { indicator: 'TB/U', zScore: zTbU }
+  if (zBbU !== null && zBbU > 3) return { indicator: 'BB/U', zScore: zBbU }
+  if (zBbU !== null && zBbU > 2) return { indicator: 'BB/U', zScore: zBbU }
+  return null
+}
+
 export function determineStatusGizi(
   zBbU: number | null,
   zTbU: number | null,
