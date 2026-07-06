@@ -68,7 +68,7 @@ export default function ChatPendaftaranPage() {
       history: ChatMessage[]
     }) =>
       apiClient
-        .post('/ai/chat/pendaftaran', { message: msg, history })
+        .post('/ai/chat/pendaftaran', { message: msg, history }, { timeout: 120_000 })
         .then((r) => r.data.data as ChatPendaftaranResponse),
     onSuccess: (data) => {
       // Server mengembalikan updated messages array (clean — tanpa system/tool messages)

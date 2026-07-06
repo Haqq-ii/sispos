@@ -260,10 +260,9 @@ async function chatGiziHandler(req: AuthRequest, res: Response): Promise<void> {
     return
   }
 
-  // wargaId dari JWT — NEVER from request body (T-04-03-01)
-  const wargaId = req.user!.userId
-
   try {
+    // wargaId dari JWT — NEVER from request body (T-04-03-01)
+    const wargaId = req.user!.userId
     const result = await chatGizi(wargaId, parsed.data.message)
     res.status(200).json({
       success: true,
@@ -336,10 +335,9 @@ async function chatPendaftaranHandler(req: AuthRequest, res: Response): Promise<
     return
   }
 
-  // wargaId dari JWT — NEVER dari request body (T-04-04-05)
-  const wargaId = req.user!.userId
-
   try {
+    // wargaId dari JWT — NEVER dari request body (T-04-04-05)
+    const wargaId = req.user!.userId
     const result = await chatPendaftaran(wargaId, parsed.data.message, parsed.data.history)
     res.status(200).json({
       success: true,
@@ -414,9 +412,8 @@ async function chatAssistantHandler(req: AuthRequest, res: Response): Promise<vo
     return
   }
 
-  const wargaId = req.user!.userId
-
   try {
+    const wargaId = req.user!.userId
     const result = await chatAssistant(wargaId, parsed.data.message, parsed.data.history)
     res.status(200).json({
       success: true,

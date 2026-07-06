@@ -58,7 +58,7 @@ export default function ChatGiziPage() {
   const chatMutation = useMutation({
     mutationFn: (msg: string) =>
       apiClient
-        .post('/ai/chat/gizi', { message: msg })
+        .post('/ai/chat/gizi', { message: msg }, { timeout: 60_000 })
         .then((r) => r.data.data.reply as string),
     onSuccess: (reply, msg) => {
       setMessages((prev) => [

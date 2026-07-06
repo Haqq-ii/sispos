@@ -57,7 +57,7 @@ export default function ChatAssistantPage() {
   const chatMutation = useMutation({
     mutationFn: ({ msg, history }: { msg: string; history: ChatMessage[] }) =>
       apiClient
-        .post('/ai/chat/assistant', { message: msg, history })
+        .post('/ai/chat/assistant', { message: msg, history }, { timeout: 120_000 })
         .then((r) => r.data.data as ChatAssistantResponse),
     onSuccess: (data) => {
       setMessages(data.messages)
