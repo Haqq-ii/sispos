@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { TambahBalitaModal } from '@/components/citizen/TambahBalitaModal'
+import { useBalitaStore } from '@/stores/useBalitaStore'
 import apiClient from '@/lib/axios'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -72,6 +73,7 @@ export default function FamilyAccountPage() {
     staleTime: 30_000,
   })
 
+  const { setSelectedBalitaId } = useBalitaStore()
   const isLoading = loadingBalita
   const [showTambah, setShowTambah] = useState(false)
 
@@ -194,7 +196,11 @@ export default function FamilyAccountPage() {
       </div>
     </div>
 
-    <TambahBalitaModal open={showTambah} onClose={() => setShowTambah(false)} />
+    <TambahBalitaModal
+      open={showTambah}
+      onClose={() => setShowTambah(false)}
+      onSuccess={(id) => setSelectedBalitaId(id)}
+    />
     </>
   )
 }

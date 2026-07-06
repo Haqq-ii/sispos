@@ -29,6 +29,8 @@ import { ZScoreChart, type ZScoreDataPoint } from '@/components/kader/ZScoreChar
 import apiClient from '@/lib/axios'
 import { useBalitaStore } from '@/stores/useBalitaStore'
 
+interface BalitaChip { id: string; namaBalita: string; jenisKelamin: string }
+
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface RiwayatRecord {
@@ -82,8 +84,15 @@ export default function TumbuhKembangPage() {
   const [activeTab, setActiveTab] = useState<'grafik' | 'riwayat' | 'imunisasi'>('riwayat')
   const [chartType, setChartType] = useState<'zscore' | 'bb' | 'tb'>('zscore')
 
-  // Fetch riwayat pemeriksaan — GET /api/growth/riwayat
   const { selectedBalitaId } = useBalitaStore()
+
+  // Fetch daftar balita untuk tampilkan nama di header
+  const { data: balitaList } = useQuery<BalitaChip[]>({
+    queryKey: ['balita', 'saya'],
+    queryFn: () => apiClient.get('/balita').then((r) => r.data.data as BalitaChip[]),
+    staleTime: 60_000,
+  })
+  const selectedBalita = balitaList?.find((b) => b.id === selectedBalitaId) ?? balitaList?.[0]
 
   const { data: riwayatData, isLoading } = useQuery<RiwayatRecord[]>({
     queryKey: ['growth', 'riwayat', selectedBalitaId],
@@ -216,7 +225,9 @@ export default function TumbuhKembangPage() {
           </button>
           <div>
             <h1 className="text-white font-bold text-2xl leading-tight">Tumbuh Kembang</h1>
-            <p className="text-green-200 text-xs">Data balita</p>
+            <p className="text-green-200 text-xs">
+              {selectedBalita ? selectedBalita.namaBalita : 'Data balita'}
+            </p>
           </div>
         </div>
 
