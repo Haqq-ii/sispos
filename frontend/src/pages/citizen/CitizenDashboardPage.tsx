@@ -21,6 +21,7 @@ import {
   ChevronRight,
   Bell,
   Info,
+  Users,
 } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
@@ -29,6 +30,12 @@ import { computeCountdown } from '@/hooks/useCountdownEstimasi'
 import apiClient from '@/lib/axios'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
+
+interface BalitaChip {
+  id: string
+  namaBalita: string
+  jenisKelamin: string
+}
 
 type StatusAntrianValue =
   | 'menunggu'
@@ -126,6 +133,13 @@ export default function CitizenDashboardPage() {
   const { user } = useAuthStore()
   const [notifOpen, setNotifOpen] = useState(false)
 
+  // Fetch daftar balita untuk chip selector di header
+  const { data: balitaList } = useQuery<BalitaChip[]>({
+    queryKey: ['balita', 'saya'],
+    queryFn: () => apiClient.get('/balita').then((r) => r.data.data as BalitaChip[]),
+    staleTime: 60_000,
+  })
+
   // Fetch antrian aktif hari ini
   const { data: antrian, isLoading } = useQuery<AntrianAktif | null>({
     queryKey: ['antrian', 'saya'],
@@ -179,6 +193,38 @@ export default function CitizenDashboardPage() {
             <span className="absolute top-1 right-1 w-2 h-2 bg-red-400 rounded-full" />
           </button>
         </div>
+
+        {/* Child selector chips */}
+        {balitaList && balitaList.length > 0 && (
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 mt-4 scrollbar-none">
+            {balitaList.map((b) => (
+              <Link
+                key={b.id}
+                to="/citizen/tumbuh-kembang"
+                className="flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl bg-white/15 border border-white/20 hover:bg-white/25 transition"
+              >
+                <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold text-white">
+                  {b.namaBalita.charAt(0).toUpperCase()}
+                </div>
+                <div className="text-left">
+                  <p className="text-white text-xs font-semibold leading-none">
+                    {b.namaBalita.split(' ')[0]}
+                  </p>
+                  <p className="text-green-200 text-[10px] mt-0.5">
+                    {b.jenisKelamin === 'laki_laki' ? 'Laki-laki' : 'Perempuan'}
+                  </p>
+                </div>
+              </Link>
+            ))}
+            <Link
+              to="/citizen/family-account"
+              className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 border border-dashed border-white/30 hover:bg-white/20 transition"
+            >
+              <Users className="w-3.5 h-3.5 text-white" />
+              <span className="text-white text-xs">Family</span>
+            </Link>
+          </div>
+        )}
 
         {/* Notification panel inline */}
         {notifOpen && (

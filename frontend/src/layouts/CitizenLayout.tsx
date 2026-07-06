@@ -5,6 +5,7 @@ import {
   Clock,
   TrendingUp,
   MessageSquare,
+  Users,
   User,
   LogOut,
   Activity,
@@ -23,6 +24,7 @@ interface NavItem {
   icon: React.ElementType
   end: boolean
   activePrefix?: string
+  sidebarOnly?: boolean
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -52,12 +54,21 @@ const NAV_ITEMS: NavItem[] = [
     end: false,
   },
   {
+    label: 'Family Account',
+    to: '/citizen/family-account',
+    icon: Users,
+    end: false,
+    sidebarOnly: true,
+  },
+  {
     label: 'Profil Saya',
     to: '/citizen/profil',
     icon: User,
     end: false,
   },
 ]
+
+const BOTTOM_NAV_ITEMS = NAV_ITEMS.filter((item) => !item.sidebarOnly)
 
 // ── CitizenLayout ─────────────────────────────────────────────────────────────
 
@@ -224,7 +235,7 @@ export default function CitizenLayout() {
         {/* ── Mobile Bottom Navigation ─────────────────────────────────────── */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t shadow-lg">
           <div className="grid grid-cols-5 h-16">
-            {NAV_ITEMS.map((item) => {
+            {BOTTOM_NAV_ITEMS.map((item) => {
               const Icon = item.icon
               return (
                 <NavLink
