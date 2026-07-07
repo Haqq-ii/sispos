@@ -43,6 +43,7 @@ enum StatusJadwal {
 enum StatusAntrian {
   menunggu
   dipanggil
+  sedang_dilayani
   selesai
   ditangguhkan
   tidak_hadir

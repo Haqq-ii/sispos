@@ -53,7 +53,7 @@ export async function getSlotAntrian(slotId: string) {
   return prisma.antrian.findMany({
     where: {
       slotId,
-      statusAntrian: { in: ['menunggu', 'dipanggil', 'ditangguhkan', 'selesai'] },
+      statusAntrian: { in: ['menunggu', 'dipanggil', 'sedang_dilayani', 'ditangguhkan', 'selesai'] },
     },
     include: {
       balita: { select: { namaBalita: true, jenisKelamin: true, tanggalLahir: true } },
@@ -410,7 +410,7 @@ export async function getTodaySlots(kaderId: string) {
           _count: {
             select: {
               antrian: {
-                where: { statusAntrian: { in: ['menunggu', 'dipanggil', 'ditangguhkan', 'selesai'] } },
+                where: { statusAntrian: { in: ['menunggu', 'dipanggil', 'sedang_dilayani', 'ditangguhkan', 'selesai'] } },
               },
             },
           },
@@ -547,9 +547,9 @@ export async function selesaikanAntrian(
     if (!antrian) {
       throw Object.assign(new Error('Antrian tidak ditemukan'), { code: 'ANTRIAN_TIDAK_DITEMUKAN' })
     }
-    // T-03-07-01: hanya 'dipanggil' yang bisa selesai; 'selesai'/'menunggu' → error
-    if (antrian.statusAntrian !== 'dipanggil') {
-      throw Object.assign(new Error('Antrian belum aktif — status harus dipanggil'), {
+    // T-03-07-01: hanya 'dipanggil'/'sedang_dilayani' yang bisa selesai
+    if (!['dipanggil', 'sedang_dilayani'].includes(antrian.statusAntrian)) {
+      throw Object.assign(new Error('Antrian belum aktif'), {
         code: 'ANTRIAN_BELUM_AKTIF',
       })
     }

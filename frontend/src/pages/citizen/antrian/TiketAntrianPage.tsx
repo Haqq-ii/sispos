@@ -28,6 +28,7 @@ import apiClient from '@/lib/axios'
 type StatusAntrianValue =
   | 'menunggu'
   | 'dipanggil'
+  | 'sedang_dilayani'
   | 'selesai'
   | 'ditangguhkan'
   | 'tidak_hadir'
@@ -226,6 +227,13 @@ export default function TiketAntrianPage() {
             <div className="w-full border rounded-lg p-4 text-center bg-amber-50 mb-4">
               <Badge className="bg-amber-50 text-amber-600 border-amber-200 animate-pulse text-sm">
                 Silakan menuju meja pelayanan!
+              </Badge>
+            </div>
+          )}
+          {statusAntrian === 'sedang_dilayani' && (
+            <div className="w-full border rounded-lg p-4 text-center bg-green-50 mb-4">
+              <Badge className="bg-green-50 text-green-700 border-green-200 text-sm">
+                Sedang dilayani
               </Badge>
             </div>
           )}

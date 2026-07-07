@@ -491,7 +491,7 @@ function Meja2Content({
           <div className="bg-white rounded-2xl p-5 w-full max-w-sm">
             <p className="text-gray-800 font-bold mb-2">Selesai Pelayanan Meja 2?</p>
             <p className="text-gray-500 text-sm mb-4">
-              {dipanggilList.length - Object.keys(savedData).length} balita belum diinput datanya.
+              {dipanggilList.filter((a) => !savedData[a.balitaId]).length} balita belum diinput datanya.
             </p>
             <div className="grid grid-cols-2 gap-2">
               <button

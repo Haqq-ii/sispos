@@ -18,6 +18,7 @@ import { prisma } from '../../config/db'
 import { env } from '../../config/env'
 import { encrypt } from '../../shared/utils/encrypt'
 import { computeZScore, ageInMonths, determineStatusGizi } from '../../shared/utils/zscore'
+import { broadcastQueueUpdate } from '../antrian/antrian.service'
 
 const logger = pino({ level: env.NODE_ENV === 'production' ? 'info' : 'debug' })
 
@@ -119,7 +120,8 @@ export async function createPemeriksaan(
   // 5. Enkripsi catatanKonsultasi (WAJIB — UU PDP No. 27/2022)
   const catatanKonsultasiEnc = data.catatanKonsultasi ? encrypt(data.catatanKonsultasi) : null
 
-  // 6. Transaction: pemeriksaan.create + auditLog.create (WAJIB bersamaan — CLAUDE.md §Keamanan)
+  // 6. Transaction: pemeriksaan.create + auditLog.create + statusAntrian update (WAJIB bersamaan)
+  let slotIdForBroadcast: string | null = null
   const pemeriksaan = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const record = await tx.pemeriksaan.create({
       data: {
@@ -162,8 +164,21 @@ export async function createPemeriksaan(
       },
     })
 
+    // Update statusAntrian → sedang_dilayani setelah BB/TB berhasil disimpan
+    if (data.antrianId) {
+      const updated = await tx.antrian.update({
+        where: { id: data.antrianId },
+        data: { statusAntrian: 'sedang_dilayani' },
+        select: { slotId: true },
+      })
+      slotIdForBroadcast = updated.slotId
+    }
+
     return record
   })
+
+  // Broadcast WAJIB di luar transaksi (CLAUDE.md §Antrian)
+  if (slotIdForBroadcast) void broadcastQueueUpdate(slotIdForBroadcast)
 
   logger.info({ pemeriksaanId: pemeriksaan.id, kaderId }, 'Pemeriksaan berhasil disimpan')
 

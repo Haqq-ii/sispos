@@ -249,7 +249,7 @@ export async function getAntrianSaya(wargaId: string, balitaId?: string) {
     where: {
       wargaId,
       ...(balitaId ? { balitaId } : {}),
-      statusAntrian: { in: ['menunggu', 'dipanggil'] },
+      statusAntrian: { in: ['menunggu', 'dipanggil', 'sedang_dilayani'] },
       createdAt: { gte: startOfToday },
     },
     include: {
@@ -270,7 +270,7 @@ export async function getAntrianSaya(wargaId: string, balitaId?: string) {
 
   const [dipanggilRow, sisaAntrian] = await Promise.all([
     prisma.antrian.findFirst({
-      where: { slotId: antrian.slotId, statusAntrian: 'dipanggil' },
+      where: { slotId: antrian.slotId, statusAntrian: { in: ['dipanggil', 'sedang_dilayani'] } },
       orderBy: { nomorUrut: 'asc' },
       select: { nomorUrut: true },
     }),
@@ -343,14 +343,14 @@ export async function broadcastQueueUpdate(slotId: string): Promise<void> {
     prisma.antrian.findMany({
       where: {
         slotId,
-        statusAntrian: { in: ['menunggu', 'dipanggil'] },
+        statusAntrian: { in: ['menunggu', 'dipanggil', 'sedang_dilayani'] },
       },
       orderBy: { nomorUrut: 'asc' },
       select: { id: true, nomorUrut: true, statusAntrian: true },
     }),
-    // nomorAktif = nomorUrut antrian yang sedang dilayani (status dipanggil)
+    // nomorAktif = nomorUrut terendah yang sedang aktif (dipanggil atau sedang_dilayani)
     prisma.antrian.findFirst({
-      where: { slotId, statusAntrian: 'dipanggil' },
+      where: { slotId, statusAntrian: { in: ['dipanggil', 'sedang_dilayani'] } },
       orderBy: { nomorUrut: 'asc' },
       select: { nomorUrut: true },
     }),

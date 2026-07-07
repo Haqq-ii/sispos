@@ -228,7 +228,7 @@ export default function Meja4Page() {
     enabled: !selectedBalitaId && !!activeSlotId,
   })
   const hadirList = antrianList.filter(
-    (a) => a.statusAntrian === 'dipanggil' || a.statusAntrian === 'selesai',
+    (a) => ['dipanggil', 'sedang_dilayani', 'selesai'].includes(a.statusAntrian),
   )
 
   if (!activeSlotId) return null

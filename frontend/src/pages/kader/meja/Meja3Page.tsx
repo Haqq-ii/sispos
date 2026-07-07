@@ -117,7 +117,7 @@ function Meja3Content({ activeSlotId, initialBalitaId, initialNama, clearActiveM
     enabled: !selectedBalitaId,
   })
   const hadirList = antrianList.filter(
-    (a) => a.statusAntrian === 'dipanggil' || a.statusAntrian === 'selesai',
+    (a) => ['dipanggil', 'sedang_dilayani', 'selesai'].includes(a.statusAntrian),
   )
 
   // Step 2: Z-Score history for selected balita

@@ -65,6 +65,7 @@ interface BalitaChip {
 type StatusAntrianValue =
   | 'menunggu'
   | 'dipanggil'
+  | 'sedang_dilayani'
   | 'selesai'
   | 'ditangguhkan'
   | 'tidak_hadir'
@@ -110,11 +111,19 @@ function getAntrianColors(status: StatusAntrianValue | undefined): StatusColors 
   switch (status) {
     case 'dipanggil':
       return {
+        bg: 'bg-amber-50',
+        border: 'border-amber-200',
+        text: 'text-amber-700',
+        dot: 'bg-amber-500',
+        numColor: 'text-amber-700',
+      }
+    case 'sedang_dilayani':
+      return {
         bg: 'bg-green-50',
-        border: 'border-green-200',
-        text: 'text-green-700',
-        dot: 'bg-green-500',
-        numColor: 'text-green-700',
+        border: 'border-green-300',
+        text: 'text-green-800',
+        dot: 'bg-green-600',
+        numColor: 'text-green-800',
       }
     case 'menunggu':
       return {
@@ -192,15 +201,17 @@ export default function CitizenDashboardPage() {
       apiClient
         .get('/antrian/saya', { params: effectiveBalitaId ? { balitaId: effectiveBalitaId } : {} })
         .then((r) => r.data.data as AntrianAktif | null),
-    staleTime: 30_000,
+    staleTime: 5_000,
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: true,
     enabled: !!balitaList,
   })
 
-  // Tentukan apakah antrian aktif (menunggu atau dipanggil)
+  // Tentukan apakah antrian aktif (menunggu, dipanggil, atau sedang_dilayani)
   const isAntrian =
     antrian !== null &&
     antrian !== undefined &&
-    (antrian.statusAntrian === 'menunggu' || antrian.statusAntrian === 'dipanggil')
+    (['menunggu', 'dipanggil', 'sedang_dilayani'] as StatusAntrianValue[]).includes(antrian.statusAntrian)
 
   const estimasiMenit = antrian
     ? computeCountdown({
@@ -213,7 +224,10 @@ export default function CitizenDashboardPage() {
 
   const posyanduNama = antrian?.slotSesi?.jadwal?.posyandu?.namaPosyandu ?? ''
   const jamDisplay = formatJam(antrian?.slotSesi?.jamMulai)
-  const statusLabel = antrian?.statusAntrian === 'dipanggil' ? 'Dipanggil' : 'Menunggu'
+  const statusLabel =
+    antrian?.statusAntrian === 'dipanggil' ? 'Dipanggil' :
+    antrian?.statusAntrian === 'sedang_dilayani' ? 'Sedang Dilayani' :
+    'Menunggu'
   const colors = getAntrianColors(antrian?.statusAntrian)
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -342,11 +356,17 @@ export default function CitizenDashboardPage() {
               <div className="text-gray-400 text-xs">Sisa Antrian</div>
             </div>
           </div>
-          {/* Estimasi */}
+          {/* Estimasi / pesan status */}
           <div className="flex items-center gap-1.5 mt-3">
             <Clock size={14} className="text-gray-400" />
             <span className="text-gray-400 text-xs">
-              Estimasi waktu: ~{Math.round(estimasiMenit)} menit lagi
+              {antrian.statusAntrian === 'menunggu'
+                ? `Estimasi waktu: ~${Math.round(estimasiMenit)} menit lagi`
+                : antrian.statusAntrian === 'dipanggil'
+                ? 'Silakan menuju meja pelayanan!'
+                : antrian.statusAntrian === 'sedang_dilayani'
+                ? 'Sedang dalam proses pelayanan'
+                : ''}
             </span>
           </div>
         </div>

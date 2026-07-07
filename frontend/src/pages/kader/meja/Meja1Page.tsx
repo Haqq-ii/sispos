@@ -28,6 +28,7 @@ interface SearchBalitaResult {
 type StatusAntrianValue =
   | 'menunggu'
   | 'dipanggil'
+  | 'sedang_dilayani'
   | 'selesai'
   | 'ditangguhkan'
   | 'tidak_hadir'
@@ -255,7 +256,7 @@ function Meja1Content({ activeSlotId, clearActiveMejaMutation, resetStore }: Mej
   // ── Derived state ───────────────────────────────────────────────────────────
 
   const hadirCount = antrianList.filter(
-    (a) => a.statusAntrian === 'selesai' || a.statusAntrian === 'dipanggil',
+    (a) => ['selesai', 'dipanggil', 'sedang_dilayani'].includes(a.statusAntrian),
   ).length
   const belumCount = antrianList.filter(
     (a) => a.statusAntrian === 'menunggu' || a.statusAntrian === 'ditangguhkan',
@@ -373,7 +374,7 @@ function Meja1Content({ activeSlotId, clearActiveMejaMutation, resetStore }: Mej
         ) : (
           filtered.map((antrian) => {
             const status = antrian.statusAntrian
-            const isHadir = status === 'selesai' || status === 'dipanggil'
+            const isHadir = ['selesai', 'dipanggil', 'sedang_dilayani'].includes(status)
             const isTangguhkan = status === 'ditangguhkan'
             const isMenunggu = status === 'menunggu'
             const isTidakHadir = status === 'tidak_hadir' || status === 'dibatalkan'
