@@ -93,6 +93,18 @@ export async function getKaderDashboardStats(kaderId: string): Promise<{
     zScoreTbU: number | null
     statusGizi: string
   }>
+  daftarBalita: Array<{
+    balitaId: string
+    namaBalita: string
+    tanggalLahir: string
+    jenisKelamin: string
+    usiaMonths: number
+    zScoreBbU: number | null
+    zScoreTbU: number | null
+    statusGizi: string | null
+    beratBadan: number | null
+    tinggiBadan: number | null
+  }>
 }> {
   // Step A: posyanduId dari kader (sumber: JWT via kaderId — IDOR guard T-08-06-01)
   const kader = await prisma.kader.findUnique({
@@ -115,7 +127,7 @@ export async function getKaderDashboardStats(kaderId: string): Promise<{
   ].join('-')
   const todayDate = new Date(`${todayStr}T00:00:00.000Z`)
 
-  // Steps B–G paralel (setelah posyanduId resolved)
+  // Steps B–H paralel (setelah posyanduId resolved)
   const [
     totalBalita,
     hadirHariIni,
@@ -123,6 +135,7 @@ export async function getKaderDashboardStats(kaderId: string): Promise<{
     trenRaw,
     distribusiRaw,
     pemeriksaanRisiko,
+    daftarBalitaRaw,
   ] = await Promise.all([
     // B: total balita di posyandu (filter via warga.posyanduUtamaId — IDOR safe)
     prisma.balita.count({
@@ -211,6 +224,41 @@ export async function getKaderDashboardStats(kaderId: string): Promise<{
       ORDER BY b.id, p."tanggalPemeriksaan" DESC
       LIMIT 10
     `,
+
+    // H: daftarBalita — semua balita di posyandu + pemeriksaan terakhir
+    prisma.$queryRaw<Array<{
+      balitaId: string
+      namaBalita: string
+      tanggalLahir: Date
+      jenisKelamin: string
+      zScoreBbU: number | null
+      zScoreTbU: number | null
+      statusGizi: string | null
+      beratBadan: number | null
+      tinggiBadan: number | null
+    }>>`
+      SELECT
+        b.id AS "balitaId",
+        b."namaBalita",
+        b."tanggalLahir",
+        b."jenisKelamin",
+        latest."zScoreBbU",
+        latest."zScoreTbU",
+        latest."statusGizi",
+        latest."beratBadan",
+        latest."tinggiBadan"
+      FROM balita b
+      JOIN warga w ON b."wargaId" = w.id
+      LEFT JOIN LATERAL (
+        SELECT p."zScoreBbU", p."zScoreTbU", p."statusGizi", p."beratBadan", p."tinggiBadan"
+        FROM pemeriksaan p
+        WHERE p."balitaId" = b.id
+        ORDER BY p."tanggalPemeriksaan" DESC
+        LIMIT 1
+      ) latest ON TRUE
+      WHERE w."posyanduUtamaId" = ${posyanduId}
+      ORDER BY b."namaBalita"
+    `,
   ])
 
   // D: risikoStunting
@@ -252,6 +300,27 @@ export async function getKaderDashboardStats(kaderId: string): Promise<{
       statusGizi: p.statusGizi,
     }))
 
+  // H: daftarBalita — hitung usia dalam bulan dari tanggalLahir
+  const nowForAge = new Date()
+  const daftarBalita = daftarBalitaRaw.map((b) => {
+    const lahir = new Date(b.tanggalLahir)
+    const usiaMonths = Math.floor(
+      (nowForAge.getTime() - lahir.getTime()) / (30.4375 * 24 * 60 * 60 * 1000)
+    )
+    return {
+      balitaId: b.balitaId,
+      namaBalita: b.namaBalita,
+      tanggalLahir: lahir.toISOString().split('T')[0],
+      jenisKelamin: b.jenisKelamin,
+      usiaMonths,
+      zScoreBbU: b.zScoreBbU !== null ? Number(b.zScoreBbU) : null,
+      zScoreTbU: b.zScoreTbU !== null ? Number(b.zScoreTbU) : null,
+      statusGizi: b.statusGizi ?? null,
+      beratBadan: b.beratBadan !== null ? Number(b.beratBadan) : null,
+      tinggiBadan: b.tinggiBadan !== null ? Number(b.tinggiBadan) : null,
+    }
+  })
+
   logger.debug({ kaderId }, 'getKaderDashboardStats called')
 
   return {
@@ -262,6 +331,7 @@ export async function getKaderDashboardStats(kaderId: string): Promise<{
     trenGiziBulanan,
     distribusiGiziBulanIni,
     peringatanRisiko,
+    daftarBalita,
   }
 }
 

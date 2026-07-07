@@ -111,11 +111,12 @@ export async function seedToday(prisma: PrismaClient): Promise<void> {
   // Cari warga massal dari posyandu ini untuk antrian dummy (D-27)
   const massalWarga = await prisma.warga.findMany({
     where: { posyanduUtamaId: posyandu.id, nikIbu: { not: '3471012345670001' } },
-    include: { balita: { take: 1 } },
-    take: 20,
+    include: { balita: true },
+    take: 50,
   })
-  // Hanya yang punya minimal 1 balita
-  const massalWithBalita = massalWarga.filter(w => w.balita.length > 0)
+  // Flatten ke list {wargaId, balitaId} — satu entry per balita (termasuk anak ke-2)
+  const massalWithBalita = massalWarga
+    .flatMap(w => w.balita.map(b => ({ wargaId: w.id, balitaId: b.id })))
 
   // Helper: buat antrian idempotent — selalu reset ke menunggu agar re-seed aman
   async function createAntrianIfAbsent(
@@ -188,39 +189,50 @@ export async function seedToday(prisma: PrismaClient): Promise<void> {
     })
   }
 
-  // ── Sesi 1, 2, 3: 4 dummy massal masing-masing → selesai (simulasi sesi pagi) ──
-  for (let i = 0; i < 4 && i < massalWithBalita.length; i++) {
-    const w = massalWithBalita[i]
-    await createAntrianIfAbsent(slot1.id, w.id, w.balita[0].id)
+  // ── Sesi 1, 2, 3: 13 dummy massal masing-masing → selesai (simulasi ~3/4 balita hadir) ──
+  const PER_SESI = 13
+  for (let i = 0; i < PER_SESI && i < massalWithBalita.length; i++) {
+    const { wargaId, balitaId } = massalWithBalita[i]
+    await createAntrianIfAbsent(slot1.id, wargaId, balitaId)
   }
-  for (let i = 4; i < 8 && i < massalWithBalita.length; i++) {
-    const w = massalWithBalita[i]
-    await createAntrianIfAbsent(slot2.id, w.id, w.balita[0].id)
+  for (let i = PER_SESI; i < PER_SESI * 2 && i < massalWithBalita.length; i++) {
+    const { wargaId, balitaId } = massalWithBalita[i]
+    await createAntrianIfAbsent(slot2.id, wargaId, balitaId)
   }
-  for (let i = 8; i < 12 && i < massalWithBalita.length; i++) {
-    const w = massalWithBalita[i]
-    await createAntrianIfAbsent(slot3.id, w.id, w.balita[0].id)
+  for (let i = PER_SESI * 2; i < PER_SESI * 3 && i < massalWithBalita.length; i++) {
+    const { wargaId, balitaId } = massalWithBalita[i]
+    await createAntrianIfAbsent(slot3.id, wargaId, balitaId)
   }
 
   const sesi1Antrian = await prisma.antrian.findMany({ where: { slotId: slot1.id }, orderBy: { nomorUrut: 'asc' } })
   const sesi2Antrian = await prisma.antrian.findMany({ where: { slotId: slot2.id }, orderBy: { nomorUrut: 'asc' } })
   const sesi3Antrian = await prisma.antrian.findMany({ where: { slotId: slot3.id }, orderBy: { nomorUrut: 'asc' } })
 
-  for (const [idx, a] of sesi1Antrian.entries()) await finishAntrianWithPemeriksaan(a.id, a.balitaId, a.nomorUrut, 8,  idx * 10)
-  for (const [idx, a] of sesi2Antrian.entries()) await finishAntrianWithPemeriksaan(a.id, a.balitaId, a.nomorUrut, 9,  idx * 10)
-  for (const [idx, a] of sesi3Antrian.entries()) await finishAntrianWithPemeriksaan(a.id, a.balitaId, a.nomorUrut, 10, idx * 10)
+  for (const [idx, a] of sesi1Antrian.entries()) {
+    const mins = Math.floor(idx * 55 / Math.max(sesi1Antrian.length - 1, 1))
+    await finishAntrianWithPemeriksaan(a.id, a.balitaId, a.nomorUrut, 8, mins)
+  }
+  for (const [idx, a] of sesi2Antrian.entries()) {
+    const mins = Math.floor(idx * 55 / Math.max(sesi2Antrian.length - 1, 1))
+    await finishAntrianWithPemeriksaan(a.id, a.balitaId, a.nomorUrut, 9, mins)
+  }
+  for (const [idx, a] of sesi3Antrian.entries()) {
+    const mins = Math.floor(idx * 55 / Math.max(sesi3Antrian.length - 1, 1))
+    await finishAntrianWithPemeriksaan(a.id, a.balitaId, a.nomorUrut, 10, mins)
+  }
 
   console.log(`✓ Sesi 1-3: ${sesi1Antrian.length + sesi2Antrian.length + sesi3Antrian.length} antrian selesai (rekap harian terisi)`)
 
   // ── Sesi 4: 2 dummy (pos 1-2) → Budi Santoso (pos 3) → 1 dummy (pos 4) — semua menunggu ──
-  for (let i = 12; i < 14 && i < massalWithBalita.length; i++) {
-    const w = massalWithBalita[i]
-    await createAntrianIfAbsent(slot4.id, w.id, w.balita[0].id)
+  const sesi4Start = PER_SESI * 3
+  for (let i = sesi4Start; i < sesi4Start + 2 && i < massalWithBalita.length; i++) {
+    const { wargaId, balitaId } = massalWithBalita[i]
+    await createAntrianIfAbsent(slot4.id, wargaId, balitaId)
   }
   await createAntrianIfAbsent(slot4.id, dewi.id, balitaDewi.id)  // Budi posisi 3
-  if (massalWithBalita.length > 14) {
-    const w = massalWithBalita[14]
-    await createAntrianIfAbsent(slot4.id, w.id, w.balita[0].id)
+  if (massalWithBalita.length > sesi4Start + 2) {
+    const { wargaId, balitaId } = massalWithBalita[sesi4Start + 2]
+    await createAntrianIfAbsent(slot4.id, wargaId, balitaId)
   }
   console.log('✓ Sesi 4: 2 dummy + Budi Santoso (pos 3) + 1 dummy — semua menunggu')
 

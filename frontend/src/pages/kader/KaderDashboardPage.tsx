@@ -86,6 +86,18 @@ interface KaderDashboardStats {
     zScoreTbU: number | null
     statusGizi: string
   }>
+  daftarBalita: Array<{
+    balitaId: string
+    namaBalita: string
+    tanggalLahir: string
+    jenisKelamin: string
+    usiaMonths: number
+    zScoreBbU: number | null
+    zScoreTbU: number | null
+    statusGizi: string | null
+    beratBadan: number | null
+    tinggiBadan: number | null
+  }>
 }
 
 // ── Helper ────────────────────────────────────────────────────────────────
@@ -444,11 +456,48 @@ export default function KaderDashboardPage() {
         {/* ── Data Balita tab ──────────────────────────────────────── */}
         {activeTab === 'balita' && (
           <div className="pb-6">
-            <div className="bg-white border border-gray-100 rounded-2xl p-4 text-center shadow-sm">
-              <p className="text-[#99a1af] text-xs">
-                Data lengkap balita tersedia di sistem Puskesmas.
-              </p>
-            </div>
+            {isLoadingStats ? (
+              <div className="space-y-2">
+                {[1,2,3,4,5].map((i) => <Skeleton key={i} className="h-14 rounded-xl" />)}
+              </div>
+            ) : (
+              <>
+                <p className="text-[#99a1af] text-xs mb-2">
+                  {dashboardStats?.daftarBalita?.length ?? 0} balita terdaftar
+                </p>
+                <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+                  {(dashboardStats?.daftarBalita ?? []).length === 0 ? (
+                    <p className="text-[#99a1af] text-xs text-center p-4">Belum ada balita terdaftar.</p>
+                  ) : (
+                    <div className="divide-y divide-gray-50">
+                      {(dashboardStats?.daftarBalita ?? []).map((b) => (
+                        <div key={b.balitaId} className="flex items-center justify-between px-4 py-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[#1e2939] text-sm font-semibold truncate">{b.namaBalita}</p>
+                            <p className="text-[#99a1af] text-xs">
+                              {b.usiaMonths} bln
+                              {b.beratBadan != null ? ` · ${b.beratBadan} kg` : ''}
+                              {b.tinggiBadan != null ? ` · ${b.tinggiBadan} cm` : ''}
+                            </p>
+                            {b.zScoreBbU != null && (
+                              <p className="text-[#99a1af] text-[10px]">
+                                BB/U: {b.zScoreBbU.toFixed(1)} SD
+                                {b.zScoreTbU != null ? ` · TB/U: ${b.zScoreTbU.toFixed(1)} SD` : ''}
+                              </p>
+                            )}
+                          </div>
+                          <span
+                            className={`ml-3 shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusGiziBadgeClass(b.statusGizi ?? '')}`}
+                          >
+                            {b.statusGizi ? b.statusGizi.replace(/_/g, ' ') : '–'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         )}
 
