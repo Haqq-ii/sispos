@@ -671,6 +671,8 @@ export async function seedMassal(prisma: PrismaClient): Promise<void> {
     for (let m = lookbackMonths; m >= 0; m--) {
       // D-15: skip ~25% bulan untuk realistis (70-80% kehadiran)
       if ((posIdx + balitaIdx + m) % 4 === 0) continue
+      // Posyandu Mawar (posIdx=0): jangan buat data hari ini agar demo Meja 2-3 bisa fresh
+      if (m === 0 && posIdx === 0) continue
 
       const examDate = new Date(todayStart.getTime() - m * 30 * 24 * 60 * 60 * 1000)
       const examDateStr = examDate.toISOString().split('T')[0]

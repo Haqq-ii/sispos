@@ -180,6 +180,10 @@ export async function seedMawar(prisma: PrismaClient): Promise<void> {
 
   // ── generateRiwayat: hapus lama, buat baru bulan per bulan ──────────────
 
+  // Pemeriksaan historis berhenti sebelum bulan kalender berjalan
+  // agar slot bulan ini kosong dan bisa diisi dari Meja 2-3 demo
+  const startOfCurrentMonth = new Date(TODAY.getFullYear(), TODAY.getMonth(), 1)
+
   async function generateRiwayat(
     balitaId: string,
     gender: 'laki_laki' | 'perempuan',
@@ -191,7 +195,7 @@ export async function seedMawar(prisma: PrismaClient): Promise<void> {
 
     for (let m = 1; m <= totalMonths; m++) {
       const tgl = pemDate(birthDate, m)
-      if (tgl > TODAY) break
+      if (tgl >= startOfCurrentMonth) break  // jangan isi bulan ini — Meja 2-3 yang isi
       const rec = calcRecord(gender, m, profileFn(m), m)
       await prisma.pemeriksaan.create({
         data: {
