@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import apiClient from '@/lib/axios'
 import { useToast } from '@/hooks/use-toast'
+import { useMutationClearActiveMeja } from '@/hooks/useActiveMeja'
 
 export interface TukarMejaModalProps {
   open: boolean
@@ -25,6 +26,7 @@ export interface TukarMejaModalProps {
 export function TukarMejaModal({ open, onClose, slotId }: TukarMejaModalProps) {
   const navigate = useNavigate()
   const { toast } = useToast()
+  const clearActiveMeja = useMutationClearActiveMeja()
 
   const [pin, setPin] = useState('')
   const [attempts, setAttempts] = useState(0)
@@ -41,6 +43,7 @@ export function TukarMejaModal({ open, onClose, slotId }: TukarMejaModalProps) {
       const res = await apiClient.post('/kader/verify-ketua-pin', { pin })
       if (res.data.data?.verified) {
         setPin('')
+        await clearActiveMeja.mutateAsync()
         navigate('/kader/pelayanan', { state: { slotId } })
       }
     } catch (err: unknown) {
