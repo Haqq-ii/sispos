@@ -140,34 +140,94 @@ export async function seedToday(prisma: PrismaClient): Promise<void> {
     await prisma.slotSesi.update({ where: { id: slotId }, data: { terisi: { increment: 1 } } })
   }
 
-  // Sesi 1: 2 dummy antrian sebelum Dewi, Dewi di posisi 3 (D-24)
-  for (let i = 0; i < 2 && i < massalWithBalita.length; i++) {
+  // Helper: selesaikan antrian + buat pemeriksaan berlink untuk Sesi 1-3
+  async function finishAntrianWithPemeriksaan(
+    antrianId: string,
+    balitaId: string,
+    nomorUrut: number,
+    wibHour: number,
+    wibMinute: number,
+  ): Promise<void> {
+    const existing = await prisma.pemeriksaan.findFirst({ where: { antrianId } })
+    if (existing) return
+
+    const latest = await prisma.pemeriksaan.findFirst({
+      where: { balitaId },
+      orderBy: { tanggalPemeriksaan: 'desc' },
+    })
+
+    const mulaiAt = new Date(todayStart.getTime() + (wibHour - 7) * 3_600_000 + wibMinute * 60_000)
+    const selesaiAt = new Date(mulaiAt.getTime() + 9 * 60_000)
+
+    await prisma.antrian.update({
+      where: { id: antrianId },
+      data: {
+        statusAntrian: 'selesai',
+        waktuCheckin: new Date(mulaiAt.getTime() - 5 * 60_000),
+        waktuMulaiLayanan: mulaiAt,
+        waktuSelesai: selesaiAt,
+      },
+    })
+
+    const bb = Math.round(((latest?.beratBadan ?? 8.0) + 0.1 + (nomorUrut % 3) * 0.05) * 10) / 10
+    const tb = Math.round(((latest?.tinggiBadan ?? 75.0) + 0.3 + (nomorUrut % 3) * 0.1) * 10) / 10
+
+    await prisma.pemeriksaan.create({
+      data: {
+        antrianId,
+        balitaId,
+        kaderId,
+        beratBadan: bb,
+        tinggiBadan: tb,
+        zScoreBbU: latest?.zScoreBbU ?? null,
+        zScoreTbU: latest?.zScoreTbU ?? null,
+        zScoreBbTb: latest?.zScoreBbTb ?? null,
+        statusGizi: latest?.statusGizi ?? null,
+        tanggalPemeriksaan: selesaiAt,
+      },
+    })
+  }
+
+  // ── Sesi 1, 2, 3: 4 dummy massal masing-masing → selesai (simulasi sesi pagi) ──
+  for (let i = 0; i < 4 && i < massalWithBalita.length; i++) {
     const w = massalWithBalita[i]
     await createAntrianIfAbsent(slot1.id, w.id, w.balita[0].id)
   }
-  // Dewi di posisi 3
-  await createAntrianIfAbsent(slot1.id, dewi.id, balitaDewi.id)
-  console.log('✓ Sesi 1: 2 dummy + Dewi (nomorUrut 3)')
-
-  // Sesi 2, 3, 4: isi dengan dummy antrian (D-26)
-  const sesiSlots = [
-    { slot: slot2, startIdx: 2 },
-    { slot: slot3, startIdx: 6 },
-    { slot: slot4, startIdx: 10 },
-  ]
-  for (const { slot, startIdx } of sesiSlots) {
-    const take = Math.min(4, massalWithBalita.length - startIdx)
-    for (let i = startIdx; i < startIdx + take && i < massalWithBalita.length; i++) {
-      const w = massalWithBalita[i]
-      await createAntrianIfAbsent(slot.id, w.id, w.balita[0].id)
-    }
-    console.log('✓', slot.labelSesi, 'diisi antrian dummy')
+  for (let i = 4; i < 8 && i < massalWithBalita.length; i++) {
+    const w = massalWithBalita[i]
+    await createAntrianIfAbsent(slot2.id, w.id, w.balita[0].id)
   }
+  for (let i = 8; i < 12 && i < massalWithBalita.length; i++) {
+    const w = massalWithBalita[i]
+    await createAntrianIfAbsent(slot3.id, w.id, w.balita[0].id)
+  }
+
+  const sesi1Antrian = await prisma.antrian.findMany({ where: { slotId: slot1.id }, orderBy: { nomorUrut: 'asc' } })
+  const sesi2Antrian = await prisma.antrian.findMany({ where: { slotId: slot2.id }, orderBy: { nomorUrut: 'asc' } })
+  const sesi3Antrian = await prisma.antrian.findMany({ where: { slotId: slot3.id }, orderBy: { nomorUrut: 'asc' } })
+
+  for (const [idx, a] of sesi1Antrian.entries()) await finishAntrianWithPemeriksaan(a.id, a.balitaId, a.nomorUrut, 8,  idx * 10)
+  for (const [idx, a] of sesi2Antrian.entries()) await finishAntrianWithPemeriksaan(a.id, a.balitaId, a.nomorUrut, 9,  idx * 10)
+  for (const [idx, a] of sesi3Antrian.entries()) await finishAntrianWithPemeriksaan(a.id, a.balitaId, a.nomorUrut, 10, idx * 10)
+
+  console.log(`✓ Sesi 1-3: ${sesi1Antrian.length + sesi2Antrian.length + sesi3Antrian.length} antrian selesai (rekap harian terisi)`)
+
+  // ── Sesi 4: 2 dummy (pos 1-2) → Budi Santoso (pos 3) → 1 dummy (pos 4) — semua menunggu ──
+  for (let i = 12; i < 14 && i < massalWithBalita.length; i++) {
+    const w = massalWithBalita[i]
+    await createAntrianIfAbsent(slot4.id, w.id, w.balita[0].id)
+  }
+  await createAntrianIfAbsent(slot4.id, dewi.id, balitaDewi.id)  // Budi posisi 3
+  if (massalWithBalita.length > 14) {
+    const w = massalWithBalita[14]
+    await createAntrianIfAbsent(slot4.id, w.id, w.balita[0].id)
+  }
+  console.log('✓ Sesi 4: 2 dummy + Budi Santoso (pos 3) + 1 dummy — semua menunggu')
 
   console.log('\n✅ Seed today selesai!')
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
   console.log('Login kader: 081234560001 / 123456')
-  console.log('Posyandu Mawar — 4 sesi, semua antrian menunggu (fresh untuk demo Meja 1-5)')
+  console.log('Posyandu Mawar — Sesi 1-3 selesai, Sesi 4 menunggu (Budi pos 3)')
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
 }
 
