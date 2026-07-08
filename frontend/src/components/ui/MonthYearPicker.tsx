@@ -34,10 +34,10 @@ export function MonthYearPicker({
   }
 
   function handleYear(e: React.ChangeEvent<HTMLSelectElement>) {
-    onChange(`${e.target.value}-${monthStr}`)
+    onChange(`${e.target.value}-${monthStr.padStart(2, '0')}`)
   }
   function handleMonth(e: React.ChangeEvent<HTMLSelectElement>) {
-    onChange(`${yearStr}-${e.target.value}`)
+    onChange(`${yearStr}-${String(e.target.value).padStart(2, '0')}`)
   }
 
   const baseSelect =
