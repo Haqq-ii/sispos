@@ -5,6 +5,7 @@ import {
   ChevronLeft, ChevronRight, Filter,
 } from 'lucide-react'
 import apiClient from '@/lib/axios'
+import { MonthYearPicker } from '@/components/ui/MonthYearPicker'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -116,13 +117,7 @@ export default function LaporanPage() {
             <h1 className="text-white font-bold text-xl leading-tight">Laporan e-PPGBM</h1>
             <p className="text-[#b9f8cf] text-xs mt-1">{formatBulanLabel(bulan)}</p>
           </div>
-          <input
-            type="month"
-            value={bulan}
-            onChange={(e) => handleBulanChange(e.target.value)}
-            aria-label="Pilih bulan laporan"
-            className="px-3 py-2 text-xs border border-[rgba(255,255,255,0.3)] bg-[rgba(255,255,255,0.15)] text-white rounded-[14px] focus:outline-none focus:bg-[rgba(255,255,255,0.25)]"
-          />
+          <MonthYearPicker value={bulan} onChange={handleBulanChange} variant="dark" />
         </div>
 
         {/* Posyandu filter */}

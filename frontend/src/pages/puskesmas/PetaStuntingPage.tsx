@@ -8,6 +8,7 @@ import {
   Tooltip, ResponsiveContainer,
 } from 'recharts'
 import apiClient from '@/lib/axios'
+import { MonthYearPicker } from '@/components/ui/MonthYearPicker'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -130,12 +131,7 @@ export default function PetaStuntingPage() {
           </div>
           <div className="flex items-center gap-2">
             <label className="text-xs text-gray-500">Bulan:</label>
-            <input
-              type="month"
-              value={bulan}
-              onChange={(e) => setBulan(e.target.value)}
-              className="px-3 py-1.5 text-xs border border-gray-200 rounded-xl focus:outline-none focus:border-green-400 bg-white"
-            />
+            <MonthYearPicker value={bulan} onChange={setBulan} />
           </div>
         </div>
       </div>

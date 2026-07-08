@@ -11,6 +11,7 @@ import {
 } from 'recharts'
 import apiClient from '@/lib/axios'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { MonthYearPicker } from '@/components/ui/MonthYearPicker'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -150,12 +151,7 @@ export default function PuskesmasDashboardPage() {
             {user?.namaLengkap ?? 'Puskesmas'} · {todayLabel}
           </p>
         </div>
-        <input
-          type="month"
-          value={bulan}
-          onChange={(e) => setBulan(e.target.value)}
-          className="px-3 py-1.5 text-xs border border-gray-200 rounded-xl focus:outline-none focus:border-green-400 bg-white"
-        />
+        <MonthYearPicker value={bulan} onChange={setBulan} />
       </div>
 
       <div className="px-6 py-5 space-y-5 pb-8">
