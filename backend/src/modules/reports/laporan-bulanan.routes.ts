@@ -95,7 +95,7 @@ laporanBulananRouter.get('/laporan-bulanan', ...puskesmasAuth, laporanBulananHan
  *   limit      (optional, default 20, max 50)
  */
 async function previewBulananHandler(req: AuthRequest, res: Response): Promise<void> {
-  const { bulan, posyanduId, page: pageStr, limit: limitStr } =
+  const { bulan, posyanduId, page: pageStr, limit: limitStr, statusGizi, jenisKelamin } =
     req.query as Record<string, string | undefined>
 
   if (!bulan || !/^\d{4}-\d{2}$/.test(bulan)) {
@@ -111,8 +111,13 @@ async function previewBulananHandler(req: AuthRequest, res: Response): Promise<v
   const limit = Math.min(50, Math.max(1, parseInt(limitStr ?? '20') || 20))
   const puskesmasId = req.user!.userId
 
+  const VALID_STATUS = ['normal','kurang','buruk','pendek','sangat_pendek','lebih','obesitas']
+  const VALID_JK = ['laki_laki','perempuan']
+  const statusGiziParam = statusGizi && VALID_STATUS.includes(statusGizi) ? statusGizi : undefined
+  const jenisKelaminParam = jenisKelamin && VALID_JK.includes(jenisKelamin) ? jenisKelamin : undefined
+
   try {
-    const result = await getPreviewBulanan(puskesmasId, bulan, posyanduId, page, limit)
+    const result = await getPreviewBulanan(puskesmasId, bulan, posyanduId, page, limit, statusGiziParam, jenisKelaminParam)
     res.json({ success: true, data: result.rows, stats: result.stats, meta: result.meta })
   } catch (err) {
     const e = err as { code?: string }

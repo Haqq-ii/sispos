@@ -19,7 +19,7 @@ const NAV_ITEMS = [
   { label: 'Peta Stunting', to: '/puskesmas/peta', icon: Map, end: false },
   { label: 'Manajemen Jadwal', to: '/puskesmas/jadwal', icon: Calendar, end: false },
   { label: 'Manajemen Pengguna', to: '/puskesmas/pengguna', icon: Users, end: false },
-  { label: 'Laporan e-PPGBM', to: '/puskesmas/laporan', icon: FileText, end: false },
+  { label: 'Laporan', to: '/puskesmas/laporan', icon: FileText, end: false },
   { label: 'Audit Log', to: '/puskesmas/audit-log', icon: Shield, end: false },
 ] as const
 

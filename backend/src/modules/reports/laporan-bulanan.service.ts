@@ -179,6 +179,8 @@ export async function getPreviewBulanan(
   posyanduIdFilter: string | undefined,
   page: number,
   limit: number,
+  statusGiziFilter?: string,
+  jenisKelaminFilter?: string,
 ): Promise<PreviewBulananResult> {
   const { startOfMonth, startOfNextMonth } = parseBulan(bulan)
 
@@ -197,16 +199,27 @@ export async function getPreviewBulanan(
     ? allPosyandu.filter(p => p.id === posyanduIdFilter).map(p => p.id)
     : allPosyandu.map(p => p.id)
 
-  const whereClause = {
+  // statsWhere: bulan + posyandu only (stats card always shows full-month picture)
+  const statsWhere = {
     tanggalPemeriksaan: { gte: startOfMonth, lt: startOfNextMonth },
     balita: { warga: { posyanduUtamaId: { in: filteredIds } } },
   }
 
+  // rowWhere: adds optional statusGizi + jenisKelamin filters for the table
+  const rowWhere = {
+    tanggalPemeriksaan: { gte: startOfMonth, lt: startOfNextMonth },
+    ...(statusGiziFilter ? { statusGizi: statusGiziFilter as never } : {}),
+    balita: {
+      ...(jenisKelaminFilter ? { jenisKelamin: jenisKelaminFilter as never } : {}),
+      warga: { posyanduUtamaId: { in: filteredIds } },
+    },
+  }
+
   const [total, statusGroups] = await Promise.all([
-    prisma.pemeriksaan.count({ where: whereClause }),
+    prisma.pemeriksaan.count({ where: rowWhere }),
     prisma.pemeriksaan.groupBy({
       by: ['statusGizi'],
-      where: whereClause,
+      where: statsWhere,
       _count: { id: true },
     }),
   ])
@@ -215,7 +228,7 @@ export async function getPreviewBulanan(
   for (const g of statusGroups) sm[g.statusGizi ?? ''] = (sm[g.statusGizi ?? ''] ?? 0) + g._count.id
 
   const rows: PreviewRow[] = (await prisma.pemeriksaan.findMany({
-    where: whereClause,
+    where: rowWhere,
     skip: (page - 1) * limit,
     take: limit,
     orderBy: [{ tanggalPemeriksaan: 'desc' }],

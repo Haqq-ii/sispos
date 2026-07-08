@@ -78,14 +78,22 @@ const LIMIT = 20
 export default function LaporanPage() {
   const [bulan, setBulan] = useState<string>(getBulanDefault)
   const [posyanduId, setPosyanduId] = useState<string>('')
+  const [statusGizi, setStatusGizi] = useState<string>('')
+  const [jenisKelamin, setJenisKelamin] = useState<string>('')
   const [page, setPage] = useState(1)
 
   const { data: preview, isLoading, isError } = useQuery<PreviewResponse>({
-    queryKey: ['preview-bulanan', bulan, posyanduId, page],
+    queryKey: ['preview-bulanan', bulan, posyanduId, statusGizi, jenisKelamin, page],
     queryFn: () =>
       apiClient
         .get('/reports/preview-bulanan', {
-          params: { bulan, ...(posyanduId ? { posyanduId } : {}), page, limit: LIMIT },
+          params: {
+            bulan,
+            ...(posyanduId ? { posyanduId } : {}),
+            ...(statusGizi ? { statusGizi } : {}),
+            ...(jenisKelamin ? { jenisKelamin } : {}),
+            page, limit: LIMIT,
+          },
         })
         .then((r) => r.data as PreviewResponse),
     staleTime: 2 * 60 * 1000,
@@ -100,6 +108,8 @@ export default function LaporanPage() {
 
   const handleBulanChange = (val: string) => { setBulan(val); setPage(1) }
   const handlePosyanduChange = (val: string) => { setPosyanduId(val); setPage(1) }
+  const handleStatusGiziChange = (val: string) => { setStatusGizi(val); setPage(1) }
+  const handleJenisKelaminChange = (val: string) => { setJenisKelamin(val); setPage(1) }
 
   const handleDownload = (format: 'xlsx' | 'pdf') => {
     const params = new URLSearchParams({ bulan, format })
@@ -226,6 +236,42 @@ export default function LaporanPage() {
               <span className="text-[#99a1af] text-xs">
                 {meta.total.toLocaleString('id-ID')} data
               </span>
+            )}
+          </div>
+
+          {/* Filter bar */}
+          <div className="px-4 py-2.5 border-b border-[#f3f4f6] bg-[#fafafa] flex flex-wrap gap-2 items-center">
+            <Filter size={12} className="text-[#99a1af] shrink-0" />
+            <select
+              value={statusGizi}
+              onChange={(e) => handleStatusGiziChange(e.target.value)}
+              className="text-xs border border-[#e5e7eb] rounded-[10px] px-2 py-1 bg-white text-[#364153] focus:outline-none focus:border-[#008236]"
+            >
+              <option value="">Semua Status Gizi</option>
+              <option value="normal">Normal</option>
+              <option value="kurang">Kurang</option>
+              <option value="buruk">Buruk</option>
+              <option value="pendek">Pendek</option>
+              <option value="sangat_pendek">Sangat Pendek</option>
+              <option value="lebih">Lebih</option>
+              <option value="obesitas">Obesitas</option>
+            </select>
+            <select
+              value={jenisKelamin}
+              onChange={(e) => handleJenisKelaminChange(e.target.value)}
+              className="text-xs border border-[#e5e7eb] rounded-[10px] px-2 py-1 bg-white text-[#364153] focus:outline-none focus:border-[#008236]"
+            >
+              <option value="">Semua JK</option>
+              <option value="laki_laki">Laki-laki</option>
+              <option value="perempuan">Perempuan</option>
+            </select>
+            {(statusGizi || jenisKelamin) && (
+              <button
+                onClick={() => { handleStatusGiziChange(''); handleJenisKelaminChange('') }}
+                className="text-xs text-[#008236] hover:underline"
+              >
+                Reset
+              </button>
             )}
           </div>
 
