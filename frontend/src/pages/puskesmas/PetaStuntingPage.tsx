@@ -1,8 +1,8 @@
 import 'leaflet/dist/leaflet.css'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import L from 'leaflet'
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -79,6 +79,24 @@ function getLevelBadge(breakdown: Record<string, number>, total: number): { labe
   if (level === 'tinggi') return { label: 'Tinggi', cls: 'bg-red-100 text-red-700' }
   if (level === 'sedang') return { label: 'Sedang', cls: 'bg-amber-100 text-amber-700' }
   return { label: 'Rendah', cls: 'bg-green-100 text-green-700' }
+}
+
+// ── FitBoundsOnLoad ───────────────────────────────────────────────────────────
+
+function FitBoundsOnLoad({ points }: { points: StuntingMapPoint[] }) {
+  const map = useMap()
+  const validPoints = points.filter((p) => p.lat && p.lng)
+  // Run whenever the point list changes (bulan switch or initial load)
+  const key = validPoints.map((p) => p.posyanduId).join(',')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (validPoints.length === 0) return
+    map.fitBounds(
+      validPoints.map((p) => [p.lat, p.lng] as [number, number]),
+      { padding: [48, 48], maxZoom: 15, animate: true },
+    )
+  }, [key]) // key changes whenever point set changes
+  return null
 }
 
 // ── PetaStuntingPage ──────────────────────────────────────────────────────────
@@ -193,10 +211,13 @@ export default function PetaStuntingPage() {
                 MapContainer stays always mounted; only CircleMarker children re-render when bulan changes.
               */}
               <MapContainer
-                center={[-7.7971, 110.3688]}
-                zoom={12}
+                center={[-7.8071, 110.3688]}
+                zoom={13}
                 style={{ height: '340px', width: '100%' }}
               >
+                {stuntingData && stuntingData.length > 0 && (
+                  <FitBoundsOnLoad points={stuntingData} />
+                )}
                 <TileLayer
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
