@@ -42,9 +42,9 @@ export default function PuskesmasLayout() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#f9fafb]">
+    <div className="min-h-screen md:flex md:flex-row bg-[#f9fafb]">
       {/* ── Desktop Sidebar ─────────────────────────────────────────────────── */}
-      <aside className="hidden md:flex md:flex-col md:w-64 md:min-h-screen bg-white border-r border-[#f3f4f6] shadow-sm">
+      <aside className="hidden md:flex md:flex-col md:w-64 md:h-screen md:sticky md:top-0 bg-white border-r border-[#f3f4f6] shadow-sm">
         {/* Header */}
         <div className="px-5 py-5 border-b border-[#f3f4f6]">
           <div className="flex items-center gap-3">

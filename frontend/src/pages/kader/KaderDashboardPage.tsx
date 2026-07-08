@@ -134,6 +134,9 @@ export default function KaderDashboardPage() {
 
   const [activeTab, setActiveTab] = useState<'overview' | 'balita' | 'absensi'>('overview')
   const [balitaSearch, setBalitaSearch] = useState('')
+  const [balitaSort, setBalitaSort] = useState<'az' | 'za' | 'zscore-asc' | 'zscore-desc'>('az')
+  const [balitaFilterGizi, setBalitaFilterGizi] = useState<string>('semua')
+  const [balitaFilterGender, setBalitaFilterGender] = useState<string>('semua')
 
   // Lock-screen redirect (KRITIS — jangan hapus)
   const { data: activeMejaData, isLoading: isLoadingActiveMeja } = useActiveMeja()
@@ -457,9 +460,9 @@ export default function KaderDashboardPage() {
 
         {/* ── Data Balita tab ──────────────────────────────────────── */}
         {activeTab === 'balita' && (
-          <div className="pb-6">
-            {/* Search input */}
-            <div className="flex items-center gap-2 bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 mb-3 shadow-sm">
+          <div className="pb-6 space-y-2">
+            {/* Search */}
+            <div className="flex items-center gap-2 bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 shadow-sm">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0">
                 <circle cx="6" cy="6" r="5" stroke="#9ca3af" strokeWidth="1.5" />
                 <path d="M10.5 10.5L13 13" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round" />
@@ -480,37 +483,98 @@ export default function KaderDashboardPage() {
               )}
             </div>
 
+            {/* Sort chips */}
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
+              {([ ['az','A–Z'], ['za','Z–A'], ['zscore-asc','Risiko ↑'], ['zscore-desc','Risiko ↓'] ] as const).map(([val, label]) => (
+                <button
+                  key={val}
+                  onClick={() => setBalitaSort(val)}
+                  className={`flex-shrink-0 rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
+                    balitaSort === val
+                      ? 'bg-[#008236] text-white border-[#008236]'
+                      : 'bg-white text-gray-600 border-[#e5e7eb]'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Status gizi filter chips */}
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
+              {(['semua','normal','kurang','buruk','pendek'] as const).map((val) => (
+                <button
+                  key={val}
+                  onClick={() => setBalitaFilterGizi(val)}
+                  className={`flex-shrink-0 rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
+                    balitaFilterGizi === val
+                      ? val === 'semua'
+                        ? 'bg-[#1e2939] text-white border-[#1e2939]'
+                        : statusGiziBadgeClass(val) + ' border-transparent'
+                      : 'bg-white text-gray-600 border-[#e5e7eb]'
+                  }`}
+                >
+                  {val === 'semua' ? 'Semua Gizi' : val.charAt(0).toUpperCase() + val.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            {/* Jenis kelamin filter */}
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
+              {([ ['semua','Semua'], ['laki_laki','Laki-laki'], ['perempuan','Perempuan'] ] as const).map(([val, label]) => (
+                <button
+                  key={val}
+                  onClick={() => setBalitaFilterGender(val)}
+                  className={`flex-shrink-0 rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
+                    balitaFilterGender === val
+                      ? 'bg-[#0ea5e9] text-white border-[#0ea5e9]'
+                      : 'bg-white text-gray-600 border-[#e5e7eb]'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* List */}
             {isLoadingStats ? (
               <div className="space-y-2">
                 {[1,2,3,4,5].map((i) => <Skeleton key={i} className="h-14 rounded-xl" />)}
               </div>
             ) : (() => {
               const q = balitaSearch.trim().toLowerCase()
-              const filtered = (dashboardStats?.daftarBalita ?? []).filter((b) =>
-                !q ||
-                b.namaBalita.toLowerCase().includes(q) ||
-                (b.nikBalita ?? '').toLowerCase().includes(q)
-              )
+              let result = (dashboardStats?.daftarBalita ?? [])
+                .filter((b) =>
+                  (!q || b.namaBalita.toLowerCase().includes(q) || (b.nikBalita ?? '').toLowerCase().includes(q)) &&
+                  (balitaFilterGizi === 'semua' || b.statusGizi === balitaFilterGizi) &&
+                  (balitaFilterGender === 'semua' || b.jenisKelamin === balitaFilterGender)
+                )
+              result = [...result].sort((a, b) => {
+                if (balitaSort === 'az') return a.namaBalita.localeCompare(b.namaBalita, 'id')
+                if (balitaSort === 'za') return b.namaBalita.localeCompare(a.namaBalita, 'id')
+                if (balitaSort === 'zscore-asc') return (a.zScoreBbU ?? 999) - (b.zScoreBbU ?? 999)
+                return (b.zScoreBbU ?? -999) - (a.zScoreBbU ?? -999)
+              })
+              const total = dashboardStats?.daftarBalita?.length ?? 0
+              const isFiltered = q || balitaFilterGizi !== 'semua' || balitaFilterGender !== 'semua'
               return (
                 <>
-                  <p className="text-[#99a1af] text-xs mb-2">
-                    {q
-                      ? `${filtered.length} dari ${dashboardStats?.daftarBalita?.length ?? 0} balita`
-                      : `${dashboardStats?.daftarBalita?.length ?? 0} balita terdaftar`}
+                  <p className="text-[#99a1af] text-xs">
+                    {isFiltered ? `${result.length} dari ${total} balita` : `${total} balita terdaftar`}
                   </p>
                   <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
-                    {filtered.length === 0 ? (
+                    {result.length === 0 ? (
                       <p className="text-[#99a1af] text-xs text-center p-4">
-                        {q ? 'Tidak ada balita yang sesuai pencarian.' : 'Belum ada balita terdaftar.'}
+                        Tidak ada balita yang sesuai filter.
                       </p>
                     ) : (
                       <div className="divide-y divide-gray-50">
-                        {filtered.map((b) => (
+                        {result.map((b) => (
                           <div key={b.balitaId} className="flex items-center justify-between px-4 py-3">
                             <div className="min-w-0 flex-1">
                               <p className="text-[#1e2939] text-sm font-semibold truncate">{b.namaBalita}</p>
                               <p className="text-[#99a1af] text-xs">
-                                {b.usiaMonths} bln
+                                {b.jenisKelamin === 'laki_laki' ? 'L' : 'P'} · {b.usiaMonths} bln
                                 {b.beratBadan != null ? ` · ${b.beratBadan} kg` : ''}
                                 {b.tinggiBadan != null ? ` · ${b.tinggiBadan} cm` : ''}
                               </p>
@@ -524,9 +588,7 @@ export default function KaderDashboardPage() {
                                 <p className="text-[#c2c9d6] text-[10px]">NIK {b.nikBalita}</p>
                               )}
                             </div>
-                            <span
-                              className={`ml-3 shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusGiziBadgeClass(b.statusGizi ?? '')}`}
-                            >
+                            <span className={`ml-3 shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusGiziBadgeClass(b.statusGizi ?? '')}`}>
                               {b.statusGizi ? b.statusGizi.replace(/_/g, ' ') : '–'}
                             </span>
                           </div>
