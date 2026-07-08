@@ -39,7 +39,7 @@ export async function seedToday(prisma: PrismaClient): Promise<void> {
         posyanduId: posyandu.id,
         puskesmasId: puskesmas.id,
         tanggalPelaksanaan: todayStart,
-        estimasiDurasiMenit: 10,
+        estimasiDurasiMenit: 5,
         statusJadwal: StatusJadwal.aktif,
       },
     })
@@ -56,7 +56,7 @@ export async function seedToday(prisma: PrismaClient): Promise<void> {
   }
 
   // 4 sesi: 08:00-09:00, 09:00-10:00, 10:00-11:00, 11:00-12:00 (D-22)
-  const estimasiDurasiMenit = 10  // D-23
+  const estimasiDurasiMenit = 5  // D-23: 5 mnt → kuota 12 per sesi
   const SESI = [
     { nomorSesi: 1, labelSesi: 'Sesi 1 (08:00 - 09:00)', jamMulaiHour: 8,  jamSelesaiHour: 9  },
     { nomorSesi: 2, labelSesi: 'Sesi 2 (09:00 - 10:00)', jamMulaiHour: 9,  jamSelesaiHour: 10 },
@@ -189,8 +189,8 @@ export async function seedToday(prisma: PrismaClient): Promise<void> {
     })
   }
 
-  // ── Sesi 1, 2, 3: 13 dummy massal masing-masing → selesai (simulasi ~3/4 balita hadir) ──
-  const PER_SESI = 13
+  // ── Sesi 1, 2, 3: 10 dummy massal masing-masing → selesai (simulasi ~3/4 balita hadir) ──
+  const PER_SESI = 10
   for (let i = 0; i < PER_SESI && i < massalWithBalita.length; i++) {
     const { wargaId, balitaId } = massalWithBalita[i]
     await createAntrianIfAbsent(slot1.id, wargaId, balitaId)
@@ -223,18 +223,24 @@ export async function seedToday(prisma: PrismaClient): Promise<void> {
 
   console.log(`✓ Sesi 1-3: ${sesi1Antrian.length + sesi2Antrian.length + sesi3Antrian.length} antrian selesai (rekap harian terisi)`)
 
-  // ── Sesi 4: 2 dummy (pos 1-2) → Budi Santoso (pos 3) → 1 dummy (pos 4) — semua menunggu ──
+  // Reset semua sesi4 antrian ke menunggu agar demo selalu fresh
+  await prisma.antrian.updateMany({
+    where: { slotId: slot4.id, statusAntrian: { not: 'menunggu' } },
+    data: { statusAntrian: 'menunggu', waktuCheckin: null, waktuMulaiLayanan: null, waktuSelesai: null },
+  })
+
+  // ── Sesi 4: 2 dummy (pos 1-2) → Budi Santoso (pos 3) → 7 dummy (pos 4-10) = 10 total ──
   const sesi4Start = PER_SESI * 3
   for (let i = sesi4Start; i < sesi4Start + 2 && i < massalWithBalita.length; i++) {
     const { wargaId, balitaId } = massalWithBalita[i]
     await createAntrianIfAbsent(slot4.id, wargaId, balitaId)
   }
   await createAntrianIfAbsent(slot4.id, dewi.id, balitaDewi.id)  // Budi posisi 3
-  if (massalWithBalita.length > sesi4Start + 2) {
-    const { wargaId, balitaId } = massalWithBalita[sesi4Start + 2]
+  for (let i = sesi4Start + 2; i < sesi4Start + 9 && i < massalWithBalita.length; i++) {
+    const { wargaId, balitaId } = massalWithBalita[i]
     await createAntrianIfAbsent(slot4.id, wargaId, balitaId)
   }
-  console.log('✓ Sesi 4: 2 dummy + Budi Santoso (pos 3) + 1 dummy — semua menunggu')
+  console.log('✓ Sesi 4: 2 dummy + Budi Santoso (pos 3) + 7 dummy = 10 total — semua menunggu')
 
   console.log('\n✅ Seed today selesai!')
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')

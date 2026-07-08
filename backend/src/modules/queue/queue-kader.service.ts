@@ -183,7 +183,7 @@ export async function getKaderDashboardStats(kaderId: string): Promise<{
       JOIN balita b ON p."balitaId" = b.id
       JOIN warga w ON b."wargaId" = w.id
       WHERE w."posyanduUtamaId" = ${posyanduId}
-        AND p."tanggalPemeriksaan" >= (NOW() AT TIME ZONE 'Asia/Jakarta' - INTERVAL '5 months')::date
+        AND p."tanggalPemeriksaan" >= (NOW() AT TIME ZONE 'Asia/Jakarta' - INTERVAL '11 months')::date
         AND p."statusGizi" IS NOT NULL
       GROUP BY bulan, p."statusGizi"
       ORDER BY bulan

@@ -3,8 +3,8 @@
  *
  * Generator data massal untuk SISPOS:
  * - 3 Puskesmas (termasuk Puskesmas Mergangsan demo)
- * - 15 Posyandu (5 per puskesmas, dengan koordinat Leaflet)
- * - 375-525 Warga + Balita tersebar merata
+ * - 30 Posyandu (20 Mergangsan + 5 Gedongtengen + 5 Umbulharjo, dengan koordinat Leaflet)
+ * - ~1.000+ Warga + Balita tersebar merata (rata-rata 40-60 per posyandu)
  * - Distribusi status gizi bertingkat per posyandu (sehat/sedang/rawan/kritis/outlier)
  *
  * DEV/DEMO ONLY — tidak untuk produksi
@@ -50,7 +50,7 @@ const PUSKESMAS_DATA = [
 ]
 
 // ============================================================
-// DATA POSYANDU (15 total: 5 per puskesmas)
+// DATA POSYANDU (30 total: 20 Mergangsan + 5 Gedongtengen + 5 Umbulharjo)
 // ============================================================
 
 type StatusGroup = 'sehat' | 'sedang' | 'rawan' | 'kritis' | 'outlier'
@@ -68,7 +68,7 @@ interface PosyanduEntry {
 }
 
 const POSYANDU_DATA: PosyanduEntry[] = [
-  // --- Mergangsan (5 posyandu, total 212) ---
+  // --- Mergangsan existing (5 posyandu, total 212) ---
   {
     puskesmasEmail: 'demo@puskesmas-mergangsan.go.id',
     namaPosyandu: 'Posyandu Mawar',
@@ -239,6 +239,23 @@ const POSYANDU_DATA: PosyanduEntry[] = [
     statusGroup: 'outlier',
     targetBalita: 44,
   },
+
+  // --- Mergangsan tambahan (15 posyandu, ~750 balita) ---
+  { puskesmasEmail: 'demo@puskesmas-mergangsan.go.id', namaPosyandu: 'Posyandu Seroja',     kecamatan: 'Mergangsan', kelurahan: 'Wirogunan',      rw: '001', latitude: -7.8145, longitude: 110.3680, statusGroup: 'sehat',   targetBalita: 55 },
+  { puskesmasEmail: 'demo@puskesmas-mergangsan.go.id', namaPosyandu: 'Posyandu Asoka',      kecamatan: 'Mergangsan', kelurahan: 'Wirogunan',      rw: '002', latitude: -7.8155, longitude: 110.3692, statusGroup: 'sedang',  targetBalita: 48 },
+  { puskesmasEmail: 'demo@puskesmas-mergangsan.go.id', namaPosyandu: 'Posyandu Bakung',     kecamatan: 'Mergangsan', kelurahan: 'Wirogunan',      rw: '004', latitude: -7.8165, longitude: 110.3705, statusGroup: 'rawan',   targetBalita: 52 },
+  { puskesmasEmail: 'demo@puskesmas-mergangsan.go.id', namaPosyandu: 'Posyandu Nusa Indah', kecamatan: 'Mergangsan', kelurahan: 'Wirogunan',      rw: '005', latitude: -7.8172, longitude: 110.3715, statusGroup: 'kritis',  targetBalita: 45 },
+  { puskesmasEmail: 'demo@puskesmas-mergangsan.go.id', namaPosyandu: 'Posyandu Tapak Dara', kecamatan: 'Mergangsan', kelurahan: 'Wirogunan',      rw: '006', latitude: -7.8152, longitude: 110.3725, statusGroup: 'sehat',   targetBalita: 58 },
+  { puskesmasEmail: 'demo@puskesmas-mergangsan.go.id', namaPosyandu: 'Posyandu Lili',       kecamatan: 'Mergangsan', kelurahan: 'Brontokusuman',  rw: '001', latitude: -7.8185, longitude: 110.3655, statusGroup: 'sedang',  targetBalita: 50 },
+  { puskesmasEmail: 'demo@puskesmas-mergangsan.go.id', namaPosyandu: 'Posyandu Begonia',    kecamatan: 'Mergangsan', kelurahan: 'Brontokusuman',  rw: '003', latitude: -7.8195, longitude: 110.3665, statusGroup: 'sehat',   targetBalita: 55 },
+  { puskesmasEmail: 'demo@puskesmas-mergangsan.go.id', namaPosyandu: 'Posyandu Zinnia',     kecamatan: 'Mergangsan', kelurahan: 'Brontokusuman',  rw: '004', latitude: -7.8205, longitude: 110.3648, statusGroup: 'rawan',   targetBalita: 47 },
+  { puskesmasEmail: 'demo@puskesmas-mergangsan.go.id', namaPosyandu: 'Posyandu Petunia',    kecamatan: 'Mergangsan', kelurahan: 'Brontokusuman',  rw: '005', latitude: -7.8215, longitude: 110.3658, statusGroup: 'sedang',  targetBalita: 53 },
+  { puskesmasEmail: 'demo@puskesmas-mergangsan.go.id', namaPosyandu: 'Posyandu Crisan',     kecamatan: 'Mergangsan', kelurahan: 'Brontokusuman',  rw: '006', latitude: -7.8210, longitude: 110.3672, statusGroup: 'kritis',  targetBalita: 43 },
+  { puskesmasEmail: 'demo@puskesmas-mergangsan.go.id', namaPosyandu: 'Posyandu Magnolia',   kecamatan: 'Mergangsan', kelurahan: 'Mergangsan',     rw: '001', latitude: -7.8138, longitude: 110.3730, statusGroup: 'sehat',   targetBalita: 56 },
+  { puskesmasEmail: 'demo@puskesmas-mergangsan.go.id', namaPosyandu: 'Posyandu Alamanda',   kecamatan: 'Mergangsan', kelurahan: 'Mergangsan',     rw: '002', latitude: -7.8128, longitude: 110.3742, statusGroup: 'sedang',  targetBalita: 49 },
+  { puskesmasEmail: 'demo@puskesmas-mergangsan.go.id', namaPosyandu: 'Posyandu Gladiol',    kecamatan: 'Mergangsan', kelurahan: 'Mergangsan',     rw: '003', latitude: -7.8118, longitude: 110.3752, statusGroup: 'rawan',   targetBalita: 51 },
+  { puskesmasEmail: 'demo@puskesmas-mergangsan.go.id', namaPosyandu: 'Posyandu Amarilis',   kecamatan: 'Mergangsan', kelurahan: 'Mergangsan',     rw: '004', latitude: -7.8132, longitude: 110.3762, statusGroup: 'outlier', targetBalita: 44 },
+  { puskesmasEmail: 'demo@puskesmas-mergangsan.go.id', namaPosyandu: 'Posyandu Edelweiss',  kecamatan: 'Mergangsan', kelurahan: 'Mergangsan',     rw: '006', latitude: -7.8142, longitude: 110.3748, statusGroup: 'sedang',  targetBalita: 55 },
 ]
 
 // ============================================================
@@ -268,6 +285,11 @@ const WARGA_IBU_NAMES = [
   'Nita Permatasari', 'Ratih Puspitasari', 'Vera Kusumawati', 'Dian Pramesti', 'Hesti Widyastuti',
   'Aprilia Ratnasari', 'Erna Wahyuningsih', 'Kristina Dewi', 'Lutviana Sari', 'Melinda Cahyani',
   'Novi Andriani', 'Oktaviana Putri', 'Priyanti Lestari', 'Qomariyah Hidayah', 'Rukayah Susanti',
+  'Sutinah Widianto', 'Mulyati Harsono', 'Susilowati Teguh', 'Hartatik Suwito', 'Mawar Handayani',
+  'Rahayu Kurniawati', 'Siti Romlah', 'Dwi Lestari Santoso', 'Tri Astuti Suwandi', 'Listiyati Pranoto',
+  'Siswanti Raharjo', 'Rubiyem Suranto', 'Niken Widiastuti', 'Kurnia Rahayu', 'Wahidah Sari',
+  'Mariyam Sutopo', 'Ida Faridah', 'Jumini Setyawan', 'Sarsini Wibowo', 'Tatik Haryanti',
+  'Mardiyem Sukoco', 'Supartini Harjo', 'Rokhayah Sujatno', 'Sri Haryati Budiono', 'Nawang Wulan',
 ]
 
 const BALITA_NAMES_L = [
@@ -279,6 +301,24 @@ const BALITA_NAMES_L = [
   'Raditya Surya Prabowo', 'Sultan Farhan Akbar', 'Tirto Adi Nugroho', 'Umar Haidar',
   'Vito Bintang Erlangga', 'Wahyu Dian Saputra', 'Xander Arya Kusuma', 'Yoga Pratama',
   'Zidan Fadhilah Putra', 'Abyan Nabil Hafizh', 'Bintang Cahya Ramadhan', 'Candra Eka Putra',
+  'Dimas Ari Wicaksono', 'Evan Eka Nugraha', 'Farhan Dzaki Maulana',
+  'Gerry Habibie Putra', 'Hafidz Karim Santoso', 'Ibrahim Zaidan Rahman',
+  'Joko Prasetyo Adi', 'Kenzo Aditya Putra', 'Leon Ariq Pradana', 'Marco Ivan Santoso',
+  'Nabil Arsyad Putra', 'Omar Abdullah Faiz', 'Prama Putra Utama', 'Qais Haikal Arya',
+  'Rama Satria Wibowo', 'Sandi Permana Putra', 'Tristan Ardika Nugroho',
+  'Ujang Rahmat Sejati', 'Valentino Brata Adi', 'Wikan Pandu Saputra',
+  'Yahya Rosyid Maulana', 'Zayn Arya Mahendra', 'Adrian Surya Pratama',
+  'Barca Putra Jaya', 'Celvin Eka Prabowo', 'Dirgantara Adi Putra',
+  'Eshan Malik Fadhila', 'Farel Bintang Adi', 'Gibran Arya Utama', 'Hanafi Rizky Putra',
+  'Ivan Naufal Hakim', 'Julio Ardian Saputra', 'Kenan Adi Nugroho', 'Laksmana Pratama',
+  'Mafaza Dzakir Faiz', 'Nahuel Ardika Putra', 'Onex Bagas Prabowo', 'Prasojo Adi Wibowo',
+  'Qodratullah Arif', 'Rendra Bagus Pratama', 'Sidqi Fauzan Malik', 'Talha Afif Rahman',
+  'Uwais Ahmad Sholeh', 'Vivaldi Putra Adi', 'Wildan Arsyad Nugroho',
+  'Xio Putra Nugroho', 'Yans Dwi Prasetyo', 'Zuhal Fikri Maulana',
+  'Abil Putra Santoso', 'Bramma Adi Wibowo', 'Cahyo Rekso Putra',
+  'Danu Setyo Nugroho', 'Erwin Cahyo Pratama', 'Fikri Habib Maulana',
+  'Gavin Nugroho Adi', 'Hafis Arya Santoso', 'Idris Karim Fadhila',
+  'Jafar Putra Wibowo', 'Krisna Adi Pratama', 'Lutfi Cahya Nugroho',
 ]
 
 const BALITA_NAMES_P = [
@@ -290,6 +330,25 @@ const BALITA_NAMES_P = [
   'Maheswari Aditya', 'Nadia Zahra Fitri', 'Olivia Citra Dewi', 'Putri Raisa Amelia',
   'Qisthi Nur Aisyah', 'Raisa Andini Putri', 'Salwa Nabila Husna', 'Tiara Nadindra',
   'Ulfah Zulaikha', 'Vanya Aurelia', 'Wafda Nur Hikmah', 'Xena Callista Dewi',
+  'Yasmine Putri Rahayu', 'Azzahra Malika Dewi', 'Bintari Ayu Sari',
+  'Cilla Ayu Rahayu', 'Dara Rahayu Sari', 'Eka Sari Dewi', 'Fara Lestari Putri',
+  'Ganeswari Ayu', 'Hasna Auliya Putri', 'Inayah Karima Sari',
+  'Jihan Amira Dewi', 'Keyla Adinda Putri', 'Lana Azzahra Dewi',
+  'Maya Cahyani Putri', 'Nabila Zahra Sari', 'Okta Sari Dewi',
+  'Prameswari Ayu Putri', 'Qarina Salsabila Dewi', 'Reva Anindita Putri',
+  'Sabrina Amalia Sari', 'Tari Cahya Rahayu', 'Uma Azzahra Putri',
+  'Vika Novitasari Dewi', 'Winda Sari Rahayu', 'Nita Ardini Putri',
+  'Yola Ramadhani Sari', 'Zea Putri Dewi', 'Adinda Khansa Sari',
+  'Berliana Ayu Putri', 'Cahyani Rahayu Dewi', 'Diara Putri Rahayu',
+  'Efira Nurul Sari', 'Fadia Zahra Dewi', 'Ghina Amira Putri',
+  'Hilda Permata Sari', 'Ira Maharani Dewi', 'Junita Sari Rahayu',
+  'Kiara Andina Putri', 'Lela Nurdia Sari', 'Meva Safira Dewi',
+  'Nina Amalia Putri', 'Orla Putri Rahayu', 'Pita Rahayu Dewi',
+  'Qisti Ananda Putri', 'Raina Dewi Sari', 'Siska Ramadhani Putri',
+  'Triana Putri Dewi', 'Ulfa Maulida Sari', 'Vanda Rahayu Putri',
+  'Weni Lestari Dewi', 'Xara Putri Sari', 'Yeni Safitri Rahayu',
+  'Zebina Putri Dewi', 'Aldira Rahayu Sari', 'Belva Amira Putri',
+  'Cici Permata Dewi', 'Dafina Putri Rahayu', 'Ghea Maharani Putri',
 ]
 
 // ============================================================
@@ -305,6 +364,14 @@ const KADER_NAMES = [
   'Sugiyanti Supardi', 'Tumini Wiryanto', 'Rusmini Suwanto', 'Kartini Suharto',
   'Martini Soedibjo', 'Suratmi Wiryo', 'Parmi Sunarto', 'Sutarmi Basuki',
   'Warsini Santoso', 'Jumini Haryadi',
+  'Turiyem Riyanto', 'Sakinem Hartono', 'Ponirah Sudiro', 'Tugiyem Slamet',
+  'Kamirah Sulistyo', 'Dwi Astuti Hartono', 'Purwati Sudibyo', 'Suminah Suyono',
+  'Marsini Wiyoto', 'Marsiyem Kariyo', 'Tukiyem Mulyono', 'Sarwati Supono',
+  'Mujirah Sukamto', 'Winarsih Haryono', 'Riyanti Soetopo', 'Supiyah Wiranto',
+  'Sadiyem Sudarto', 'Uminah Sutrisno', 'Tuginih Kusmanto', 'Wariyem Sutardi',
+  'Ginah Sukarman', 'Mirah Wiryo', 'Sujirah Hartanto', 'Katiyem Sutrisno',
+  'Suparni Hartono', 'Tuminah Sudarno', 'Kasinah Wiranto', 'Carinih Sukarno',
+  'Tarinih Suryadi', 'Sukatni Hartanto',
 ]
 
 // Kader config per posyandu (index sesuai POSYANDU_DATA)
@@ -340,6 +407,36 @@ const KADER_CONFIG: Array<Array<{ nama: string; role: 'kader' | 'ketua_kader' }>
   [{ nama: 'Endang Sulistyowati', role: 'ketua_kader' }, { nama: 'Lilik Suryani', role: 'kader' }, { nama: 'Parti Lestari', role: 'kader' }],
   // 14: Posyandu Lavender
   [{ nama: 'Sri Mulyani', role: 'ketua_kader' }, { nama: 'Darwati Sudarmono', role: 'kader' }],
+  // 15: Posyandu Seroja (Mergangsan tambahan - Wirogunan)
+  [{ nama: 'Turiyem Riyanto', role: 'ketua_kader' }, { nama: 'Sakinem Hartono', role: 'kader' }, { nama: 'Ponirah Sudiro', role: 'kader' }],
+  // 16: Posyandu Asoka
+  [{ nama: 'Tugiyem Slamet', role: 'ketua_kader' }, { nama: 'Kamirah Sulistyo', role: 'kader' }],
+  // 17: Posyandu Bakung
+  [{ nama: 'Dwi Astuti Hartono', role: 'ketua_kader' }, { nama: 'Purwati Sudibyo', role: 'kader' }, { nama: 'Suminah Suyono', role: 'kader' }],
+  // 18: Posyandu Nusa Indah
+  [{ nama: 'Marsini Wiyoto', role: 'ketua_kader' }, { nama: 'Marsiyem Kariyo', role: 'kader' }],
+  // 19: Posyandu Tapak Dara
+  [{ nama: 'Tukiyem Mulyono', role: 'ketua_kader' }, { nama: 'Sarwati Supono', role: 'kader' }, { nama: 'Mujirah Sukamto', role: 'kader' }],
+  // 20: Posyandu Lili (Mergangsan tambahan - Brontokusuman)
+  [{ nama: 'Winarsih Haryono', role: 'ketua_kader' }, { nama: 'Riyanti Soetopo', role: 'kader' }],
+  // 21: Posyandu Begonia
+  [{ nama: 'Supiyah Wiranto', role: 'ketua_kader' }, { nama: 'Sadiyem Sudarto', role: 'kader' }, { nama: 'Uminah Sutrisno', role: 'kader' }],
+  // 22: Posyandu Zinnia
+  [{ nama: 'Tuginih Kusmanto', role: 'ketua_kader' }, { nama: 'Wariyem Sutardi', role: 'kader' }],
+  // 23: Posyandu Petunia
+  [{ nama: 'Ginah Sukarman', role: 'ketua_kader' }, { nama: 'Mirah Wiryo', role: 'kader' }, { nama: 'Sujirah Hartanto', role: 'kader' }],
+  // 24: Posyandu Crisan
+  [{ nama: 'Katiyem Sutrisno', role: 'ketua_kader' }, { nama: 'Suparni Hartono', role: 'kader' }],
+  // 25: Posyandu Magnolia (Mergangsan tambahan - Mergangsan)
+  [{ nama: 'Tuminah Sudarno', role: 'ketua_kader' }, { nama: 'Kasinah Wiranto', role: 'kader' }, { nama: 'Carinih Sukarno', role: 'kader' }],
+  // 26: Posyandu Alamanda
+  [{ nama: 'Tarinih Suryadi', role: 'ketua_kader' }, { nama: 'Sukatni Hartanto', role: 'kader' }],
+  // 27: Posyandu Gladiol
+  [{ nama: 'Turiyem Riyanto', role: 'ketua_kader' }, { nama: 'Purwati Sudibyo', role: 'kader' }, { nama: 'Winarsih Haryono', role: 'kader' }],
+  // 28: Posyandu Amarilis
+  [{ nama: 'Tukiyem Mulyono', role: 'ketua_kader' }, { nama: 'Sadiyem Sudarto', role: 'kader' }],
+  // 29: Posyandu Edelweiss
+  [{ nama: 'Ginah Sukarman', role: 'ketua_kader' }, { nama: 'Mirah Wiryo', role: 'kader' }, { nama: 'Sukatni Hartanto', role: 'kader' }],
 ]
 
 // ============================================================
@@ -519,7 +616,7 @@ export async function seedMassal(prisma: PrismaClient): Promise<void> {
     console.log('✓ Puskesmas:', puskesmas.id.slice(0, 8), '—', entry.namaPuskesmas)
   }
 
-  // ---- 2. Find or create 15 Posyandu ----
+  // ---- 2. Find or create 30 Posyandu ----
   const posyanduList: Array<{
     id: string
     kecamatan: string
@@ -595,7 +692,7 @@ export async function seedMassal(prisma: PrismaClient): Promise<void> {
         update: {},
         create: {
           nikIbu: nik,
-          namaLengkap: WARGA_IBU_NAMES[balitaIdx % 20],
+          namaLengkap: WARGA_IBU_NAMES[balitaIdx % 80],
           nomorPonsel: hp,
           passwordHash: massalHash,
           statusVerifikasi: StatusVerifikasi.terverifikasi,
@@ -619,8 +716,8 @@ export async function seedMassal(prisma: PrismaClient): Promise<void> {
             nikBalita: balitaNik,
             namaBalita:
               jenisKelamin === JenisKelamin.laki_laki
-                ? BALITA_NAMES_L[balitaIdx % 30]
-                : BALITA_NAMES_P[balitaIdx % 30],
+                ? BALITA_NAMES_L[balitaIdx % 90]
+                : BALITA_NAMES_P[balitaIdx % 90],
             tanggalLahir,
             jenisKelamin,
           },
@@ -646,8 +743,8 @@ export async function seedMassal(prisma: PrismaClient): Promise<void> {
                 wargaId: warga.id,
                 nikBalita: nik2,
                 namaBalita: jk2 === JenisKelamin.laki_laki
-                  ? BALITA_NAMES_L[(balitaIdx + 15) % 30]
-                  : BALITA_NAMES_P[(balitaIdx + 15) % 30],
+                  ? BALITA_NAMES_L[(balitaIdx + 45) % 90]
+                  : BALITA_NAMES_P[(balitaIdx + 45) % 90],
                 tanggalLahir: lahir2,
                 jenisKelamin: jk2,
               },
@@ -666,7 +763,7 @@ export async function seedMassal(prisma: PrismaClient): Promise<void> {
   console.log('\n[Pemeriksaan] Membuat riwayat pemeriksaan...')
   for (const rec of balitaRecords) {
     const { balita, statusGizi, tanggalLahir, posIdx, balitaIdx } = rec
-    const lookbackMonths = 12 + (posIdx + balitaIdx) % 4 // 12-15 bulan
+    const lookbackMonths = 18 + (posIdx + balitaIdx) % 4 // 18-21 bulan
 
     for (let m = lookbackMonths; m >= 0; m--) {
       // D-15: skip ~25% bulan untuk realistis (70-80% kehadiran)
@@ -748,7 +845,7 @@ export async function seedMassal(prisma: PrismaClient): Promise<void> {
   }
 
   // ---- Summary ----
-  console.log(`\n✅ seedMassal selesai — 15 posyandu, ${totalBalita} balita`)
+  console.log(`\n✅ seedMassal selesai — 30 posyandu, ${totalBalita} balita`)
 }
 
 // ============================================================
