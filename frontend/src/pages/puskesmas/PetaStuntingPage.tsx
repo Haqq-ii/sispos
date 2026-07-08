@@ -255,16 +255,16 @@ export default function PetaStuntingPage() {
           </div>
 
           {/* Ranking panel */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-50">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col max-h-[390px]">
+            <div className="px-4 py-3 border-b border-gray-50 flex-shrink-0">
               <p className="text-gray-800 text-sm font-bold">Peringkat Risiko</p>
             </div>
             {ranked.length === 0 ? (
-              <div className="px-4 py-8 text-center text-gray-400 text-sm">
+              <div className="px-4 py-8 text-center text-gray-400 text-sm flex-1">
                 Tidak ada data untuk bulan ini
               </div>
             ) : (
-              <div className="divide-y divide-gray-50">
+              <div className="divide-y divide-gray-50 overflow-y-auto flex-1 min-h-0">
                 {ranked.map((p, i) => {
                   const risiko = getRisikoCount(p.breakdown)
                   const badge = getLevelBadge(p.breakdown, p.total)
