@@ -96,6 +96,7 @@ export async function getKaderDashboardStats(kaderId: string): Promise<{
   daftarBalita: Array<{
     balitaId: string
     namaBalita: string
+    nikBalita: string | null
     tanggalLahir: string
     jenisKelamin: string
     usiaMonths: number
@@ -229,6 +230,7 @@ export async function getKaderDashboardStats(kaderId: string): Promise<{
     prisma.$queryRaw<Array<{
       balitaId: string
       namaBalita: string
+      nikBalita: string | null
       tanggalLahir: Date
       jenisKelamin: string
       zScoreBbU: number | null
@@ -240,6 +242,7 @@ export async function getKaderDashboardStats(kaderId: string): Promise<{
       SELECT
         b.id AS "balitaId",
         b."namaBalita",
+        b."nikBalita",
         b."tanggalLahir",
         b."jenisKelamin",
         latest."zScoreBbU",
@@ -310,6 +313,7 @@ export async function getKaderDashboardStats(kaderId: string): Promise<{
     return {
       balitaId: b.balitaId,
       namaBalita: b.namaBalita,
+      nikBalita: b.nikBalita ?? null,
       tanggalLahir: lahir.toISOString().split('T')[0],
       jenisKelamin: b.jenisKelamin,
       usiaMonths,
