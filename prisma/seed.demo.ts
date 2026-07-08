@@ -84,6 +84,22 @@ export async function seedDemo(prisma: PrismaClient): Promise<void> {
   })
   console.log('✓ Ketua Kader:', ketuaKader.namaLengkap, '/', ketuaKader.nomorPonsel, '(PIN: 654321)')
 
+  // 3c. Kader tambahan untuk demo 5 Meja (HP 081234560003–081234560006, PIN 123456)
+  const kaderTambahan = [
+    { nomorPonsel: '081234560003', namaLengkap: 'Nur Aini Wahyuni' },
+    { nomorPonsel: '081234560004', namaLengkap: 'Retno Wulandari' },
+    { nomorPonsel: '081234560005', namaLengkap: 'Sri Wahyuni Putri' },
+    { nomorPonsel: '081234560006', namaLengkap: 'Dwi Rahayu Lestari' },
+  ]
+  for (const k of kaderTambahan) {
+    await prisma.kader.upsert({
+      where: { nomorPonsel: k.nomorPonsel },
+      update: { pinHash, gagalLogin: 0, terkunciSampai: null },
+      create: { posyanduId: posyandu.id, namaLengkap: k.namaLengkap, nomorPonsel: k.nomorPonsel, pinHash, isKetua: false, isAktif: true },
+    })
+    console.log('✓ Kader:', k.namaLengkap, '/', k.nomorPonsel)
+  }
+
   // 4. Warga (Citizen)
   const warga = await prisma.warga.upsert({
     where: { nikIbu: '3471012345670001' },
@@ -144,8 +160,12 @@ export async function seedDemo(prisma: PrismaClient): Promise<void> {
   console.log('\n✅ Demo seed selesai!')
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
   console.log('Citizen:      NIK 3471012345670001 / Demo1234!')
-  console.log('Kader:        HP  081234560001     / PIN 123456')
-  console.log('Ketua Kader:  HP  081234560002     / PIN 654321')
+  console.log('Kader Meja 1: HP  081234560001     / PIN 123456  (Siti Nurhaliza)')
+  console.log('Kader Meja 2: HP  081234560003     / PIN 123456  (Nur Aini Wahyuni)')
+  console.log('Kader Meja 3: HP  081234560004     / PIN 123456  (Retno Wulandari)')
+  console.log('Kader Meja 4: HP  081234560005     / PIN 123456  (Sri Wahyuni Putri)')
+  console.log('Kader Meja 5: HP  081234560006     / PIN 123456  (Dwi Rahayu Lestari)')
+  console.log('Ketua Kader:  HP  081234560002     / PIN 654321  (Ketua Demo Posyandu)')
   console.log('Puskesmas:    demo@puskesmas-mergangsan.go.id / Demo1234!')
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
 }
