@@ -519,9 +519,10 @@ export default function KaderDashboardPage() {
                 </div>
                 <div className="bg-white border border-gray-100 rounded-xl p-3 text-center shadow-sm">
                   <p className="text-amber-500 font-bold text-xl leading-none">
-                    {dashboardStats
-                      ? Math.max(0, dashboardStats.totalBalita - dashboardStats.hadirHariIni)
-                      : 0}
+                    {Math.max(0,
+                      (todayJadwal?.slotSesi.reduce((s, sl) => s + sl.totalAntrian, 0) ?? 0)
+                      - (dashboardStats?.hadirHariIni ?? 0)
+                    )}
                   </p>
                   <p className="text-gray-400 text-[10px] mt-1">Belum</p>
                 </div>
