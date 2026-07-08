@@ -249,12 +249,8 @@ export default function LaporanPage() {
             >
               <option value="">Semua Status Gizi</option>
               <option value="normal">Normal</option>
-              <option value="kurang">Kurang</option>
-              <option value="buruk">Buruk</option>
-              <option value="pendek">Pendek</option>
-              <option value="sangat_pendek">Sangat Pendek</option>
-              <option value="lebih">Lebih</option>
-              <option value="obesitas">Obesitas</option>
+              <option value="kurang_group">Kurang (kurang, buruk, pendek, sgt pendek)</option>
+              <option value="lebih_group">Lebih (lebih, obesitas)</option>
             </select>
             <select
               value={jenisKelamin}

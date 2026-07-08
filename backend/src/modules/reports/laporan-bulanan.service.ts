@@ -205,10 +205,22 @@ export async function getPreviewBulanan(
     balita: { warga: { posyanduUtamaId: { in: filteredIds } } },
   }
 
+  // Expand group filter values to individual status values
+  const STATUS_GROUP_MAP: Record<string, string[]> = {
+    kurang_group: ['kurang', 'buruk', 'pendek', 'sangat_pendek'],
+    lebih_group:  ['lebih', 'obesitas'],
+  }
+  const isGroupFilter = statusGiziFilter && statusGiziFilter in STATUS_GROUP_MAP
+  const statusGiziCondition = statusGiziFilter
+    ? isGroupFilter
+      ? { statusGizi: { in: STATUS_GROUP_MAP[statusGiziFilter] as never } }
+      : { statusGizi: statusGiziFilter as never }
+    : {}
+
   // rowWhere: adds optional statusGizi + jenisKelamin filters for the table
   const rowWhere = {
     tanggalPemeriksaan: { gte: startOfMonth, lt: startOfNextMonth },
-    ...(statusGiziFilter ? { statusGizi: statusGiziFilter as never } : {}),
+    ...statusGiziCondition,
     balita: {
       ...(jenisKelaminFilter ? { jenisKelamin: jenisKelaminFilter as never } : {}),
       warga: { posyanduUtamaId: { in: filteredIds } },
@@ -227,11 +239,16 @@ export async function getPreviewBulanan(
   const sm: Record<string, number> = {}
   for (const g of statusGroups) sm[g.statusGizi ?? ''] = (sm[g.statusGizi ?? ''] ?? 0) + g._count.id
 
+  // Sort by severity (worst first) when a group filter is active, else by date desc
+  const orderBy: object[] = isGroupFilter
+    ? [{ statusGizi: 'desc' as const }, { tanggalPemeriksaan: 'desc' as const }]
+    : [{ tanggalPemeriksaan: 'desc' as const }]
+
   const rows: PreviewRow[] = (await prisma.pemeriksaan.findMany({
     where: rowWhere,
     skip: (page - 1) * limit,
     take: limit,
-    orderBy: [{ tanggalPemeriksaan: 'desc' }],
+    orderBy,
     select: {
       beratBadan: true, tinggiBadan: true,
       zScoreBbU: true, zScoreTbU: true, zScoreBbTb: true,

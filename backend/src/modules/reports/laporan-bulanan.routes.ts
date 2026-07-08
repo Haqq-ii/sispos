@@ -111,7 +111,7 @@ async function previewBulananHandler(req: AuthRequest, res: Response): Promise<v
   const limit = Math.min(50, Math.max(1, parseInt(limitStr ?? '20') || 20))
   const puskesmasId = req.user!.userId
 
-  const VALID_STATUS = ['normal','kurang','buruk','pendek','sangat_pendek','lebih','obesitas']
+  const VALID_STATUS = ['normal','kurang','buruk','pendek','sangat_pendek','lebih','obesitas','kurang_group','lebih_group']
   const VALID_JK = ['laki_laki','perempuan']
   const statusGiziParam = statusGizi && VALID_STATUS.includes(statusGizi) ? statusGizi : undefined
   const jenisKelaminParam = jenisKelamin && VALID_JK.includes(jenisKelamin) ? jenisKelamin : undefined
