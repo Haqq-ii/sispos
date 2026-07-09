@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
-import { ShieldCheck, MapPin } from 'lucide-react'
+import { ArrowLeft, ShieldCheck, MapPin } from 'lucide-react'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LoginForm } from '@/components/auth/LoginForm'
@@ -136,6 +136,13 @@ export default function LoginPage() {
       {/* Root container — mint green background */}
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#f0fdf4] px-4 py-8">
         <div className="w-full max-w-[400px] space-y-4">
+          <Link
+            to="/"
+            className="inline-flex min-h-[40px] items-center gap-2 rounded-xl px-1 text-sm font-semibold text-[#008236] transition-colors hover:text-[#006b2d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#008236] focus-visible:ring-offset-2 focus-visible:ring-offset-[#f0fdf4]"
+          >
+            <ArrowLeft size={18} />
+            Kembali
+          </Link>
 
           {/* ── Logo + wordmark ─────────────────────────────────────────────── */}
           <div className="flex flex-col items-center">
