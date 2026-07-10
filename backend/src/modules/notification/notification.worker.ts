@@ -7,6 +7,75 @@ import type { AntrianJobData } from './antrian.job'
 import { ANTRIAN_WA_JOB_NAME } from './antrian.job'
 
 const logger = pino({ level: env.NODE_ENV === 'production' ? 'info' : 'debug' })
+function maskPhoneNumber(nomorPonsel: string): string {
+  if (nomorPonsel.length <= 4) return '****'
+  return nomorPonsel.slice(0, 4) + '****' + nomorPonsel.slice(-4)
+}
+
+function normalizeFonnteTarget(nomorPonsel: string): string {
+  if (nomorPonsel.startsWith('08')) return `62${nomorPonsel.slice(1)}`
+  if (nomorPonsel.startsWith('+628')) return nomorPonsel.slice(1)
+  return nomorPonsel
+}
+
+function getProviderError(payload: unknown): string | undefined {
+  if (!payload || typeof payload !== 'object') return undefined
+  const record = payload as Record<string, unknown>
+  const reason = record.reason ?? record.message ?? record.detail
+  return typeof reason === 'string' ? reason : undefined
+}
+
+async function sendFonnteMessage(nomorPonsel: string, message: string): Promise<void> {
+  const target = normalizeFonnteTarget(nomorPonsel)
+  const response = await fetch('https://api.fonnte.com/send', {
+    method: 'POST',
+    headers: {
+      Authorization: env.FONNTE_API_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ target, message }),
+  })
+
+  const responseText = await response.text()
+  let payload: unknown
+  try {
+    payload = responseText ? JSON.parse(responseText) : undefined
+  } catch {
+    payload = undefined
+  }
+
+  const providerStatus =
+    payload && typeof payload === 'object' && 'status' in payload
+      ? (payload as { status?: unknown }).status
+      : undefined
+  const providerError = getProviderError(payload)
+
+  if (!response.ok || providerStatus === false) {
+    logger.error(
+      {
+        httpStatus: response.status,
+        providerStatus,
+        providerError,
+        targetMasked: maskPhoneNumber(target),
+      },
+      'Fonnte WA send gagal'
+    )
+    throw new Error(
+      providerError
+        ? `Fonnte API error: ${providerError}`
+        : `Fonnte API error: HTTP ${response.status}`
+    )
+  }
+
+  logger.debug(
+    {
+      httpStatus: response.status,
+      providerStatus,
+      targetMasked: maskPhoneNumber(target),
+    },
+    'Fonnte WA send diterima provider'
+  )
+}
 
 /**
  * Parse Redis URL ke BullMQ ConnectionOptions.
@@ -33,20 +102,9 @@ export const notificationWorker = new Worker(
 
       const message = `Kode OTP SISPOS Anda: ${kodeOtp}. Berlaku 5 menit. Jangan bagikan ke siapapun.`
 
-      const response = await fetch('https://api.fonnte.com/send', {
-        method: 'POST',
-        headers: {
-          Authorization: env.FONNTE_API_KEY,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ target: nomorPonsel, message }),
-      })
+      await sendFonnteMessage(nomorPonsel, message)
 
-      if (!response.ok) {
-        throw new Error(`Fonnte API error: HTTP ${response.status}`)
-      }
-
-      logger.info({ nomorPonsel, jobId: job.id }, 'OTP WA berhasil dikirim via Fonnte')
+      logger.info({ nomorPonsel: maskPhoneNumber(nomorPonsel), jobId: job.id }, 'OTP WA berhasil dikirim via Fonnte')
     } else if (job.name === ANTRIAN_WA_JOB_NAME) {
       // ── Antrian confirmation WhatsApp notification ──────────────────
       const data = job.data as AntrianJobData
@@ -65,26 +123,20 @@ export const notificationWorker = new Worker(
         `Estimasi tunggu: ±${estimasiMenit} menit\n\n` +
         `Harap hadir tepat waktu. Terima kasih.`
 
-      const response = await fetch('https://api.fonnte.com/send', {
-        method: 'POST',
-        headers: {
-          Authorization: env.FONNTE_API_KEY,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ target: nomorPonsel, message }),
-      })
+      await sendFonnteMessage(nomorPonsel, message)
 
-      if (!response.ok) {
-        throw new Error(`Fonnte API error: HTTP ${response.status}`)
-      }
-
-      logger.info({ nomorPonsel, jobId: job.id, nomorUrut }, 'Antrian WA berhasil dikirim via Fonnte')
+      logger.info(
+        { nomorPonsel: maskPhoneNumber(nomorPonsel), jobId: job.id, nomorUrut },
+        'Antrian WA berhasil dikirim via Fonnte'
+      )
     }
   },
   {
     connection: parseBullMQConnection(),
   }
 )
+
+logger.info('Notification WA worker aktif')
 
 notificationWorker.on('failed', (job, err) => {
   logger.error({ jobId: job?.id, jobName: job?.name, err }, 'Notification WA job gagal')

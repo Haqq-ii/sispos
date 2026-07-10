@@ -3,6 +3,7 @@ import app, { logger } from './app'
 import { connectDB } from './config/db'
 import { initSocket } from './config/socket'
 import { env } from './config/env'
+import './modules/notification/notification.worker'
 
 const httpServer = http.createServer(app)
 
