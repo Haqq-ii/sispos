@@ -37,13 +37,15 @@ export async function registerHandler(req: Request, res: Response): Promise<void
     })
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code
-    if (code === 'NIK_SUDAH_TERDAFTAR' || code === 'HP_SUDAH_TERDAFTAR') {
+    if (code === 'NIK_SUDAH_TERDAFTAR' || code === 'HP_SUDAH_TERDAFTAR' || code === 'DATA_REGISTRASI_BENTROK') {
       res.status(409).json({
         success: false,
         error: code,
         message: code === 'NIK_SUDAH_TERDAFTAR'
           ? 'NIK sudah terdaftar. Silakan login atau gunakan NIK yang berbeda.'
-          : 'Nomor ponsel sudah terdaftar. Silakan login atau gunakan nomor yang berbeda.',
+          : code === 'HP_SUDAH_TERDAFTAR'
+            ? 'Nomor ponsel sudah terdaftar. Silakan login atau gunakan nomor yang berbeda.'
+            : 'NIK atau nomor ponsel sedang digunakan pada registrasi lain yang belum selesai.',
       })
       return
     }

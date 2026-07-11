@@ -67,35 +67,55 @@ export function issueTokens(
 export async function registerWarga(
   data: z.infer<typeof RegisterSchema>
 ): Promise<{ nomorPonselMasked: string }> {
-  // Cek duplikasi NIK
+  // Cek duplikasi NIK. Registrasi pending boleh dilanjutkan ulang.
   const existingByNik = await prisma.warga.findUnique({ where: { nikIbu: data.nikIbu } })
-  if (existingByNik) {
+  if (existingByNik && existingByNik.statusVerifikasi !== 'belum_verifikasi') {
     const err = new Error('NIK sudah terdaftar')
     ;(err as NodeJS.ErrnoException).code = 'NIK_SUDAH_TERDAFTAR'
     throw err
   }
 
-  // Cek duplikasi nomor ponsel
+  // Cek duplikasi nomor ponsel. Registrasi pending boleh dikirimi OTP baru.
   const existingByPhone = await prisma.warga.findUnique({ where: { nomorPonsel: data.nomorPonsel } })
-  if (existingByPhone) {
+  if (existingByPhone && existingByPhone.statusVerifikasi !== 'belum_verifikasi') {
     const err = new Error('Nomor ponsel sudah terdaftar')
     ;(err as NodeJS.ErrnoException).code = 'HP_SUDAH_TERDAFTAR'
+    throw err
+  }
+
+  if (existingByNik && existingByPhone && existingByNik.id !== existingByPhone.id) {
+    const err = new Error('NIK atau nomor ponsel sedang digunakan pada registrasi lain')
+    ;(err as NodeJS.ErrnoException).code = 'DATA_REGISTRASI_BENTROK'
     throw err
   }
 
   // Hash password
   const passwordHash = await bcrypt.hash(data.password, env.BCRYPT_ROUNDS)
 
-  // Buat akun Warga
-  await prisma.warga.create({
-    data: {
-      nikIbu: data.nikIbu,
-      namaLengkap: data.namaLengkap,
-      nomorPonsel: data.nomorPonsel,
-      passwordHash,
-      statusVerifikasi: 'belum_verifikasi',
-    },
-  })
+  const pendingWarga = existingByNik ?? existingByPhone
+  if (pendingWarga) {
+    await prisma.warga.update({
+      where: { id: pendingWarga.id },
+      data: {
+        nikIbu: data.nikIbu,
+        namaLengkap: data.namaLengkap,
+        nomorPonsel: data.nomorPonsel,
+        passwordHash,
+        statusVerifikasi: 'belum_verifikasi',
+      },
+    })
+  } else {
+    // Buat akun Warga pending sampai OTP berhasil diverifikasi.
+    await prisma.warga.create({
+      data: {
+        nikIbu: data.nikIbu,
+        namaLengkap: data.namaLengkap,
+        nomorPonsel: data.nomorPonsel,
+        passwordHash,
+        statusVerifikasi: 'belum_verifikasi',
+      },
+    })
+  }
 
   // Generate + enqueue OTP registrasi
   await createAndEnqueueOtp(data.nomorPonsel, 'registrasi')
