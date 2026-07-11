@@ -16,6 +16,7 @@ import { redis } from '../../config/redis'
 import { env } from '../../config/env'
 import { broadcastQueueUpdate } from '../antrian/antrian.service'
 import { notificationQueue } from '../notification/notification.queue'
+import { classifyBbTb, classifyTbU } from '../../shared/utils/zscore'
 
 const logger = pino({ level: env.NODE_ENV === 'production' ? 'info' : 'debug' })
 
@@ -84,7 +85,18 @@ export async function getKaderDashboardStats(kaderId: string): Promise<{
   totalBalita: number
   risikoStunting: number
   hadirHariIni: number
-  trenGiziBulanan: Array<{ bulan: string; normal: number; kurang: number; buruk: number; pendek: number }>
+  trenGiziBulanan: Array<{
+    bulan: string
+    sangatPendek: number
+    pendek: number
+    normalTbU: number
+    tinggi: number
+    obesitas: number
+    giziLebih: number
+    berisikoGiziLebih: number
+    normalBbTb: number
+    kurangBbTb: number
+  }>
   distribusiGiziBulanIni: { normal: number; kurang: number; buruk: number; pendek: number }
   peringatanRisiko: Array<{
     balitaId: string
@@ -173,19 +185,18 @@ export async function getKaderDashboardStats(kaderId: string): Promise<{
         AND latest."statusGizi" IN ('kurang', 'buruk', 'pendek', 'sangat_pendek')
     `,
 
-    // E: trenGiziBulanan â€” 6 bulan terakhir (grouped by bulan + statusGizi)
-    prisma.$queryRaw<Array<{ bulan: string; statusGizi: string; jumlah: number }>>`
+    // E: trenGiziBulanan — 12 bulan terakhir berdasarkan indikator zScoreTbU dan zScoreBbTb.
+    prisma.$queryRaw<Array<{ bulan: string; zScoreTbU: number | null; zScoreBbTb: number | null }>>`
       SELECT
         TO_CHAR(p."tanggalPemeriksaan", 'YYYY-MM') AS bulan,
-        p."statusGizi",
-        COUNT(*)::int AS jumlah
+        p."zScoreTbU" AS "zScoreTbU",
+        p."zScoreBbTb" AS "zScoreBbTb"
       FROM pemeriksaan p
       JOIN balita b ON p."balitaId" = b.id
       JOIN warga w ON b."wargaId" = w.id
       WHERE w."posyanduUtamaId" = ${posyanduId}
         AND p."tanggalPemeriksaan" >= (NOW() AT TIME ZONE 'Asia/Jakarta' - INTERVAL '11 months')::date
-        AND p."statusGizi" IS NOT NULL
-      GROUP BY bulan, p."statusGizi"
+        AND (p."zScoreTbU" IS NOT NULL OR p."zScoreBbTb" IS NOT NULL)
       ORDER BY bulan
     `,
 
@@ -267,18 +278,47 @@ export async function getKaderDashboardStats(kaderId: string): Promise<{
   // D: risikoStunting
   const risikoStunting = Number(risikoRows[0]?.count ?? 0)
 
-  // E: transform ke { bulan, normal, kurang, buruk, pendek }
-  const trenMap = new Map<string, { bulan: string; normal: number; kurang: number; buruk: number; pendek: number }>()
+  // E: transform tren indikator terpisah: TB/U untuk stunting, BB/TB untuk gizi lebih.
+  const trenMap = new Map<string, {
+    bulan: string
+    sangatPendek: number
+    pendek: number
+    normalTbU: number
+    tinggi: number
+    obesitas: number
+    giziLebih: number
+    berisikoGiziLebih: number
+    normalBbTb: number
+    kurangBbTb: number
+  }>()
   for (const row of trenRaw) {
     if (!trenMap.has(row.bulan)) {
-      trenMap.set(row.bulan, { bulan: row.bulan, normal: 0, kurang: 0, buruk: 0, pendek: 0 })
+      trenMap.set(row.bulan, {
+        bulan: row.bulan,
+        sangatPendek: 0,
+        pendek: 0,
+        normalTbU: 0,
+        tinggi: 0,
+        obesitas: 0,
+        giziLebih: 0,
+        berisikoGiziLebih: 0,
+        normalBbTb: 0,
+        kurangBbTb: 0,
+      })
     }
     const entry = trenMap.get(row.bulan)!
-    const jumlah = Number(row.jumlah)
-    if (row.statusGizi === 'normal') entry.normal += jumlah
-    else if (row.statusGizi === 'kurang') entry.kurang += jumlah
-    else if (row.statusGizi === 'buruk') entry.buruk += jumlah
-    else if (row.statusGizi === 'pendek' || row.statusGizi === 'sangat_pendek') entry.pendek += jumlah
+    const tbU = classifyTbU(row.zScoreTbU === null ? null : Number(row.zScoreTbU))
+    if (tbU?.kode === 'sangat_pendek') entry.sangatPendek += 1
+    else if (tbU?.kode === 'pendek') entry.pendek += 1
+    else if (tbU?.kode === 'normal') entry.normalTbU += 1
+    else if (tbU?.kode === 'tinggi') entry.tinggi += 1
+
+    const bbTb = classifyBbTb(row.zScoreBbTb === null ? null : Number(row.zScoreBbTb))
+    if (bbTb?.kode === 'obesitas') entry.obesitas += 1
+    else if (bbTb?.kode === 'gizi_lebih') entry.giziLebih += 1
+    else if (bbTb?.kode === 'berisiko_gizi_lebih') entry.berisikoGiziLebih += 1
+    else if (bbTb?.kode === 'normal') entry.normalBbTb += 1
+    else if (bbTb?.kode === 'kurang') entry.kurangBbTb += 1
   }
   const trenGiziBulanan = Array.from(trenMap.values())
 

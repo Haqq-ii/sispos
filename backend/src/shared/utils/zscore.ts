@@ -114,3 +114,42 @@ export function determineStatusGizi(
   if (zBbU !== null && zBbU > 2) return 'lebih'
   return 'normal'
 }
+
+export type DerivedGrowthSeverity = 'severe' | 'warning' | 'normal' | 'high'
+
+export interface DerivedGrowthCategory {
+  kode: string
+  label: string
+  severity: DerivedGrowthSeverity
+}
+
+export function classifyTbU(zScoreTbU: number | null): DerivedGrowthCategory | null {
+  if (zScoreTbU === null) return null
+  if (zScoreTbU < -3) {
+    return { kode: 'sangat_pendek', label: 'Stunting Berat / Sangat Pendek', severity: 'severe' }
+  }
+  if (zScoreTbU < -2) {
+    return { kode: 'pendek', label: 'Stunting / Pendek', severity: 'warning' }
+  }
+  if (zScoreTbU <= 3) {
+    return { kode: 'normal', label: 'Normal', severity: 'normal' }
+  }
+  return { kode: 'tinggi', label: 'Tinggi', severity: 'high' }
+}
+
+export function classifyBbTb(zScoreBbTb: number | null): DerivedGrowthCategory | null {
+  if (zScoreBbTb === null) return null
+  if (zScoreBbTb > 3) {
+    return { kode: 'obesitas', label: 'Obesitas', severity: 'severe' }
+  }
+  if (zScoreBbTb > 2) {
+    return { kode: 'gizi_lebih', label: 'Gizi Lebih / Gemuk', severity: 'warning' }
+  }
+  if (zScoreBbTb > 1) {
+    return { kode: 'berisiko_gizi_lebih', label: 'Berisiko Gizi Lebih / Berisiko Gemuk', severity: 'warning' }
+  }
+  if (zScoreBbTb >= -2) {
+    return { kode: 'normal', label: 'Gizi Baik / Normal', severity: 'normal' }
+  }
+  return { kode: 'kurang', label: 'Gizi Kurang / Wasting', severity: 'severe' }
+}

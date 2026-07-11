@@ -27,6 +27,7 @@ import {
 const ERROR_MAP: Record<string, number> = {
   SLOT_PENUH: 409,
   SUDAH_DAFTAR: 409,
+  ANTRIAN_AKTIF: 409,
   TIDAK_BISA_BATALKAN: 409,
   SLOT_TIDAK_DITEMUKAN: 404,
   ANTRIAN_TIDAK_DITEMUKAN: 404,
@@ -78,11 +79,12 @@ export async function ambilAntrianHandler(req: AuthRequest, res: Response): Prom
       return
     }
 
-    const e = err as { code?: string }
+    const e = err as { code?: string; antrianId?: string }
     const status = getHttpStatus(e.code)
     const messages: Record<string, string> = {
       SLOT_PENUH: 'Slot sesi ini sudah penuh.',
       SUDAH_DAFTAR: 'Balita sudah terdaftar di sesi ini.',
+      ANTRIAN_AKTIF: 'Balita sudah memiliki antrian aktif.',
       SLOT_TIDAK_DITEMUKAN: 'Slot sesi tidak ditemukan.',
     }
 
@@ -90,6 +92,7 @@ export async function ambilAntrianHandler(req: AuthRequest, res: Response): Prom
       success: false,
       error: e.code ?? 'INTERNAL_ERROR',
       message: messages[e.code ?? ''] ?? 'Terjadi kesalahan internal. Coba lagi beberapa saat.',
+      data: e.code === 'ANTRIAN_AKTIF' ? { antrianId: e.antrianId } : null,
     })
   }
 }

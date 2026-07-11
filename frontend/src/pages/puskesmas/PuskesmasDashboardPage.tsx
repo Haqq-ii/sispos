@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 import {
   BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, PieChart, Pie,
+  Tooltip, ResponsiveContainer, PieChart, Pie, LineChart, Line, Legend,
 } from 'recharts'
 import apiClient from '@/lib/axios'
 import { useAuthStore } from '@/stores/useAuthStore'
@@ -19,6 +19,18 @@ interface DashboardStats {
   totalPemeriksaan: number
   totalBalita: number
   breakdown: Record<string, number>
+  trenGiziBulanan: Array<{
+    bulan: string
+    sangatPendek: number
+    pendek: number
+    normalTbU: number
+    tinggi: number
+    obesitas: number
+    giziLebih: number
+    berisikoGiziLebih: number
+    normalBbTb: number
+    kurangBbTb: number
+  }>
 }
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
@@ -100,6 +112,7 @@ function KPICard({
 
 export default function PuskesmasDashboardPage() {
   const [bulan, setBulan] = useState<string>(getBulanDefault)
+  const [trendMetric, setTrendMetric] = useState<'tbu' | 'bbtb'>('tbu')
   const { data: stats, isLoading } = usePuskesmasDashboardStats(bulan)
   const { user } = useAuthStore()
 
@@ -133,6 +146,21 @@ export default function PuskesmasDashboardPage() {
     nilai: value,
     color: GIZI_COLORS[key] ?? '#d1d5db',
   }))
+  const trendLines = trendMetric === 'tbu'
+    ? [
+        { key: 'sangatPendek', name: 'Berat', color: '#dc2626' },
+        { key: 'pendek', name: 'Pendek', color: '#f97316' },
+        { key: 'normalTbU', name: 'Normal', color: '#16a34a' },
+        { key: 'tinggi', name: 'Tinggi', color: '#0ea5e9' },
+      ]
+    : [
+        { key: 'obesitas', name: 'Obesitas', color: '#dc2626' },
+        { key: 'giziLebih', name: 'Lebih', color: '#f97316' },
+        { key: 'berisikoGiziLebih', name: 'Berisiko', color: '#f59e0b' },
+        { key: 'normalBbTb', name: 'Normal', color: '#16a34a' },
+        { key: 'kurangBbTb', name: 'Wasting', color: '#64748b' },
+      ]
+
 
   const todayLabel = new Date().toLocaleDateString('id-ID', {
     weekday: 'long',
@@ -193,6 +221,56 @@ export default function PuskesmasDashboardPage() {
         )}
 
         {/* ── Charts 2/3 + 1/3 ────────────────────────────────────────────── */}
+        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+            <div>
+              <p className="text-gray-800 text-sm font-bold">Tren Status Gizi</p>
+              <p className="text-gray-400 text-xs">12 bulan terakhir berdasarkan indikator</p>
+            </div>
+            <div className="flex flex-wrap w-fit rounded-lg border border-gray-200 bg-gray-50 p-0.5">
+              <button
+                type="button"
+                onClick={() => setTrendMetric('tbu')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition ${trendMetric === 'tbu' ? 'bg-white text-green-700 shadow-sm' : 'text-gray-500'}`}
+              >
+                TB/U
+              </button>
+              <button
+                type="button"
+                onClick={() => setTrendMetric('bbtb')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition ${trendMetric === 'bbtb' ? 'bg-white text-green-700 shadow-sm' : 'text-gray-500'}`}
+              >
+                BB/TB
+              </button>
+            </div>
+          </div>
+          {(stats?.trenGiziBulanan?.length ?? 0) > 0 ? (
+            <ResponsiveContainer width="100%" height={230}>
+              <LineChart data={stats?.trenGiziBulanan ?? []} margin={{ top: 4, right: 12, bottom: 0, left: -8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                <XAxis dataKey="bulan" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                {trendLines.map((line) => (
+                  <Line
+                    key={line.key}
+                    type="monotone"
+                    dataKey={line.key}
+                    stroke={line.color}
+                    name={line.name}
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[230px] flex items-center justify-center text-gray-400 text-sm">
+              {isLoading ? 'Memuat...' : 'Belum ada data tren'}
+            </div>
+          )}
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {/* BarChart distribusi */}
           <div className="md:col-span-2 bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">

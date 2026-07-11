@@ -103,7 +103,7 @@ function hitungUsia(tanggalLahir: string): string {
 
 function isAxiosLikeError(
   err: unknown
-): err is { response?: { status?: number; data?: { error?: string } } } {
+): err is { response?: { status?: number; data?: { error?: string; data?: { antrianId?: string } } } } {
   return typeof err === 'object' && err !== null && 'response' in err
 }
 
@@ -180,6 +180,14 @@ export default function KonfirmasiAntrianPage() {
               setMutationError(
                 'Balita ini sudah terdaftar di sesi yang sama. Pilih balita lain atau sesi berbeda.'
               )
+            } else if (code === 'ANTRIAN_AKTIF') {
+              const activeAntrianId = err.response?.data?.data?.antrianId
+              if (activeAntrianId) {
+                reset()
+                navigate('/citizen/antrian/tiket/' + activeAntrianId)
+                return
+              }
+              setMutationError('Balita ini sudah memiliki antrian aktif.')
             } else {
               setMutationError('Terjadi kesalahan. Silakan coba beberapa saat lagi.')
             }

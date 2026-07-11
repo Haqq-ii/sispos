@@ -92,15 +92,32 @@ export async function ambilAntrian(
       select: { posyanduUtamaId: true, nomorPonsel: true },
     })
 
-    // 3. Cek duplikasi: balita yang sama di sesi yang sama
+    // 3. Cegah antrian aktif ganda pada jadwal yang sama.
+    const activeExisting = await tx.antrian.findFirst({
+      where: {
+        balitaId,
+        statusAntrian: { in: ['menunggu', 'dipanggil', 'sedang_dilayani'] },
+        slotSesi: { jadwalId: slot.jadwalId },
+      },
+      select: { id: true },
+    })
+    if (activeExisting) {
+      throw Object.assign(new Error('Balita sudah memiliki antrian aktif'), {
+        code: 'ANTRIAN_AKTIF',
+        antrianId: activeExisting.id,
+      })
+    }
+
+    // 4. Cek duplikasi: balita yang sama di sesi yang sama.
+    // Record dibatalkan boleh dipakai ulang karena unique(slotId, balitaId).
     const existing = await tx.antrian.findUnique({
       where: { slotId_balitaId: { slotId, balitaId } },
     })
-    if (existing) {
+    if (existing && existing.statusAntrian !== 'dibatalkan') {
       throw Object.assign(new Error('Balita sudah terdaftar di sesi ini'), { code: 'SUDAH_DAFTAR' })
     }
 
-    // 4. Increment terisi (di dalam lock — aman dari race condition)
+    // 5. Increment terisi (di dalam lock - aman dari race condition)
     await tx.slotSesi.update({
       where: { id: slotId },
       data: { terisi: { increment: 1 } },
@@ -109,25 +126,43 @@ export async function ambilAntrian(
     // nomorUrut = nilai terisi LAMA + 1 (sebelum increment, sesuai urutan pendaftaran)
     const nomorUrut = slot.terisi + 1
 
-    // 5. Buat record Antrian
-    const antrian = await tx.antrian.create({
-      data: {
-        slotId,
-        balitaId,
-        wargaId,
-        nomorUrut,
-        statusAntrian: 'menunggu',
-      },
-      include: {
-        slotSesi: {
+    // 6. Buat record baru, atau aktifkan ulang record yang sebelumnya dibatalkan.
+    const antrian = existing
+      ? await tx.antrian.update({
+          where: { id: existing.id },
+          data: {
+            wargaId,
+            nomorUrut,
+            statusAntrian: 'menunggu',
+          },
           include: {
-            jadwal: {
-              include: { posyandu: true },
+            slotSesi: {
+              include: {
+                jadwal: {
+                  include: { posyandu: true },
+                },
+              },
             },
           },
-        },
-      },
-    })
+        })
+      : await tx.antrian.create({
+          data: {
+            slotId,
+            balitaId,
+            wargaId,
+            nomorUrut,
+            statusAntrian: 'menunggu',
+          },
+          include: {
+            slotSesi: {
+              include: {
+                jadwal: {
+                  include: { posyandu: true },
+                },
+              },
+            },
+          },
+        })
 
     const result: TransactionResult = {
       antrianId: antrian.id,
@@ -200,32 +235,39 @@ export async function ambilAntrian(
 export async function batalkanAntrian(
   antrianId: string,
   wargaId: string
-): Promise<{ antrianId: string; statusAntrian: string }> {
-  // Fetch dengan ownership check sekaligus (findFirst + wargaId filter)
-  const antrian = await prisma.antrian.findFirst({
-    where: { id: antrianId, wargaId },
-  })
+): Promise<{ antrianId: string; statusAntrian: 'dibatalkan' }> {
+  const antrian = await prisma.$transaction(async (tx) => {
+    const rows = await tx.$queryRaw<Array<{
+      id: string
+      slotId: string
+      statusAntrian: string
+    }>>`
+      SELECT id, "slotId", "statusAntrian"
+      FROM antrian
+      WHERE id = ${antrianId} AND "wargaId" = ${wargaId}
+      FOR UPDATE
+    `
+    const locked = rows[0]
+    if (!locked) {
+      // 404 - bukan 403 - mencegah ID enumeration (T-02-10)
+      throw Object.assign(new Error('Antrian tidak ditemukan'), { code: 'ANTRIAN_TIDAK_DITEMUKAN' })
+    }
 
-  if (!antrian) {
-    // 404 — bukan 403 — mencegah ID enumeration (T-02-10)
-    throw Object.assign(new Error('Antrian tidak ditemukan'), { code: 'ANTRIAN_TIDAK_DITEMUKAN' })
-  }
+    if (locked.statusAntrian !== 'menunggu') {
+      throw Object.assign(new Error('Antrian tidak bisa dibatalkan'), { code: 'TIDAK_BISA_BATALKAN' })
+    }
 
-  if (antrian.statusAntrian !== 'menunggu') {
-    throw Object.assign(new Error('Antrian tidak bisa dibatalkan'), { code: 'TIDAK_BISA_BATALKAN' })
-  }
-
-  // Update status + decrement terisi secara atomic
-  await prisma.$transaction([
-    prisma.antrian.update({
+    await tx.antrian.update({
       where: { id: antrianId },
       data: { statusAntrian: 'dibatalkan' },
-    }),
-    prisma.slotSesi.update({
-      where: { id: antrian.slotId },
+    })
+    await tx.slotSesi.update({
+      where: { id: locked.slotId },
       data: { terisi: { decrement: 1 } },
-    }),
-  ])
+    })
+
+    return locked
+  })
 
   // Broadcast di luar transaksi (T-02-14)
   void broadcastQueueUpdate(antrian.slotId)
@@ -234,7 +276,6 @@ export async function batalkanAntrian(
 
   return { antrianId, statusAntrian: 'dibatalkan' }
 }
-
 /**
  * getAntrianSaya — Ambil antrian aktif citizen hari ini.
  *

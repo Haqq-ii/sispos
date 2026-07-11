@@ -19,8 +19,9 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ChevronRight, AlertTriangle, Download, Info } from 'lucide-react'
 import {
-  BarChart,
-  Bar,
+  LineChart,
+  Line,
+  Legend,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -68,10 +69,15 @@ interface KaderDashboardStats {
   hadirHariIni: number
   trenGiziBulanan: Array<{
     bulan: string
-    normal: number
-    kurang: number
-    buruk: number
+    sangatPendek: number
     pendek: number
+    normalTbU: number
+    tinggi: number
+    obesitas: number
+    giziLebih: number
+    berisikoGiziLebih: number
+    normalBbTb: number
+    kurangBbTb: number
   }>
   distribusiGiziBulanIni: {
     normal: number
@@ -137,6 +143,7 @@ export default function KaderDashboardPage() {
   const [balitaSort, setBalitaSort] = useState<'az' | 'za' | 'zscore-asc' | 'zscore-desc'>('az')
   const [balitaFilterGizi, setBalitaFilterGizi] = useState<string>('semua')
   const [balitaFilterGender, setBalitaFilterGender] = useState<string>('semua')
+  const [trendMetric, setTrendMetric] = useState<'tbu' | 'bbtb'>('tbu')
 
   // Lock-screen redirect (KRITIS — jangan hapus)
   const { data: activeMejaData, isLoading: isLoadingActiveMeja } = useActiveMeja()
@@ -177,6 +184,21 @@ export default function KaderDashboardPage() {
         { name: 'Pendek', value: dashboardStats.distribusiGiziBulanIni.pendek, color: '#d1d5db' },
       ]
     : []
+  const trendLines = trendMetric === 'tbu'
+    ? [
+        { key: 'sangatPendek', name: 'Berat', color: '#dc2626' },
+        { key: 'pendek', name: 'Pendek', color: '#f97316' },
+        { key: 'normalTbU', name: 'Normal', color: '#16a34a' },
+        { key: 'tinggi', name: 'Tinggi', color: '#0ea5e9' },
+      ]
+    : [
+        { key: 'obesitas', name: 'Obesitas', color: '#dc2626' },
+        { key: 'giziLebih', name: 'Lebih', color: '#f97316' },
+        { key: 'berisikoGiziLebih', name: 'Berisiko', color: '#f59e0b' },
+        { key: 'normalBbTb', name: 'Normal', color: '#16a34a' },
+        { key: 'kurangBbTb', name: 'Wasting', color: '#64748b' },
+      ]
+
 
   // First slot for jadwal display
   const firstSlot = todayJadwal?.slotSesi?.[0]
@@ -353,25 +375,51 @@ export default function KaderDashboardPage() {
               )}
             </div>
 
-            {/* Tren Status Gizi — BarChart */}
+            {/* Tren Status Gizi - LineChart */}
             <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
-              <p className="text-[#99a1af] text-xs font-semibold tracking-wider uppercase mb-3">
-                Tren Status Gizi
-              </p>
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <p className="text-[#99a1af] text-xs font-semibold tracking-wider uppercase">
+                  Tren Status Gizi
+                </p>
+                <div className="flex flex-wrap rounded-lg border border-gray-200 bg-gray-50 p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setTrendMetric('tbu')}
+                    className={`px-2 py-1 text-[10px] font-semibold rounded-md transition ${trendMetric === 'tbu' ? 'bg-white text-green-700 shadow-sm' : 'text-gray-500'}`}
+                  >
+                    TB/U
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTrendMetric('bbtb')}
+                    className={`px-2 py-1 text-[10px] font-semibold rounded-md transition ${trendMetric === 'bbtb' ? 'bg-white text-green-700 shadow-sm' : 'text-gray-500'}`}
+                  >
+                    BB/TB
+                  </button>
+                </div>
+              </div>
               {isLoadingStats ? (
-                <Skeleton className="h-[150px] rounded-xl" />
+                <Skeleton className="h-[170px] rounded-xl" />
               ) : (
-                <ResponsiveContainer width="100%" height={150}>
-                  <BarChart data={dashboardStats?.trenGiziBulanan ?? []}>
+                <ResponsiveContainer width="100%" height={170}>
+                  <LineChart data={dashboardStats?.trenGiziBulanan ?? []} margin={{ top: 4, right: 8, bottom: 0, left: -8 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
                     <XAxis dataKey="bulan" tick={{ fontSize: 9 }} />
-                    <YAxis tick={{ fontSize: 9 }} width={24} />
+                    <YAxis tick={{ fontSize: 9 }} width={28} allowDecimals={false} />
                     <Tooltip />
-                    <Bar dataKey="normal" fill="#15803d" name="Normal" />
-                    <Bar dataKey="kurang" fill="#f59e0b" name="Kurang" />
-                    <Bar dataKey="buruk" fill="#ef4444" name="Buruk" />
-                    <Bar dataKey="pendek" fill="#d1d5db" name="Pendek" />
-                  </BarChart>
+                    <Legend wrapperStyle={{ fontSize: 10 }} />
+                    {trendLines.map((line) => (
+                      <Line
+                        key={line.key}
+                        type="monotone"
+                        dataKey={line.key}
+                        stroke={line.color}
+                        name={line.name}
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    ))}
+                  </LineChart>
                 </ResponsiveContainer>
               )}
             </div>

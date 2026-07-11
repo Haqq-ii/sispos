@@ -1,4 +1,5 @@
 import { prisma } from '../../config/db'
+import { classifyBbTb, classifyTbU } from '../../shared/utils/zscore'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -16,6 +17,18 @@ export interface DashboardStats {
   totalPemeriksaan: number
   totalBalita: number
   breakdown: Record<string, number>
+  trenGiziBulanan: Array<{
+    bulan: string
+    sangatPendek: number
+    pendek: number
+    normalTbU: number
+    tinggi: number
+    obesitas: number
+    giziLebih: number
+    berisikoGiziLebih: number
+    normalBbTb: number
+    kurangBbTb: number
+  }>
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -117,7 +130,7 @@ export async function getDashboardStats(
     .then((rows) => rows.map((r) => r.id))
 
   if (posyanduIds.length === 0) {
-    return { totalPemeriksaan: 0, totalBalita: 0, breakdown: {} }
+    return { totalPemeriksaan: 0, totalBalita: 0, breakdown: {}, trenGiziBulanan: [] }
   }
 
   const allPemeriksaan = await prisma.pemeriksaan.findMany({
@@ -134,6 +147,22 @@ export async function getDashboardStats(
       statusGiziOverride: true,
     },
   })
+  const trendStart = new Date(startOfMonth)
+  trendStart.setMonth(trendStart.getMonth() - 11)
+  const trendPemeriksaan = await prisma.pemeriksaan.findMany({
+    where: {
+      tanggalPemeriksaan: { gte: trendStart, lt: startOfNextMonth },
+      balita: {
+        warga: { posyanduUtamaId: { in: posyanduIds } },
+      },
+      OR: [{ zScoreTbU: { not: null } }, { zScoreBbTb: { not: null } }],
+    },
+    select: {
+      tanggalPemeriksaan: true,
+      zScoreTbU: true,
+      zScoreBbTb: true,
+    },
+  })
 
   const breakdown = allPemeriksaan.reduce(
     (acc, pm) => {
@@ -144,11 +173,56 @@ export async function getDashboardStats(
     {} as Record<string, number>
   )
 
-  const uniqueBalitaIds = new Set(allPemeriksaan.map((pm) => pm.balitaId))
+  const trenMap = new Map<string, {
+    bulan: string
+    sangatPendek: number
+    pendek: number
+    normalTbU: number
+    tinggi: number
+    obesitas: number
+    giziLebih: number
+    berisikoGiziLebih: number
+    normalBbTb: number
+    kurangBbTb: number
+  }>()
 
+  for (const pm of trendPemeriksaan) {
+    const bulanKey = pm.tanggalPemeriksaan.toISOString().slice(0, 7)
+    if (!trenMap.has(bulanKey)) {
+      trenMap.set(bulanKey, {
+        bulan: bulanKey,
+        sangatPendek: 0,
+        pendek: 0,
+        normalTbU: 0,
+        tinggi: 0,
+        obesitas: 0,
+        giziLebih: 0,
+        berisikoGiziLebih: 0,
+        normalBbTb: 0,
+        kurangBbTb: 0,
+      })
+    }
+    const entry = trenMap.get(bulanKey)!
+    const tbU = classifyTbU(pm.zScoreTbU === null ? null : Number(pm.zScoreTbU))
+    if (tbU?.kode === 'sangat_pendek') entry.sangatPendek += 1
+    else if (tbU?.kode === 'pendek') entry.pendek += 1
+    else if (tbU?.kode === 'normal') entry.normalTbU += 1
+    else if (tbU?.kode === 'tinggi') entry.tinggi += 1
+
+    const bbTb = classifyBbTb(pm.zScoreBbTb === null ? null : Number(pm.zScoreBbTb))
+    if (bbTb?.kode === 'obesitas') entry.obesitas += 1
+    else if (bbTb?.kode === 'gizi_lebih') entry.giziLebih += 1
+    else if (bbTb?.kode === 'berisiko_gizi_lebih') entry.berisikoGiziLebih += 1
+    else if (bbTb?.kode === 'normal') entry.normalBbTb += 1
+    else if (bbTb?.kode === 'kurang') entry.kurangBbTb += 1
+  }
+  const trenGiziBulanan = Array.from(trenMap.values()).sort((a, b) => a.bulan.localeCompare(b.bulan))
+
+  const uniqueBalitaIds = new Set(allPemeriksaan.map((pm) => pm.balitaId))
   return {
     totalPemeriksaan: allPemeriksaan.length,
     totalBalita: uniqueBalitaIds.size,
     breakdown,
+    trenGiziBulanan,
   }
 }
