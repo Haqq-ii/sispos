@@ -28,6 +28,9 @@ interface PreviewRow {
 
 interface PreviewStats {
   totalPemeriksaan: number
+  ringkasanNormal: number
+  ringkasanPerluPerhatian: number
+  stuntingTbU: number
   buruk: number; kurang: number; normal: number
   lebih: number; obesitas: number
   pendek: number; sangatPendek: number
@@ -104,7 +107,7 @@ export default function LaporanPage() {
   const rows = preview?.data ?? []
   const meta = preview?.meta
   const totalPages = meta ? Math.ceil(meta.total / LIMIT) : 1
-  const bermasalah = (stats?.buruk ?? 0) + (stats?.kurang ?? 0)
+  const bermasalah = stats?.ringkasanPerluPerhatian ?? 0
 
   const handleBulanChange = (val: string) => { setBulan(val); setPage(1) }
   const handlePosyanduChange = (val: string) => { setPosyanduId(val); setPage(1) }
@@ -165,21 +168,21 @@ export default function LaporanPage() {
             </div>
             <div className="bg-[rgba(255,255,255,0.15)] rounded-[14px] px-3 py-3">
               <p className="text-white font-bold text-xl leading-none">
-                {(stats?.normal ?? 0).toLocaleString('id-ID')}
+                {(stats?.ringkasanNormal ?? 0).toLocaleString('id-ID')}
               </p>
-              <p className="text-[#dcfce7] text-[10px] leading-tight mt-1">Anak Sehat</p>
+              <p className="text-[#dcfce7] text-[10px] leading-tight mt-1">Ringkasan Normal</p>
             </div>
             <div className="bg-[rgba(255,255,255,0.15)] rounded-[14px] px-3 py-3">
               <p className="text-[#fb2c36] font-bold text-xl leading-none">
                 {bermasalah.toLocaleString('id-ID')}
               </p>
-              <p className="text-[#dcfce7] text-[10px] leading-tight mt-1">Perlu Perhatian</p>
+              <p className="text-[#dcfce7] text-[10px] leading-tight mt-1">Ringkasan Non-normal</p>
             </div>
             <div className="bg-[rgba(255,255,255,0.15)] rounded-[14px] px-3 py-3">
               <p className="text-[#fbbf24] font-bold text-xl leading-none">
-                {((stats?.pendek ?? 0) + (stats?.sangatPendek ?? 0)).toLocaleString('id-ID')}
+                {(stats?.stuntingTbU ?? 0).toLocaleString('id-ID')}
               </p>
-              <p className="text-[#dcfce7] text-[10px] leading-tight mt-1">Stunting</p>
+              <p className="text-[#dcfce7] text-[10px] leading-tight mt-1">Stunting TB/U</p>
             </div>
           </div>
         )}

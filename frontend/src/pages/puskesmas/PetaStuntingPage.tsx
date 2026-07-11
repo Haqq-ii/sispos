@@ -51,12 +51,7 @@ function formatBulanLabel(bulan: string): string {
 }
 
 function getRisikoCount(breakdown: Record<string, number>): number {
-  return (
-    (breakdown.buruk ?? 0) +
-    (breakdown.sangat_pendek ?? 0) +
-    (breakdown.kurang ?? 0) +
-    (breakdown.pendek ?? 0)
-  )
+  return (breakdown.sangat_pendek ?? 0) + (breakdown.pendek ?? 0)
 }
 
 function getRisikoLevel(breakdown: Record<string, number>, total: number): 'rendah' | 'sedang' | 'tinggi' {
@@ -144,7 +139,7 @@ export default function PetaStuntingPage() {
           <div>
             <h1 className="text-gray-800 font-bold text-lg">Peta Sebaran Stunting</h1>
             <p className="text-gray-400 text-xs">
-              Visualisasi risiko stunting tingkat posyandu
+              Visualisasi stunting TB/U tingkat posyandu
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -250,7 +245,7 @@ export default function PetaStuntingPage() {
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                             {([
                               { label: 'Total Balita', val: String(point.total), c: '#111827' },
-                              { label: 'Kasus Risiko', val: String(risiko), c: '#dc2626' },
+                              { label: 'Kasus Stunting', val: String(risiko), c: '#dc2626' },
                               { label: 'Tingkat Risiko', val: `${pct}%`, c: '#111827' },
                             ] as const).map(({ label, val, c }) => (
                               <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
@@ -274,7 +269,7 @@ export default function PetaStuntingPage() {
           {/* Ranking panel */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col max-h-[390px]">
             <div className="px-4 py-3 border-b border-gray-50 flex-shrink-0">
-              <p className="text-gray-800 text-sm font-bold">Peringkat Risiko</p>
+              <p className="text-gray-800 text-sm font-bold">Peringkat Stunting</p>
             </div>
             {ranked.length === 0 ? (
               <div className="px-4 py-8 text-center text-gray-400 text-sm flex-1">
@@ -319,7 +314,7 @@ export default function PetaStuntingPage() {
         {barData.length > 0 && (
           <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
             <p className="text-gray-800 font-bold mb-4">
-              Perbandingan Risiko Stunting Antar Posyandu
+              Perbandingan Stunting Antar Posyandu
             </p>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={barData} margin={{ top: 0, right: 10, bottom: 0, left: -10 }}>
@@ -329,7 +324,7 @@ export default function PetaStuntingPage() {
                 <Tooltip
                   formatter={(val, name) => [
                     val,
-                    name === 'risiko' ? 'Kasus Risiko' : 'Total Balita',
+                    name === 'risiko' ? 'Kasus Stunting' : 'Total Balita',
                   ]}
                 />
                 <Bar dataKey="total" fill="#bfdbfe" name="total" radius={[4, 4, 0, 0]} />

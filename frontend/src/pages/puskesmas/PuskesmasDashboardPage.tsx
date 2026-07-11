@@ -19,6 +19,19 @@ interface DashboardStats {
   totalPemeriksaan: number
   totalBalita: number
   breakdown: Record<string, number>
+  distribusiRingkasanGiziBulanIni: {
+    normal: number
+    kurangPendek: number
+    burukSangatPendek: number
+    lebihObesitas: number
+  }
+  trenRingkasanGizi: Array<{
+    bulan: string
+    normal: number
+    kurangPendek: number
+    burukSangatPendek: number
+    lebihObesitas: number
+  }>
   trenGiziBulanan: Array<{
     bulan: string
     sangatPendek: number
@@ -60,24 +73,20 @@ function formatBulanLabel(bulan: string): string {
   })
 }
 
-const GIZI_COLORS: Record<string, string> = {
-  normal: '#15803d',
-  kurang: '#f59e0b',
-  pendek: '#f59e0b',
-  buruk: '#ef4444',
-  sangat_pendek: '#dc2626',
-  lebih: '#93c5fd',
-  obesitas: '#60a5fa',
-}
+const RINGKASAN_GIZI_ITEMS = [
+  { key: 'normal', name: 'Normal', color: '#15803d' },
+  { key: 'kurangPendek', name: 'Kurang/Pendek', color: '#f59e0b' },
+  { key: 'burukSangatPendek', name: 'Buruk/Sgt Pendek', color: '#ef4444' },
+  { key: 'lebihObesitas', name: 'Lebih/Obesitas', color: '#60a5fa' },
+] as const
 
-const GIZI_LABELS: Record<string, string> = {
-  normal: 'Normal',
-  kurang: 'Kurang',
-  pendek: 'Pendek',
-  buruk: 'Buruk',
-  sangat_pendek: 'Sangat Pendek',
-  lebih: 'Lebih',
-  obesitas: 'Obesitas',
+type RingkasanGiziKey = (typeof RINGKASAN_GIZI_ITEMS)[number]['key']
+
+const EMPTY_RINGKASAN_GIZI: Record<RingkasanGiziKey, number> = {
+  normal: 0,
+  kurangPendek: 0,
+  burukSangatPendek: 0,
+  lebihObesitas: 0,
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
@@ -112,54 +121,30 @@ function KPICard({
 
 export default function PuskesmasDashboardPage() {
   const [bulan, setBulan] = useState<string>(getBulanDefault)
-  const [trendMetric, setTrendMetric] = useState<'tbu' | 'bbtb'>('tbu')
   const { data: stats, isLoading } = usePuskesmasDashboardStats(bulan)
   const { user } = useAuthStore()
 
+  const distribusiRingkasan = stats?.distribusiRingkasanGiziBulanIni ?? EMPTY_RINGKASAN_GIZI
+  const totalRingkasan =
+    distribusiRingkasan.normal +
+    distribusiRingkasan.kurangPendek +
+    distribusiRingkasan.burukSangatPendek +
+    distribusiRingkasan.lebihObesitas
   const bermasalah =
-    (stats?.breakdown?.buruk ?? 0) +
-    (stats?.breakdown?.sangat_pendek ?? 0) +
-    (stats?.breakdown?.kurang ?? 0) +
-    (stats?.breakdown?.pendek ?? 0)
+    distribusiRingkasan.kurangPendek +
+    distribusiRingkasan.burukSangatPendek +
+    distribusiRingkasan.lebihObesitas
+  const pieData = RINGKASAN_GIZI_ITEMS.map((item) => ({
+    ...item,
+    value: distribusiRingkasan[item.key],
+  })).filter((d) => d.value > 0)
 
-  const pieData = [
-    { name: 'Normal', value: stats?.breakdown?.normal ?? 0, color: '#15803d' },
-    {
-      name: 'Kurang/Pendek',
-      value: (stats?.breakdown?.kurang ?? 0) + (stats?.breakdown?.pendek ?? 0),
-      color: '#f59e0b',
-    },
-    {
-      name: 'Buruk/Sgt Pendek',
-      value: (stats?.breakdown?.buruk ?? 0) + (stats?.breakdown?.sangat_pendek ?? 0),
-      color: '#ef4444',
-    },
-    {
-      name: 'Lebih/Obesitas',
-      value: (stats?.breakdown?.lebih ?? 0) + (stats?.breakdown?.obesitas ?? 0),
-      color: '#93c5fd',
-    },
-  ].filter((d) => d.value > 0)
-
-  const barData = Object.entries(stats?.breakdown ?? {}).map(([key, value]) => ({
-    name: GIZI_LABELS[key] ?? key,
-    nilai: value,
-    color: GIZI_COLORS[key] ?? '#d1d5db',
+  const barData = RINGKASAN_GIZI_ITEMS.map((item) => ({
+    name: item.name,
+    nilai: distribusiRingkasan[item.key],
+    color: item.color,
   }))
-  const trendLines = trendMetric === 'tbu'
-    ? [
-        { key: 'sangatPendek', name: 'Berat', color: '#dc2626' },
-        { key: 'pendek', name: 'Pendek', color: '#f97316' },
-        { key: 'normalTbU', name: 'Normal', color: '#16a34a' },
-        { key: 'tinggi', name: 'Tinggi', color: '#0ea5e9' },
-      ]
-    : [
-        { key: 'obesitas', name: 'Obesitas', color: '#dc2626' },
-        { key: 'giziLebih', name: 'Lebih', color: '#f97316' },
-        { key: 'berisikoGiziLebih', name: 'Berisiko', color: '#f59e0b' },
-        { key: 'normalBbTb', name: 'Normal', color: '#16a34a' },
-        { key: 'kurangBbTb', name: 'Wasting', color: '#64748b' },
-      ]
+  const trendLines = RINGKASAN_GIZI_ITEMS
 
 
   const todayLabel = new Date().toLocaleDateString('id-ID', {
@@ -197,17 +182,17 @@ export default function PuskesmasDashboardPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <KPICard
               label="Total Pemeriksaan"
-              value={(stats?.totalPemeriksaan ?? 0).toLocaleString('id-ID')}
+              value={totalRingkasan.toLocaleString('id-ID')}
               sub={`Bulan ${formatBulanLabel(bulan)}`}
             />
             <KPICard
               label="Total Balita"
               value={(stats?.totalBalita ?? 0).toLocaleString('id-ID')}
-              sub="Di wilayah kerja"
+              sub="Balita diperiksa bulan ini"
             />
             <KPICard
               label="Gizi Normal"
-              value={(stats?.breakdown?.normal ?? 0).toLocaleString('id-ID')}
+              value={distribusiRingkasan.normal.toLocaleString('id-ID')}
               sub="Status baik"
               positive
             />
@@ -222,31 +207,13 @@ export default function PuskesmasDashboardPage() {
 
         {/* ── Charts 2/3 + 1/3 ────────────────────────────────────────────── */}
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
-            <div>
-              <p className="text-gray-800 text-sm font-bold">Tren Status Gizi</p>
-              <p className="text-gray-400 text-xs">12 bulan terakhir berdasarkan indikator</p>
-            </div>
-            <div className="flex flex-wrap w-fit rounded-lg border border-gray-200 bg-gray-50 p-0.5">
-              <button
-                type="button"
-                onClick={() => setTrendMetric('tbu')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition ${trendMetric === 'tbu' ? 'bg-white text-green-700 shadow-sm' : 'text-gray-500'}`}
-              >
-                TB/U
-              </button>
-              <button
-                type="button"
-                onClick={() => setTrendMetric('bbtb')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition ${trendMetric === 'bbtb' ? 'bg-white text-green-700 shadow-sm' : 'text-gray-500'}`}
-              >
-                BB/TB
-              </button>
-            </div>
+          <div className="mb-4">
+            <p className="text-gray-800 text-sm font-bold">Tren Ringkasan Risiko Gizi</p>
+            <p className="text-gray-400 text-xs">12 bulan terakhir berdasarkan z-score</p>
           </div>
-          {(stats?.trenGiziBulanan?.length ?? 0) > 0 ? (
+          {(stats?.trenRingkasanGizi?.length ?? 0) > 0 ? (
             <ResponsiveContainer width="100%" height={230}>
-              <LineChart data={stats?.trenGiziBulanan ?? []} margin={{ top: 4, right: 12, bottom: 0, left: -8 }}>
+              <LineChart data={stats?.trenRingkasanGizi ?? []} margin={{ top: 4, right: 12, bottom: 0, left: -8 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
                 <XAxis dataKey="bulan" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} allowDecimals={false} />
@@ -275,10 +242,10 @@ export default function PuskesmasDashboardPage() {
           {/* BarChart distribusi */}
           <div className="md:col-span-2 bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
             <div className="mb-4">
-              <p className="text-gray-800 text-sm font-bold">Distribusi Status Gizi</p>
+              <p className="text-gray-800 text-sm font-bold">Distribusi Ringkasan Risiko Gizi</p>
               <p className="text-gray-400 text-xs">{formatBulanLabel(bulan)}</p>
             </div>
-            {barData.length > 0 ? (
+            {barData.some((item) => item.nilai > 0) ? (
               <ResponsiveContainer width="100%" height={190}>
                 <BarChart data={barData} margin={{ top: 0, right: 10, bottom: 0, left: -10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
@@ -310,7 +277,7 @@ export default function PuskesmasDashboardPage() {
 
           {/* PieChart status gizi */}
           <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-            <p className="text-gray-800 text-sm font-bold mb-3">Proporsi Status Gizi</p>
+            <p className="text-gray-800 text-sm font-bold mb-3">Proporsi Ringkasan Risiko Gizi</p>
             {pieData.length > 0 ? (
               <>
                 <div className="flex justify-center mb-3">

@@ -52,10 +52,19 @@ function formatTanggalBulan(bulan: string): string {
 function parseBulan(bulan: string): { startOfMonth: Date; startOfNextMonth: Date } {
   const [year, month] = bulan.split('-').map(Number)
   const startOfMonth = new Date(year, month - 1, 1)
-  const startOfNextMonth = new Date(year, month, 1) // exclusive upper bound — avoids Pitfall 5
+  const startOfNextMonth = new Date(year, month, 1) // exclusive upper bound - avoids Pitfall 5
   return { startOfMonth, startOfNextMonth }
 }
 
+function classifyRingkasanGizi(zScoreTbU: number | null, zScoreBbTb: number | null) {
+  if ((zScoreTbU !== null && zScoreTbU < -3) || (zScoreBbTb !== null && zScoreBbTb < -3)) return 'burukSangatPendek'
+  if (zScoreBbTb !== null && zScoreBbTb > 1) return 'lebihObesitas'
+  if (
+    (zScoreTbU !== null && zScoreTbU >= -3 && zScoreTbU < -2) ||
+    (zScoreBbTb !== null && zScoreBbTb >= -3 && zScoreBbTb < -2)
+  ) return 'kurangPendek'
+  return 'normal'
+}
 // ── PemRow type (flat, direct query — no antrian chain) ───────────────────
 type PemRow = {
   posyanduId: string
@@ -160,6 +169,9 @@ export type PreviewRow = {
 
 export type PreviewStats = {
   totalPemeriksaan: number
+  ringkasanNormal: number
+  ringkasanPerluPerhatian: number
+  stuntingTbU: number
   buruk: number; kurang: number; normal: number
   lebih: number; obesitas: number
   pendek: number; sangatPendek: number
@@ -190,7 +202,7 @@ export async function getPreviewBulanan(
     orderBy: { namaPosyandu: 'asc' },
   })
   if (allPosyandu.length === 0) {
-    const empty: PreviewStats = { totalPemeriksaan: 0, buruk: 0, kurang: 0, normal: 0, lebih: 0, obesitas: 0, pendek: 0, sangatPendek: 0, posyanduList: [] }
+    const empty: PreviewStats = { totalPemeriksaan: 0, ringkasanNormal: 0, ringkasanPerluPerhatian: 0, stuntingTbU: 0, buruk: 0, kurang: 0, normal: 0, lebih: 0, obesitas: 0, pendek: 0, sangatPendek: 0, posyanduList: [] }
     return { rows: [], stats: empty, meta: { total: 0, page, limit } }
   }
 
@@ -227,17 +239,35 @@ export async function getPreviewBulanan(
     },
   }
 
-  const [total, statusGroups] = await Promise.all([
+  const [total, totalPemeriksaanBulanIni, statusGroups, statsPemeriksaan] = await Promise.all([
     prisma.pemeriksaan.count({ where: rowWhere }),
+    prisma.pemeriksaan.count({ where: statsWhere }),
     prisma.pemeriksaan.groupBy({
       by: ['statusGizi'],
       where: statsWhere,
       _count: { id: true },
     }),
+    prisma.pemeriksaan.findMany({
+      where: statsWhere,
+      select: { zScoreTbU: true, zScoreBbTb: true },
+    }),
   ])
 
   const sm: Record<string, number> = {}
   for (const g of statusGroups) sm[g.statusGizi ?? ''] = (sm[g.statusGizi ?? ''] ?? 0) + g._count.id
+
+  let ringkasanNormal = 0
+  let ringkasanPerluPerhatian = 0
+  let stuntingTbU = 0
+  for (const p of statsPemeriksaan) {
+    const zTbU = p.zScoreTbU === null ? null : Number(p.zScoreTbU)
+    const zBbTb = p.zScoreBbTb === null ? null : Number(p.zScoreBbTb)
+    if (zTbU !== null && zTbU < -2) stuntingTbU += 1
+    if (zTbU === null && zBbTb === null) continue
+    const ringkasan = classifyRingkasanGizi(zTbU, zBbTb)
+    if (ringkasan === 'normal') ringkasanNormal += 1
+    else ringkasanPerluPerhatian += 1
+  }
 
   // Sort by severity (worst first) when a group filter is active, else by date desc
   const orderBy: object[] = isGroupFilter
@@ -287,7 +317,10 @@ export async function getPreviewBulanan(
   return {
     rows,
     stats: {
-      totalPemeriksaan: total,
+      totalPemeriksaan: totalPemeriksaanBulanIni,
+      ringkasanNormal,
+      ringkasanPerluPerhatian,
+      stuntingTbU,
       buruk: sm['buruk'] ?? 0,
       kurang: sm['kurang'] ?? 0,
       normal: sm['normal'] ?? 0,

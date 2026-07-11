@@ -17,6 +17,19 @@ export interface DashboardStats {
   totalPemeriksaan: number
   totalBalita: number
   breakdown: Record<string, number>
+  distribusiRingkasanGiziBulanIni: {
+    normal: number
+    kurangPendek: number
+    burukSangatPendek: number
+    lebihObesitas: number
+  }
+  trenRingkasanGizi: Array<{
+    bulan: string
+    normal: number
+    kurangPendek: number
+    burukSangatPendek: number
+    lebihObesitas: number
+  }>
   trenGiziBulanan: Array<{
     bulan: string
     sangatPendek: number
@@ -38,6 +51,31 @@ function parseBulan(bulan: string): { startOfMonth: Date; startOfNextMonth: Date
   const startOfMonth = new Date(year, month - 1, 1)
   const startOfNextMonth = new Date(year, month, 1)
   return { startOfMonth, startOfNextMonth }
+}
+
+function createRingkasanGiziBucket() {
+  return {
+    normal: 0,
+    kurangPendek: 0,
+    burukSangatPendek: 0,
+    lebihObesitas: 0,
+  }
+}
+
+function classifyRingkasanGizi(zScoreTbU: number | null, zScoreBbTb: number | null) {
+  if ((zScoreTbU !== null && zScoreTbU < -3) || (zScoreBbTb !== null && zScoreBbTb < -3)) {
+    return 'burukSangatPendek' as const
+  }
+  if (zScoreBbTb !== null && zScoreBbTb > 1) {
+    return 'lebihObesitas' as const
+  }
+  if (
+    (zScoreTbU !== null && zScoreTbU >= -3 && zScoreTbU < -2) ||
+    (zScoreBbTb !== null && zScoreBbTb >= -3 && zScoreBbTb < -2)
+  ) {
+    return 'kurangPendek' as const
+  }
+  return 'normal' as const
 }
 
 // ── getStuntingMapData ────────────────────────────────────────────────────────
@@ -63,18 +101,17 @@ export async function getStuntingMapData(
     where: {
       tanggalPemeriksaan: { gte: startOfMonth, lt: startOfNextMonth },
       balita: { warga: { posyanduUtamaId: { in: posyanduIds } } },
-      statusGizi: { not: null },
+      zScoreTbU: { not: null },
     },
     select: {
       balitaId: true,
       tanggalPemeriksaan: true,
-      statusGizi: true,
-      statusGiziOverride: true,
+      zScoreTbU: true,
       balita: { select: { warga: { select: { posyanduUtamaId: true } } } },
     },
   })
 
-  // Dedup: per balitaId gunakan pemeriksaan terbaru — 1 anak dihitung 1 kali
+  // Dedup: per balitaId gunakan pemeriksaan terbaru - 1 anak dihitung 1 kali.
   const latestByBalita = new Map<string, typeof allPemeriksaan[0]>()
   for (const pm of allPemeriksaan) {
     const ex = latestByBalita.get(pm.balitaId)
@@ -83,15 +120,14 @@ export async function getStuntingMapData(
     }
   }
 
-  // Group unique balita by posyanduId
   const groupedMap = new Map<string, Record<string, number>>()
   for (const pm of latestByBalita.values()) {
     const pid = pm.balita.warga.posyanduUtamaId
-    if (!pid) continue
-    const status = pm.statusGiziOverride ?? pm.statusGizi
-    if (!status) continue
+    if (!pid || pm.zScoreTbU === null) continue
+    const zTbU = Number(pm.zScoreTbU)
+    const kategori = zTbU < -3 ? 'sangat_pendek' : zTbU < -2 ? 'pendek' : 'normal'
     const acc = groupedMap.get(pid) ?? {}
-    acc[status] = (acc[status] ?? 0) + 1
+    acc[kategori] = (acc[kategori] ?? 0) + 1
     groupedMap.set(pid, acc)
   }
 
@@ -130,7 +166,14 @@ export async function getDashboardStats(
     .then((rows) => rows.map((r) => r.id))
 
   if (posyanduIds.length === 0) {
-    return { totalPemeriksaan: 0, totalBalita: 0, breakdown: {}, trenGiziBulanan: [] }
+    return {
+      totalPemeriksaan: 0,
+      totalBalita: 0,
+      breakdown: {},
+      distribusiRingkasanGiziBulanIni: createRingkasanGiziBucket(),
+      trenRingkasanGizi: [],
+      trenGiziBulanan: [],
+    }
   }
 
   const allPemeriksaan = await prisma.pemeriksaan.findMany({
@@ -145,6 +188,19 @@ export async function getDashboardStats(
       balitaId: true,
       statusGizi: true,
       statusGiziOverride: true,
+    },
+  })
+  const pemeriksaanRingkasanBulanIni = await prisma.pemeriksaan.findMany({
+    where: {
+      tanggalPemeriksaan: { gte: startOfMonth, lt: startOfNextMonth },
+      balita: {
+        warga: { posyanduUtamaId: { in: posyanduIds } },
+      },
+      OR: [{ zScoreTbU: { not: null } }, { zScoreBbTb: { not: null } }],
+    },
+    select: {
+      zScoreTbU: true,
+      zScoreBbTb: true,
     },
   })
   const trendStart = new Date(startOfMonth)
@@ -185,6 +241,21 @@ export async function getDashboardStats(
     normalBbTb: number
     kurangBbTb: number
   }>()
+  const trenRingkasanMap = new Map<string, {
+    bulan: string
+    normal: number
+    kurangPendek: number
+    burukSangatPendek: number
+    lebihObesitas: number
+  }>()
+
+  const distribusiRingkasanGiziBulanIni = createRingkasanGiziBucket()
+  for (const pm of pemeriksaanRingkasanBulanIni) {
+    const tbU = pm.zScoreTbU === null ? null : Number(pm.zScoreTbU)
+    const bbTb = pm.zScoreBbTb === null ? null : Number(pm.zScoreBbTb)
+    const kategori = classifyRingkasanGizi(tbU, bbTb)
+    distribusiRingkasanGiziBulanIni[kategori] += 1
+  }
 
   for (const pm of trendPemeriksaan) {
     const bulanKey = pm.tanggalPemeriksaan.toISOString().slice(0, 7)
@@ -203,6 +274,19 @@ export async function getDashboardStats(
       })
     }
     const entry = trenMap.get(bulanKey)!
+    if (!trenRingkasanMap.has(bulanKey)) {
+      trenRingkasanMap.set(bulanKey, {
+        bulan: bulanKey,
+        ...createRingkasanGiziBucket(),
+      })
+    }
+    const ringkasanEntry = trenRingkasanMap.get(bulanKey)!
+    const ringkasanKategori = classifyRingkasanGizi(
+      pm.zScoreTbU === null ? null : Number(pm.zScoreTbU),
+      pm.zScoreBbTb === null ? null : Number(pm.zScoreBbTb)
+    )
+    ringkasanEntry[ringkasanKategori] += 1
+
     const tbU = classifyTbU(pm.zScoreTbU === null ? null : Number(pm.zScoreTbU))
     if (tbU?.kode === 'sangat_pendek') entry.sangatPendek += 1
     else if (tbU?.kode === 'pendek') entry.pendek += 1
@@ -217,12 +301,17 @@ export async function getDashboardStats(
     else if (bbTb?.kode === 'kurang') entry.kurangBbTb += 1
   }
   const trenGiziBulanan = Array.from(trenMap.values()).sort((a, b) => a.bulan.localeCompare(b.bulan))
+  const trenRingkasanGizi = Array.from(trenRingkasanMap.values()).sort((a, b) =>
+    a.bulan.localeCompare(b.bulan)
+  )
 
   const uniqueBalitaIds = new Set(allPemeriksaan.map((pm) => pm.balitaId))
   return {
     totalPemeriksaan: allPemeriksaan.length,
     totalBalita: uniqueBalitaIds.size,
     breakdown,
+    distribusiRingkasanGiziBulanIni,
+    trenRingkasanGizi,
     trenGiziBulanan,
   }
 }
