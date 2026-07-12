@@ -282,6 +282,176 @@ export async function batalkanAntrian(
  * Mengembalikan antrian dengan status menunggu/dipanggil yang dibuat hari ini.
  * Untuk citizen dashboard card dan tiket screen.
  */
+export interface RescheduleAntrianResult {
+  antrianId: string
+  oldSlotId: string
+  newSlotId: string
+  nomorUrut: number
+  estimasiMenit: number
+  namaPosyandu: string
+  tanggalPelaksanaan: string
+  labelSesi: string
+  noChange: boolean
+}
+
+export async function rescheduleAntrian(
+  antrianId: string,
+  newSlotId: string,
+  wargaId: string
+): Promise<RescheduleAntrianResult> {
+  const txResult = await prisma.$transaction(async (tx) => {
+    const antrianRows = await tx.$queryRaw<Array<{
+      id: string
+      slotId: string
+      balitaId: string
+      statusAntrian: string
+    }>>`
+      SELECT id, "slotId", "balitaId", "statusAntrian"
+      FROM antrian
+      WHERE id = ${antrianId} AND "wargaId" = ${wargaId}
+      FOR UPDATE
+    `
+
+    const lockedAntrian = antrianRows[0]
+    if (!lockedAntrian) {
+      throw Object.assign(new Error('Antrian tidak ditemukan'), { code: 'ANTRIAN_TIDAK_DITEMUKAN' })
+    }
+
+    if (lockedAntrian.statusAntrian !== 'menunggu') {
+      const messageByStatus: Record<string, string> = {
+        dipanggil: 'Antrian sudah dipanggil sehingga tidak bisa diubah melalui chat.',
+        sedang_dilayani: 'Antrian sedang dilayani sehingga tidak bisa diubah melalui chat.',
+        selesai: 'Antrian sudah selesai sehingga tidak bisa diubah.',
+        dibatalkan: 'Antrian sudah dibatalkan sehingga tidak bisa diubah.',
+      }
+      throw Object.assign(
+        new Error(messageByStatus[lockedAntrian.statusAntrian] ?? 'Antrian tidak bisa diubah.'),
+        { code: 'TIDAK_BISA_RESCHEDULE', statusAntrian: lockedAntrian.statusAntrian }
+      )
+    }
+
+    const oldSlotId = lockedAntrian.slotId
+    if (oldSlotId === newSlotId) {
+      const detail = await tx.antrian.findUnique({
+        where: { id: lockedAntrian.id },
+        include: {
+          slotSesi: { include: { jadwal: { include: { posyandu: true } } } },
+        },
+      })
+      if (!detail) {
+        throw Object.assign(new Error('Antrian tidak ditemukan'), { code: 'ANTRIAN_TIDAK_DITEMUKAN' })
+      }
+      return {
+        antrianId: detail.id,
+        oldSlotId,
+        newSlotId,
+        nomorUrut: detail.nomorUrut,
+        estimasiDurasiMenit: detail.slotSesi.jadwal.estimasiDurasiMenit,
+        tanggalPelaksanaan: detail.slotSesi.jadwal.tanggalPelaksanaan,
+        namaPosyandu: detail.slotSesi.jadwal.posyandu.namaPosyandu,
+        labelSesi: detail.slotSesi.labelSesi,
+        noChange: true,
+      }
+    }
+
+    const slotRows = await tx.$queryRaw<Array<{
+      id: string
+      kuota: number
+      terisi: number
+    }>>`
+      SELECT id, kuota, terisi
+      FROM slot_sesi
+      WHERE id IN (${oldSlotId}, ${newSlotId})
+      ORDER BY id
+      FOR UPDATE
+    `
+
+    const oldSlot = slotRows.find((slot) => slot.id === oldSlotId)
+    const newSlot = slotRows.find((slot) => slot.id === newSlotId)
+
+    if (!oldSlot) {
+      throw Object.assign(new Error('Slot lama tidak ditemukan'), { code: 'SLOT_LAMA_TIDAK_DITEMUKAN' })
+    }
+    if (!newSlot) {
+      throw Object.assign(new Error('Slot baru tidak ditemukan'), { code: 'SLOT_TIDAK_DITEMUKAN' })
+    }
+    if (oldSlot.terisi <= 0) {
+      throw Object.assign(new Error('Data slot lama tidak valid'), { code: 'SLOT_LAMA_INVALID' })
+    }
+    if (newSlot.terisi >= newSlot.kuota) {
+      throw Object.assign(new Error('Slot baru sudah penuh'), { code: 'SLOT_PENUH' })
+    }
+
+    const duplicate = await tx.antrian.findUnique({
+      where: { slotId_balitaId: { slotId: newSlotId, balitaId: lockedAntrian.balitaId } },
+      select: { id: true, statusAntrian: true },
+    })
+    if (duplicate && duplicate.id !== lockedAntrian.id) {
+      throw Object.assign(new Error('Balita sudah memiliki riwayat/antrian pada sesi tujuan'), { code: 'SUDAH_DAFTAR' })
+    }
+
+    const nomorUrut = newSlot.terisi + 1
+
+    await tx.slotSesi.update({
+      where: { id: oldSlotId },
+      data: { terisi: { decrement: 1 } },
+    })
+    await tx.slotSesi.update({
+      where: { id: newSlotId },
+      data: { terisi: { increment: 1 } },
+    })
+
+    const updated = await tx.antrian.update({
+      where: { id: lockedAntrian.id },
+      data: { slotId: newSlotId, nomorUrut },
+      include: {
+        slotSesi: { include: { jadwal: { include: { posyandu: true } } } },
+      },
+    })
+
+    return {
+      antrianId: updated.id,
+      oldSlotId,
+      newSlotId,
+      nomorUrut,
+      estimasiDurasiMenit: updated.slotSesi.jadwal.estimasiDurasiMenit,
+      tanggalPelaksanaan: updated.slotSesi.jadwal.tanggalPelaksanaan,
+      namaPosyandu: updated.slotSesi.jadwal.posyandu.namaPosyandu,
+      labelSesi: updated.slotSesi.labelSesi,
+      noChange: false,
+    }
+  })
+
+  void broadcastQueueUpdate(txResult.oldSlotId)
+  if (txResult.newSlotId !== txResult.oldSlotId) {
+    void broadcastQueueUpdate(txResult.newSlotId)
+  }
+
+  const tanggalPelaksanaan = txResult.tanggalPelaksanaan.toLocaleDateString('id-ID', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: 'Asia/Jakarta',
+  })
+
+  logger.info(
+    { antrianId, oldSlotId: txResult.oldSlotId, newSlotId: txResult.newSlotId },
+    txResult.noChange ? 'Reschedule antrian tanpa perubahan slot' : 'Antrian berhasil di-reschedule'
+  )
+
+  return {
+    antrianId: txResult.antrianId,
+    oldSlotId: txResult.oldSlotId,
+    newSlotId: txResult.newSlotId,
+    nomorUrut: txResult.nomorUrut,
+    estimasiMenit: txResult.nomorUrut * txResult.estimasiDurasiMenit,
+    namaPosyandu: txResult.namaPosyandu,
+    tanggalPelaksanaan,
+    labelSesi: txResult.labelSesi,
+    noChange: txResult.noChange,
+  }
+}
+
 export async function getAntrianSaya(wargaId: string, balitaId?: string) {
   const startOfToday = new Date()
   startOfToday.setUTCHours(0, 0, 0, 0)

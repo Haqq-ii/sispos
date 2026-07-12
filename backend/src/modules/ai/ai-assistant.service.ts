@@ -18,7 +18,7 @@ import pino from 'pino'
 import type OpenAI from 'openai'
 import { redis } from '../../config/redis'
 import { prisma } from '../../config/db'
-import { ambilAntrian, batalkanAntrian } from '../antrian/antrian.service'
+import { ambilAntrian, batalkanAntrian, rescheduleAntrian } from '../antrian/antrian.service'
 import { env } from '../../config/env'
 
 const logger = pino({ level: env.NODE_ENV === 'production' ? 'info' : 'debug' })
@@ -52,6 +52,17 @@ type AssistantBalitaState = {
   nama: string
 }
 
+type TicketSummary = {
+  nomorAntrian: string | number
+  namaBalita: string
+  posyandu: string
+  tanggalTampil: string
+  sesiLabel: string
+  jamMulai: string
+  jamSelesai: string
+  status: string
+}
+
 type AssistantRegistrationState = {
   requestedDate?: string
   requestedLabel?: string
@@ -62,7 +73,26 @@ type AssistantRegistrationState = {
   lastBalita?: AssistantBalitaState[]
   selectedBalitaId?: string
   selectedBalitaName?: string
+  selectedBalitaNama?: string
   confirmationPending?: boolean
+  lastAntrianId?: string
+  lastBalitaId?: string
+  lastBalitaNama?: string
+  lastSlotId?: string
+  lastTicketSummary?: TicketSummary
+  pendingAction?: 'create' | 'read' | 'update' | 'delete'
+  pendingUpdate?: {
+    antrianId?: string
+    oldSlotId?: string
+    newSlotId?: string
+    balitaId?: string
+    confirmationPending?: boolean
+  }
+  pendingDelete?: {
+    antrianId?: string
+    balitaId?: string
+    confirmationPending?: boolean
+  }
 }
 
 // ── System prompt (hardcoded server-side) ─────────────────────────────────────
@@ -314,7 +344,22 @@ function resolveRelativeDateFromText(message: string): { date: string; label: st
 
 function isScheduleRequest(message: string): boolean {
   const normalized = normalizeText(message)
-  return /(daftar|antrian|jadwal|posyandu)/.test(normalized) && !!resolveRelativeDateFromText(message)
+  return (
+    /(daftar|antrian|jadwal|posyandu)/.test(normalized) &&
+    (!!resolveRelativeDateFromText(message) || /\b(lihat|cek|ada|mau|ingin)\b/.test(normalized))
+  )
+}
+
+function isReadQueueIntent(message: string): boolean {
+  return /\b(antrian saya|nomor antrian|tiket saya|detail tiket|status antrian)\b/.test(normalizeText(message))
+}
+
+function isDeleteIntent(message: string): boolean {
+  return /\b(batalkan|batal|cancel)\b/.test(normalizeText(message))
+}
+
+function isUpdateIntent(message: string): boolean {
+  return /\b(ubah|ganti|pindah|pindahkan|reschedule)\b/.test(normalizeText(message))
 }
 
 function parseNumberChoice(message: string): number | null {
@@ -562,8 +607,16 @@ function formatToolError(err: { message?: string; code?: string }): string {
       return 'Balita sudah memiliki antrian aktif pada jadwal ini.'
     case 'SUDAH_DAFTAR':
       return 'Balita sudah terdaftar di sesi ini.'
+    case 'TIDAK_BISA_BATALKAN':
+      return err.message ?? 'Antrian tidak bisa dibatalkan karena statusnya bukan menunggu.'
+    case 'TIDAK_BISA_RESCHEDULE':
+      return err.message ?? 'Antrian tidak bisa diubah karena statusnya bukan menunggu.'
+    case 'SLOT_LAMA_TIDAK_DITEMUKAN':
+      return 'Slot lama tidak ditemukan. Silakan cek ulang antrian aktif Anda.'
+    case 'SLOT_LAMA_INVALID':
+      return 'Data slot lama tidak valid. Silakan hubungi petugas posyandu.'
     default:
-      return err.message ?? 'Terjadi kesalahan server saat mendaftarkan antrian.'
+      return err.message ?? 'Terjadi kesalahan server saat memproses antrian.'
   }
 }
 
@@ -597,12 +650,297 @@ async function handleScheduleRequest(
 ): Promise<{ reply: string; messages: Array<{ role: string; content: string }> } | null> {
   if (!isScheduleRequest(userMessage)) return null
   const relative = resolveRelativeDateFromText(userMessage)
-  if (!relative) return null
-  const result = await getJadwalTersedia(wargaId, relative.date, relative.label)
+  const result = await getJadwalTersedia(wargaId, relative?.date, relative?.label ?? 'hari ini')
   const reply = 'error' in result ? result.error : formatScheduleReply(result)
   return persistAssistantTurn(wargaId, userMessage, clientHistory, reply)
 }
 
+type ActiveAntrianDetail = Awaited<ReturnType<typeof getActiveAntrianDetails>>[number]
+
+async function findBalitaByMention(wargaId: string, message: string): Promise<AssistantBalitaState | null> {
+  const balita = await getProfilBalita(wargaId)
+  const normalizedMessage = normalizeText(message)
+  const numberChoice = parseNumberChoice(message)
+  if (numberChoice) {
+    return balita.find((b) => b.nomor === numberChoice) ?? null
+  }
+  return balita.find((b) => {
+    const normalizedName = normalizeText(b.nama)
+    if (normalizedMessage.includes(normalizedName)) return true
+    return normalizedName.split(' ').some((part) => part.length > 2 && normalizedMessage.includes(part))
+  }) ?? null
+}
+
+async function getActiveAntrianDetails(wargaId: string, balitaId?: string) {
+  const rows = await prisma.$queryRaw<Array<{ id: string }>>`
+    SELECT a.id
+    FROM antrian a
+    WHERE a."wargaId" = ${wargaId}
+      AND (${balitaId ?? null}::text IS NULL OR a."balitaId" = ${balitaId ?? null})
+      AND a."statusAntrian" IN ('menunggu', 'dipanggil', 'sedang_dilayani')
+    ORDER BY a."createdAt" DESC
+  `
+  if (rows.length === 0) return []
+
+  const ids = rows.map((row) => row.id)
+  const records = await prisma.antrian.findMany({
+    where: { id: { in: ids } },
+    include: {
+      balita: { select: { id: true, namaBalita: true } },
+      slotSesi: { include: { jadwal: { include: { posyandu: true } } } },
+    },
+  })
+  const byId = new Map(records.map((record) => [record.id, record]))
+  return ids.map((id) => byId.get(id)).filter((record): record is NonNullable<typeof record> => !!record)
+}
+
+function ticketSummaryFromAntrian(antrian: ActiveAntrianDetail): TicketSummary {
+  const tanggalISO = antrian.slotSesi.jadwal.tanggalPelaksanaan.toISOString().slice(0, 10)
+  return {
+    nomorAntrian: antrian.nomorUrut,
+    namaBalita: antrian.balita.namaBalita,
+    posyandu: antrian.slotSesi.jadwal.posyandu.namaPosyandu,
+    tanggalTampil: formatTanggalWIB(tanggalISO).tanggalTampil,
+    sesiLabel: antrian.slotSesi.labelSesi,
+    jamMulai: formatTimeUTC(antrian.slotSesi.jamMulai),
+    jamSelesai: formatTimeUTC(antrian.slotSesi.jamSelesai),
+    status: antrian.statusAntrian,
+  }
+}
+
+function ticketSummaryFromResult(
+  result: Awaited<ReturnType<typeof ambilAntrian>> | Awaited<ReturnType<typeof rescheduleAntrian>>,
+  namaBalita: string,
+  slot?: AssistantSlotState
+): TicketSummary {
+  return {
+    nomorAntrian: result.nomorUrut,
+    namaBalita,
+    posyandu: result.namaPosyandu,
+    tanggalTampil: slot?.tanggalTampil ?? result.tanggalPelaksanaan,
+    sesiLabel: result.labelSesi,
+    jamMulai: slot?.jamMulai ?? '',
+    jamSelesai: slot?.jamSelesai ?? '',
+    status: 'menunggu',
+  }
+}
+
+function formatTicket(summary: TicketSummary, estimasiMenit?: number): string {
+  return [
+    'Detail Antrian:',
+    `- Balita: ${summary.namaBalita}`,
+    `- Posyandu: ${summary.posyandu}`,
+    `- Tanggal: ${summary.tanggalTampil}`,
+    `- Sesi: ${summary.sesiLabel}${summary.jamMulai ? ` (${summary.jamMulai}-${summary.jamSelesai})` : ''}`,
+    `- Nomor antrian: ${summary.nomorAntrian}`,
+    `- Status: ${summary.status}`,
+    ...(estimasiMenit !== undefined ? [`- Estimasi tunggu: sekitar ${estimasiMenit} menit`] : []),
+  ].join('\n')
+}
+
+async function handleReadQueueIntent(
+  wargaId: string,
+  userMessage: string,
+  clientHistory: Array<{ role: string; content: string }>
+): Promise<{ reply: string; messages: Array<{ role: string; content: string }> } | null> {
+  if (!isReadQueueIntent(userMessage)) return null
+  const balita = await findBalitaByMention(wargaId, userMessage)
+  const antrianList = await getActiveAntrianDetails(wargaId, balita?.balitaId)
+  if (antrianList.length === 0) {
+    return persistAssistantTurn(wargaId, userMessage, clientHistory, 'Tidak ada antrian aktif yang ditemukan.')
+  }
+
+  const replies = antrianList.map((antrian) => {
+    const summary = ticketSummaryFromAntrian(antrian)
+    const estimasiMenit = antrian.nomorUrut * antrian.slotSesi.jadwal.estimasiDurasiMenit
+    return formatTicket(summary, estimasiMenit)
+  })
+  const latest = antrianList[0]
+  await saveRegistrationState(wargaId, {
+    lastAntrianId: latest.id,
+    lastBalitaId: latest.balitaId,
+    lastBalitaNama: latest.balita.namaBalita,
+    lastSlotId: latest.slotId,
+    lastTicketSummary: ticketSummaryFromAntrian(latest),
+    pendingAction: 'read',
+  })
+
+  return persistAssistantTurn(wargaId, userMessage, clientHistory, replies.join('\n\n'))
+}
+
+async function handleDeleteConfirmation(
+  wargaId: string,
+  userMessage: string,
+  clientHistory: Array<{ role: string; content: string }>
+): Promise<{ reply: string; messages: Array<{ role: string; content: string }> } | null> {
+  const state = await getRegistrationState(wargaId)
+  if (state.pendingAction !== 'delete' || !state.pendingDelete?.confirmationPending || !isConfirmation(userMessage)) return null
+  if (!state.pendingDelete.antrianId) {
+    return persistAssistantTurn(wargaId, userMessage, clientHistory, 'Antrian yang akan dibatalkan tidak lengkap. Silakan ulangi permintaan batal.')
+  }
+
+  try {
+    await batalkanAntrian(state.pendingDelete.antrianId, wargaId)
+    const patch: Partial<AssistantRegistrationState> = { pendingAction: undefined, pendingDelete: undefined }
+    if (state.lastAntrianId === state.pendingDelete.antrianId) {
+      patch.lastAntrianId = undefined
+      patch.lastTicketSummary = undefined
+    }
+    await saveRegistrationState(wargaId, patch)
+    return persistAssistantTurn(wargaId, userMessage, clientHistory, 'Antrian berhasil dibatalkan.')
+  } catch (e) {
+    const err = e as { message?: string; code?: string }
+    return persistAssistantTurn(wargaId, userMessage, clientHistory, formatToolError(err))
+  }
+}
+
+async function handleDeleteIntent(
+  wargaId: string,
+  userMessage: string,
+  clientHistory: Array<{ role: string; content: string }>
+): Promise<{ reply: string; messages: Array<{ role: string; content: string }> } | null> {
+  if (!isDeleteIntent(userMessage)) return null
+  const balita = await findBalitaByMention(wargaId, userMessage)
+  const antrian = (await getActiveAntrianDetails(wargaId, balita?.balitaId))[0]
+  if (!antrian) {
+    return persistAssistantTurn(wargaId, userMessage, clientHistory, 'Tidak ada antrian aktif yang bisa dibatalkan.')
+  }
+  const statusAntrian = String(antrian.statusAntrian)
+  if (statusAntrian === 'dipanggil') {
+    return persistAssistantTurn(wargaId, userMessage, clientHistory, 'Antrian sudah dipanggil dan tidak bisa dibatalkan melalui chat.')
+  }
+  if (statusAntrian === 'sedang_dilayani') {
+    return persistAssistantTurn(wargaId, userMessage, clientHistory, 'Antrian sedang dilayani dan tidak bisa dibatalkan melalui chat.')
+  }
+  if (statusAntrian !== 'menunggu') {
+    return persistAssistantTurn(wargaId, userMessage, clientHistory, 'Tidak ada antrian aktif yang bisa dibatalkan.')
+  }
+
+  const summary = ticketSummaryFromAntrian(antrian)
+  await saveRegistrationState(wargaId, {
+    pendingAction: 'delete',
+    pendingDelete: { antrianId: antrian.id, balitaId: antrian.balitaId, confirmationPending: true },
+  })
+  return persistAssistantTurn(wargaId, userMessage, clientHistory, `${formatTicket(summary)}\n\nApakah Anda yakin ingin membatalkan antrian ini?`)
+}
+
+async function handleUpdateConfirmation(
+  wargaId: string,
+  userMessage: string,
+  clientHistory: Array<{ role: string; content: string }>
+): Promise<{ reply: string; messages: Array<{ role: string; content: string }> } | null> {
+  const state = await getRegistrationState(wargaId)
+  if (state.pendingAction !== 'update' || !state.pendingUpdate?.confirmationPending || !isConfirmation(userMessage)) return null
+  const pending = state.pendingUpdate
+  if (!pending.antrianId || !pending.newSlotId) {
+    return persistAssistantTurn(wargaId, userMessage, clientHistory, 'Data perubahan antrian belum lengkap. Silakan ulangi permintaan ubah sesi.')
+  }
+
+  try {
+    const result = await rescheduleAntrian(pending.antrianId, pending.newSlotId, wargaId)
+    const slot = state.lastSlots?.find((s) => s.slotId === result.newSlotId)
+    const balitaNama = state.lastBalitaNama ?? state.selectedBalitaName ?? state.selectedBalitaNama ?? 'Balita'
+    const summary = ticketSummaryFromResult(result, balitaNama, slot)
+    await saveRegistrationState(wargaId, {
+      pendingAction: undefined,
+      pendingUpdate: undefined,
+      lastAntrianId: result.antrianId,
+      lastSlotId: result.newSlotId,
+      lastTicketSummary: summary,
+    })
+    const prefix = result.noChange ? 'Antrian sudah berada di sesi tersebut.' : 'Antrian berhasil diubah.'
+    return persistAssistantTurn(wargaId, userMessage, clientHistory, `${prefix}\n\n${formatTicket(summary, result.estimasiMenit)}`)
+  } catch (e) {
+    const err = e as { message?: string; code?: string }
+    return persistAssistantTurn(wargaId, userMessage, clientHistory, formatToolError(err))
+  }
+}
+
+async function handleUpdateSlotSelection(
+  wargaId: string,
+  userMessage: string,
+  clientHistory: Array<{ role: string; content: string }>
+): Promise<{ reply: string; messages: Array<{ role: string; content: string }> } | null> {
+  const state = await getRegistrationState(wargaId)
+  if (state.pendingAction !== 'update' || state.pendingUpdate?.newSlotId || !state.lastSlots?.length) return null
+  const nomor = parseNumberChoice(userMessage)
+  if (!nomor) return null
+  const selectedSlot = state.lastSlots.find((slot) => slot.nomor === nomor)
+  if (!selectedSlot || selectedSlot.tersedia <= 0) {
+    return persistAssistantTurn(wargaId, userMessage, clientHistory, 'Sesi tersebut tidak tersedia. Silakan pilih salah satu sesi yang tersedia.')
+  }
+
+  await saveRegistrationState(wargaId, {
+    pendingUpdate: { ...state.pendingUpdate, newSlotId: selectedSlot.slotId, confirmationPending: true },
+  })
+  return persistAssistantTurn(
+    wargaId,
+    userMessage,
+    clientHistory,
+    `Ringkasan Perubahan Antrian:\n- Sesi baru: ${selectedSlot.sesiLabel} (${selectedSlot.jamMulai}-${selectedSlot.jamSelesai})\n- Tanggal: ${selectedSlot.tanggalTampil}\n- Posyandu: ${selectedSlot.namaPosyandu}\n\nApakah Anda setuju untuk mengubah antrian ke sesi ini?`
+  )
+}
+
+async function handleUpdateIntent(
+  wargaId: string,
+  userMessage: string,
+  clientHistory: Array<{ role: string; content: string }>
+): Promise<{ reply: string; messages: Array<{ role: string; content: string }> } | null> {
+  if (!isUpdateIntent(userMessage)) return null
+  const balita = await findBalitaByMention(wargaId, userMessage)
+  const antrian = (await getActiveAntrianDetails(wargaId, balita?.balitaId))[0]
+  if (!antrian) {
+    return persistAssistantTurn(wargaId, userMessage, clientHistory, 'Tidak ada antrian aktif yang bisa diubah.')
+  }
+  const statusAntrian = String(antrian.statusAntrian)
+  if (statusAntrian === 'dipanggil') {
+    return persistAssistantTurn(wargaId, userMessage, clientHistory, 'Antrian sudah dipanggil sehingga tidak bisa diubah melalui chat.')
+  }
+  if (statusAntrian === 'sedang_dilayani') {
+    return persistAssistantTurn(wargaId, userMessage, clientHistory, 'Antrian sedang dilayani sehingga tidak bisa diubah melalui chat.')
+  }
+  if (statusAntrian !== 'menunggu') {
+    return persistAssistantTurn(wargaId, userMessage, clientHistory, 'Antrian tidak bisa diubah karena statusnya bukan menunggu.')
+  }
+
+  const relative = resolveRelativeDateFromText(userMessage)
+  const currentDate = antrian.slotSesi.jadwal.tanggalPelaksanaan.toISOString().slice(0, 10)
+  const schedule = await getJadwalTersedia(wargaId, relative?.date ?? currentDate, relative?.label ?? 'tanggal antrian saat ini')
+  if ('error' in schedule) {
+    return persistAssistantTurn(wargaId, userMessage, clientHistory, schedule.error)
+  }
+
+  await saveRegistrationState(wargaId, {
+    pendingAction: 'update',
+    pendingUpdate: { antrianId: antrian.id, oldSlotId: antrian.slotId, balitaId: antrian.balitaId },
+    lastAntrianId: antrian.id,
+    lastBalitaId: antrian.balitaId,
+    lastBalitaNama: antrian.balita.namaBalita,
+    lastSlotId: antrian.slotId,
+  })
+
+  const nomor = parseNumberChoice(userMessage)
+  const selectedSlot = nomor ? schedule.slots.find((slot) => slot.nomor === nomor) : null
+  if (selectedSlot) {
+    await saveRegistrationState(wargaId, {
+      pendingUpdate: {
+        antrianId: antrian.id,
+        oldSlotId: antrian.slotId,
+        balitaId: antrian.balitaId,
+        newSlotId: selectedSlot.slotId,
+        confirmationPending: true,
+      },
+    })
+    return persistAssistantTurn(
+      wargaId,
+      userMessage,
+      clientHistory,
+      `Ringkasan Perubahan Antrian:\n- Balita: ${antrian.balita.namaBalita}\n- Sesi baru: ${selectedSlot.sesiLabel} (${selectedSlot.jamMulai}-${selectedSlot.jamSelesai})\n- Tanggal: ${selectedSlot.tanggalTampil}\n- Posyandu: ${selectedSlot.namaPosyandu}\n\nApakah Anda setuju untuk mengubah antrian ke sesi ini?`
+    )
+  }
+
+  return persistAssistantTurn(wargaId, userMessage, clientHistory, `${formatScheduleReply(schedule)}\n\nPilih sesi tujuan untuk mengubah antrian.`)
+}
 async function handleSlotSelection(
   wargaId: string,
   userMessage: string,
@@ -737,7 +1075,20 @@ async function handleRegistrationConfirmation(
 
   try {
     const result = await ambilAntrian(state.selectedSlotId, state.selectedBalitaId, wargaId)
-    await clearRegistrationState(wargaId)
+    const balitaNama = state.selectedBalitaName ?? state.selectedBalitaNama ?? state.lastBalita?.find((b) => b.balitaId === state.selectedBalitaId)?.nama ?? 'Balita'
+    const summary = ticketSummaryFromResult(result, balitaNama, state.selectedSlot)
+    await saveRegistrationState(wargaId, {
+      pendingAction: undefined,
+      pendingUpdate: undefined,
+      pendingDelete: undefined,
+      lastAntrianId: result.antrianId,
+      lastBalitaId: state.selectedBalitaId,
+      lastBalitaNama: balitaNama,
+      lastSlotId: result.slotId,
+      lastTicketSummary: summary,
+      selectedBalitaNama: balitaNama,
+      confirmationPending: false,
+    })
     return persistAssistantTurn(wargaId, userMessage, clientHistory, formatSuccessReply(result))
   } catch (e) {
     const err = e as { message?: string; code?: string }
@@ -776,7 +1127,15 @@ async function executeToolCall(
           })
         }
         const result = await ambilAntrian(state.selectedSlotId, state.selectedBalitaId, wargaId)
-        await clearRegistrationState(wargaId)
+        const balitaNama = state.selectedBalitaName ?? state.selectedBalitaNama ?? state.lastBalita?.find((b) => b.balitaId === state.selectedBalitaId)?.nama ?? 'Balita'
+        await saveRegistrationState(wargaId, {
+          lastAntrianId: result.antrianId,
+          lastBalitaId: state.selectedBalitaId,
+          lastBalitaNama: balitaNama,
+          lastSlotId: result.slotId,
+          lastTicketSummary: ticketSummaryFromResult(result, balitaNama, state.selectedSlot),
+          confirmationPending: false,
+        })
         return JSON.stringify({
           success: true,
           antrianId: result.antrianId,
@@ -802,13 +1161,16 @@ async function executeToolCall(
         if (!old) {
           return JSON.stringify({ error: 'Antrian tidak ditemukan atau bukan milik Anda.', code: 'ANTRIAN_TIDAK_DITEMUKAN' })
         }
-        await batalkanAntrian(args.antrianId, wargaId)
-        const newResult = await ambilAntrian(args.slotId, old.balitaId, wargaId)
+        const newResult = await rescheduleAntrian(args.antrianId, args.slotId, wargaId)
         return JSON.stringify({
           success: true,
-          oldAntrianId: args.antrianId,
-          newAntrianId: newResult.antrianId,
+          antrianId: newResult.antrianId,
           nomorUrut: newResult.nomorUrut,
+          estimasiMenit: newResult.estimasiMenit,
+          namaPosyandu: newResult.namaPosyandu,
+          tanggalPelaksanaan: newResult.tanggalPelaksanaan,
+          labelSesi: newResult.labelSesi,
+          noChange: newResult.noChange,
         })
       }
 
@@ -846,9 +1208,15 @@ export async function chatAssistant(
   await checkAndIncrementRateLimit(wargaId)
 
   const deterministicReply =
+    (await handleDeleteConfirmation(wargaId, userMessage, clientHistory)) ??
+    (await handleUpdateConfirmation(wargaId, userMessage, clientHistory)) ??
     (await handleRegistrationConfirmation(wargaId, userMessage, clientHistory)) ??
+    (await handleUpdateSlotSelection(wargaId, userMessage, clientHistory)) ??
     (await handleBalitaSelection(wargaId, userMessage, clientHistory)) ??
     (await handleSlotSelection(wargaId, userMessage, clientHistory)) ??
+    (await handleDeleteIntent(wargaId, userMessage, clientHistory)) ??
+    (await handleUpdateIntent(wargaId, userMessage, clientHistory)) ??
+    (await handleReadQueueIntent(wargaId, userMessage, clientHistory)) ??
     (await handleScheduleRequest(wargaId, userMessage, clientHistory))
 
   if (deterministicReply) return deterministicReply
