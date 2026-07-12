@@ -127,6 +127,26 @@ function formatTanggal(iso: string): string {
   return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+function getPercent(value: number, total: number): number {
+  if (total === 0) return 0
+  return Math.round((value / total) * 1000) / 10
+}
+
+function formatPercentTooltip(
+  value: unknown,
+  name: unknown,
+  item: { dataKey?: unknown; payload?: Record<string, number> }
+): [string, string] {
+  const pct = typeof value === 'number' ? value : Number(value ?? 0)
+  const dataKey = typeof item.dataKey === 'string' ? item.dataKey : ''
+  const countKey = dataKey.endsWith('Pct') ? dataKey.slice(0, -3) : dataKey
+  const payload = item.payload ?? {}
+  const count = payload[countKey] ?? 0
+  const total = payload.total ?? 0
+  const label = typeof name === 'string' ? name : String(name ?? '')
+  return [`${pct.toFixed(1)}% (${count}/${total})`, label]
+}
+
 // ── Component ─────────────────────────────────────────────────────────────
 
 export default function KaderDashboardPage() {
@@ -192,12 +212,30 @@ export default function KaderDashboardPage() {
         { key: 'tinggi', name: 'Tinggi', color: '#0ea5e9' },
       ]
     : [
-        { key: 'obesitas', name: 'Obesitas', color: '#dc2626' },
-        { key: 'giziLebih', name: 'Lebih', color: '#f97316' },
-        { key: 'berisikoGiziLebih', name: 'Berisiko', color: '#f59e0b' },
-        { key: 'normalBbTb', name: 'Normal', color: '#16a34a' },
         { key: 'kurangBbTb', name: 'Wasting', color: '#64748b' },
+        { key: 'normalBbTb', name: 'Normal', color: '#16a34a' },
+        { key: 'berisikoGiziLebih', name: 'Berisiko', color: '#f59e0b' },
+        { key: 'giziLebih', name: 'Lebih', color: '#f97316' },
+        { key: 'obesitas', name: 'Obesitas', color: '#dc2626' },
       ]
+  const trendData = (dashboardStats?.trenGiziBulanan ?? []).map((row) => {
+    const totalTbU = row.sangatPendek + row.pendek + row.normalTbU + row.tinggi
+    const totalBbTb = row.kurangBbTb + row.normalBbTb + row.berisikoGiziLebih + row.giziLebih + row.obesitas
+    const total = trendMetric === 'tbu' ? totalTbU : totalBbTb
+    return {
+      ...row,
+      total,
+      sangatPendekPct: getPercent(row.sangatPendek, totalTbU),
+      pendekPct: getPercent(row.pendek, totalTbU),
+      normalTbUPct: getPercent(row.normalTbU, totalTbU),
+      tinggiPct: getPercent(row.tinggi, totalTbU),
+      kurangBbTbPct: getPercent(row.kurangBbTb, totalBbTb),
+      normalBbTbPct: getPercent(row.normalBbTb, totalBbTb),
+      berisikoGiziLebihPct: getPercent(row.berisikoGiziLebih, totalBbTb),
+      giziLebihPct: getPercent(row.giziLebih, totalBbTb),
+      obesitasPct: getPercent(row.obesitas, totalBbTb),
+    }
+  })
 
 
   // First slot for jadwal display
@@ -378,9 +416,14 @@ export default function KaderDashboardPage() {
             {/* Tren Status Gizi - LineChart */}
             <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
               <div className="flex items-start justify-between gap-3 mb-3">
-                <p className="text-[#99a1af] text-xs font-semibold tracking-wider uppercase">
-                  Tren Status Gizi
-                </p>
+                <div>
+                  <p className="text-[#99a1af] text-xs font-semibold tracking-wider uppercase">
+                    Tren Status Gizi (%)
+                  </p>
+                  <p className="text-gray-400 text-[10px] mt-0.5">
+                    Persentase dari balita yang diperiksa tiap bulan
+                  </p>
+                </div>
                 <div className="flex flex-wrap rounded-lg border border-gray-200 bg-gray-50 p-0.5">
                   <button
                     type="button"
@@ -402,17 +445,17 @@ export default function KaderDashboardPage() {
                 <Skeleton className="h-[170px] rounded-xl" />
               ) : (
                 <ResponsiveContainer width="100%" height={170}>
-                  <LineChart data={dashboardStats?.trenGiziBulanan ?? []} margin={{ top: 4, right: 8, bottom: 0, left: -8 }}>
+                  <LineChart data={trendData} margin={{ top: 4, right: 8, bottom: 0, left: -8 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
                     <XAxis dataKey="bulan" tick={{ fontSize: 9 }} />
-                    <YAxis tick={{ fontSize: 9 }} width={28} allowDecimals={false} />
-                    <Tooltip />
+                    <YAxis tick={{ fontSize: 9 }} width={36} domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tickFormatter={(value) => `${value}%`} />
+                    <Tooltip formatter={formatPercentTooltip} />
                     <Legend wrapperStyle={{ fontSize: 10 }} />
                     {trendLines.map((line) => (
                       <Line
                         key={line.key}
                         type="monotone"
-                        dataKey={line.key}
+                        dataKey={`${line.key}Pct`}
                         stroke={line.color}
                         name={line.name}
                         strokeWidth={2}
@@ -693,3 +736,8 @@ export default function KaderDashboardPage() {
     </div>
   )
 }
+
+
+
+
+

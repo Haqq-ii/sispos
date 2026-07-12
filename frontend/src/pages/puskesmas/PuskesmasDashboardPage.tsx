@@ -91,6 +91,25 @@ const EMPTY_RINGKASAN_GIZI: Record<RingkasanGiziKey, number> = {
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
+function getPercent(value: number, total: number): number {
+  if (total === 0) return 0
+  return Math.round((value / total) * 1000) / 10
+}
+
+function formatPercentTooltip(
+  value: unknown,
+  name: unknown,
+  item: { dataKey?: unknown; payload?: Record<string, number> }
+): [string, string] {
+  const pct = typeof value === 'number' ? value : Number(value ?? 0)
+  const dataKey = typeof item.dataKey === 'string' ? item.dataKey : ''
+  const countKey = dataKey.endsWith('Pct') ? dataKey.slice(0, -3) : dataKey
+  const payload = item.payload ?? {}
+  const count = payload[countKey] ?? 0
+  const total = payload.total ?? 0
+  const label = typeof name === 'string' ? name : String(name ?? '')
+  return [`${pct.toFixed(1)}% (${count}/${total})`, label]
+}
 function KPICard({
   label, value, sub, positive, warning,
 }: {
@@ -145,6 +164,21 @@ export default function PuskesmasDashboardPage() {
     color: item.color,
   }))
   const trendLines = RINGKASAN_GIZI_ITEMS
+  const trendData = (stats?.trenRingkasanGizi ?? []).map((row) => {
+    const total =
+      row.normal +
+      row.kurangPendek +
+      row.burukSangatPendek +
+      row.lebihObesitas
+    return {
+      ...row,
+      total,
+      normalPct: getPercent(row.normal, total),
+      kurangPendekPct: getPercent(row.kurangPendek, total),
+      burukSangatPendekPct: getPercent(row.burukSangatPendek, total),
+      lebihObesitasPct: getPercent(row.lebihObesitas, total),
+    }
+  })
 
 
   const todayLabel = new Date().toLocaleDateString('id-ID', {
@@ -208,22 +242,22 @@ export default function PuskesmasDashboardPage() {
         {/* ── Charts 2/3 + 1/3 ────────────────────────────────────────────── */}
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
           <div className="mb-4">
-            <p className="text-gray-800 text-sm font-bold">Tren Ringkasan Risiko Gizi</p>
-            <p className="text-gray-400 text-xs">12 bulan terakhir berdasarkan z-score</p>
+            <p className="text-gray-800 text-sm font-bold">Tren Ringkasan Risiko Gizi (%)</p>
+            <p className="text-gray-400 text-xs">Persentase dari balita yang diperiksa tiap bulan</p>
           </div>
-          {(stats?.trenRingkasanGizi?.length ?? 0) > 0 ? (
+          {trendData.length > 0 ? (
             <ResponsiveContainer width="100%" height={230}>
-              <LineChart data={stats?.trenRingkasanGizi ?? []} margin={{ top: 4, right: 12, bottom: 0, left: -8 }}>
+              <LineChart data={trendData} margin={{ top: 4, right: 12, bottom: 0, left: -8 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
                 <XAxis dataKey="bulan" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip />
+                <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tickFormatter={(value) => `${value}%`} />
+                <Tooltip formatter={formatPercentTooltip} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 {trendLines.map((line) => (
                   <Line
                     key={line.key}
                     type="monotone"
-                    dataKey={line.key}
+                    dataKey={`${line.key}Pct`}
                     stroke={line.color}
                     name={line.name}
                     strokeWidth={2}
@@ -376,3 +410,9 @@ export default function PuskesmasDashboardPage() {
     </div>
   )
 }
+
+
+
+
+
+
