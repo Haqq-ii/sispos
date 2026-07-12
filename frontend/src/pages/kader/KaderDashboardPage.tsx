@@ -85,6 +85,19 @@ interface KaderDashboardStats {
     buruk: number
     pendek: number
   }
+  distribusiTbUBulanIni?: {
+    sangatPendek: number
+    pendek: number
+    normal: number
+    tinggi: number
+  }
+  distribusiBbTbBulanIni?: {
+    kurang: number
+    normal: number
+    berisikoGiziLebih: number
+    giziLebih: number
+    obesitas: number
+  }
   peringatanRisiko: Array<{
     balitaId: string
     namaBalita: string
@@ -195,24 +208,33 @@ export default function KaderDashboardPage() {
 
   const isLoading = isLoadingActiveMeja || isLoadingJadwal || isLoadingStats
 
-  // Pie chart data
+  // Pie chart follows the same indicator selector as the monthly trend.
   const distribusiData = dashboardStats
-    ? [
-        { name: 'Normal', value: dashboardStats.distribusiGiziBulanIni.normal, color: '#15803d' },
-        { name: 'Kurang', value: dashboardStats.distribusiGiziBulanIni.kurang, color: '#f59e0b' },
-        { name: 'Buruk', value: dashboardStats.distribusiGiziBulanIni.buruk, color: '#ef4444' },
-        { name: 'Pendek', value: dashboardStats.distribusiGiziBulanIni.pendek, color: '#d1d5db' },
-      ]
+    ? trendMetric === 'tbu'
+      ? [
+          { name: 'Sangat Pendek', value: dashboardStats.distribusiTbUBulanIni?.sangatPendek ?? 0, color: '#dc2626' },
+          { name: 'Pendek', value: dashboardStats.distribusiTbUBulanIni?.pendek ?? 0, color: '#f97316' },
+          { name: 'Normal', value: dashboardStats.distribusiTbUBulanIni?.normal ?? 0, color: '#16a34a' },
+          { name: 'Tinggi', value: dashboardStats.distribusiTbUBulanIni?.tinggi ?? 0, color: '#0ea5e9' },
+        ]
+      : [
+          { name: 'Wasting/Kurang', value: dashboardStats.distribusiBbTbBulanIni?.kurang ?? 0, color: '#64748b' },
+          { name: 'Normal', value: dashboardStats.distribusiBbTbBulanIni?.normal ?? 0, color: '#16a34a' },
+          { name: 'Berisiko', value: dashboardStats.distribusiBbTbBulanIni?.berisikoGiziLebih ?? 0, color: '#f59e0b' },
+          { name: 'Lebih', value: dashboardStats.distribusiBbTbBulanIni?.giziLebih ?? 0, color: '#f97316' },
+          { name: 'Obesitas', value: dashboardStats.distribusiBbTbBulanIni?.obesitas ?? 0, color: '#dc2626' },
+        ]
     : []
+  const donutTitle = trendMetric === 'tbu' ? 'Proporsi TB/U Bulan Ini' : 'Proporsi BB/TB Bulan Ini'
   const trendLines = trendMetric === 'tbu'
     ? [
-        { key: 'sangatPendek', name: 'Berat', color: '#dc2626' },
+        { key: 'sangatPendek', name: 'Sangat Pendek', color: '#dc2626' },
         { key: 'pendek', name: 'Pendek', color: '#f97316' },
         { key: 'normalTbU', name: 'Normal', color: '#16a34a' },
         { key: 'tinggi', name: 'Tinggi', color: '#0ea5e9' },
       ]
     : [
-        { key: 'kurangBbTb', name: 'Wasting', color: '#64748b' },
+        { key: 'kurangBbTb', name: 'Wasting/Kurang', color: '#64748b' },
         { key: 'normalBbTb', name: 'Normal', color: '#16a34a' },
         { key: 'berisikoGiziLebih', name: 'Berisiko', color: '#f59e0b' },
         { key: 'giziLebih', name: 'Lebih', color: '#f97316' },
@@ -470,7 +492,7 @@ export default function KaderDashboardPage() {
             {/* Status Gizi Bulan Ini — PieChart donut */}
             <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
               <p className="text-[#99a1af] text-xs font-semibold tracking-wider uppercase mb-3">
-                Status Gizi Bulan Ini
+                {donutTitle}
               </p>
               {isLoadingStats ? (
                 <Skeleton className="h-[120px] rounded-xl" />
@@ -495,12 +517,12 @@ export default function KaderDashboardPage() {
                   </ResponsiveContainer>
                   <div className="flex-1 space-y-1.5">
                     {distribusiData.map((item) => (
-                      <div key={item.name} className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
+                      <div key={item.name} className="flex items-center justify-between gap-2">
+                        <div className="flex min-w-0 items-center gap-1.5">
                           <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
-                          <span className="text-xs text-gray-600">{item.name}</span>
+                          <span className="truncate text-xs text-gray-600">{item.name}</span>
                         </div>
-                        <span className="text-xs font-semibold text-gray-800">{item.value}</span>
+                        <span className="flex-shrink-0 text-xs font-semibold text-gray-800">{item.value}</span>
                       </div>
                     ))}
                   </div>

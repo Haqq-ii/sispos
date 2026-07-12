@@ -98,6 +98,8 @@ export async function getKaderDashboardStats(kaderId: string): Promise<{
     kurangBbTb: number
   }>
   distribusiGiziBulanIni: { normal: number; kurang: number; buruk: number; pendek: number }
+  distribusiTbUBulanIni: { sangatPendek: number; pendek: number; normal: number; tinggi: number }
+  distribusiBbTbBulanIni: { kurang: number; normal: number; berisikoGiziLebih: number; giziLebih: number; obesitas: number }
   peringatanRisiko: Array<{
     balitaId: string
     namaBalita: string
@@ -147,6 +149,7 @@ export async function getKaderDashboardStats(kaderId: string): Promise<{
     risikoRows,
     trenRaw,
     distribusiRaw,
+    distribusiDerivedRaw,
     pemeriksaanRisiko,
     daftarBalitaRaw,
   ] = await Promise.all([
@@ -185,7 +188,7 @@ export async function getKaderDashboardStats(kaderId: string): Promise<{
         AND latest."statusGizi" IN ('kurang', 'buruk', 'pendek', 'sangat_pendek')
     `,
 
-    // E: trenGiziBulanan � 12 bulan terakhir berdasarkan indikator zScoreTbU dan zScoreBbTb.
+    // E: trenGiziBulanan - 12 bulan terakhir berdasarkan indikator zScoreTbU dan zScoreBbTb.
     prisma.$queryRaw<Array<{ bulan: string; zScoreTbU: number | null; zScoreBbTb: number | null }>>`
       SELECT
         TO_CHAR(p."tanggalPemeriksaan", 'YYYY-MM') AS bulan,
@@ -213,8 +216,20 @@ export async function getKaderDashboardStats(kaderId: string): Promise<{
         AND p."statusGizi" IS NOT NULL
       GROUP BY p."statusGizi"
     `,
+    // F2: distribusi derived TB/U dan BB/TB bulan berjalan untuk chart Kader.
+    prisma.$queryRaw<Array<{ zScoreTbU: number | null; zScoreBbTb: number | null }>>`
+      SELECT
+        p."zScoreTbU" AS "zScoreTbU",
+        p."zScoreBbTb" AS "zScoreBbTb"
+      FROM pemeriksaan p
+      JOIN balita b ON p."balitaId" = b.id
+      JOIN warga w ON b."wargaId" = w.id
+      WHERE w."posyanduUtamaId" = ${posyanduId}
+        AND TO_CHAR(p."tanggalPemeriksaan", 'YYYY-MM') = TO_CHAR(NOW() AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM')
+        AND (p."zScoreTbU" IS NOT NULL OR p."zScoreBbTb" IS NOT NULL)
+    `,
 
-    // G: peringatanRisiko — latest pemeriksaan per balita, hanya yang berisiko
+    // G: peringatanRisiko - latest pemeriksaan per balita, hanya yang berisiko
     prisma.$queryRaw<Array<{
       balitaId: string
       namaBalita: string
@@ -331,8 +346,24 @@ export async function getKaderDashboardStats(kaderId: string): Promise<{
     else if (row.statusGizi === 'buruk') distribusiGiziBulanIni.buruk += jumlah
     else if (row.statusGizi === 'pendek' || row.statusGizi === 'sangat_pendek') distribusiGiziBulanIni.pendek += jumlah
   }
+  const distribusiTbUBulanIni = { sangatPendek: 0, pendek: 0, normal: 0, tinggi: 0 }
+  const distribusiBbTbBulanIni = { kurang: 0, normal: 0, berisikoGiziLebih: 0, giziLebih: 0, obesitas: 0 }
+  for (const row of distribusiDerivedRaw) {
+    const tbU = classifyTbU(row.zScoreTbU === null ? null : Number(row.zScoreTbU))
+    if (tbU?.kode === 'sangat_pendek') distribusiTbUBulanIni.sangatPendek += 1
+    else if (tbU?.kode === 'pendek') distribusiTbUBulanIni.pendek += 1
+    else if (tbU?.kode === 'normal') distribusiTbUBulanIni.normal += 1
+    else if (tbU?.kode === 'tinggi') distribusiTbUBulanIni.tinggi += 1
 
-  // G: sudah DISTINCT ON dari query — sort by zScoreBbU ascending (terburuk duluan)
+    const bbTb = classifyBbTb(row.zScoreBbTb === null ? null : Number(row.zScoreBbTb))
+    if (bbTb?.kode === 'kurang') distribusiBbTbBulanIni.kurang += 1
+    else if (bbTb?.kode === 'normal') distribusiBbTbBulanIni.normal += 1
+    else if (bbTb?.kode === 'berisiko_gizi_lebih') distribusiBbTbBulanIni.berisikoGiziLebih += 1
+    else if (bbTb?.kode === 'gizi_lebih') distribusiBbTbBulanIni.giziLebih += 1
+    else if (bbTb?.kode === 'obesitas') distribusiBbTbBulanIni.obesitas += 1
+  }
+
+  // G: sudah DISTINCT ON dari query - sort by zScoreBbU ascending (terburuk duluan)
   const peringatanRisiko = pemeriksaanRisiko
     .sort((a, b) => (a.zScoreBbU ?? 0) - (b.zScoreBbU ?? 0))
     .map((p) => ({
@@ -374,6 +405,8 @@ export async function getKaderDashboardStats(kaderId: string): Promise<{
     hadirHariIni,
     trenGiziBulanan,
     distribusiGiziBulanIni,
+    distribusiTbUBulanIni,
+    distribusiBbTbBulanIni,
     peringatanRisiko,
     daftarBalita,
   }
