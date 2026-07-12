@@ -16,7 +16,22 @@ export interface StuntingMapPoint {
 export interface DashboardStats {
   totalPemeriksaan: number
   totalBalita: number
+  totalBalitaSasaran: number
   breakdown: Record<string, number>
+  partisipasiDS: {
+    ditimbang: number
+    sasaran: number
+    persen: number
+    status: 'baik' | 'cukup' | 'rendah'
+  }
+  redFlagsPosyandu: Array<{
+    posyanduId: string
+    namaPosyandu: string
+    wilayah?: string
+    kasusKritisBulanIni: number
+    kasusKritisBulanLalu: number
+    lonjakan: number
+  }>
   distribusiRingkasanGiziBulanIni: {
     normal: number
     kurangPendek: number
@@ -76,6 +91,16 @@ function classifyRingkasanGizi(zScoreTbU: number | null, zScoreBbTb: number | nu
     return 'kurangPendek' as const
   }
   return 'normal' as const
+}
+
+function getPartisipasiStatus(persen: number): 'baik' | 'cukup' | 'rendah' {
+  if (persen >= 80) return 'baik'
+  if (persen >= 60) return 'cukup'
+  return 'rendah'
+}
+
+function isKasusKritis(zScoreTbU: number | null, zScoreBbTb: number | null): boolean {
+  return (zScoreTbU !== null && zScoreTbU < -3) || (zScoreBbTb !== null && zScoreBbTb < -3)
 }
 
 // ── getStuntingMapData ────────────────────────────────────────────────────────
@@ -156,20 +181,27 @@ export async function getDashboardStats(
   bulan: string
 ): Promise<DashboardStats> {
   const { startOfMonth, startOfNextMonth } = parseBulan(bulan)
+  const startOfPreviousMonth = new Date(startOfMonth)
+  startOfPreviousMonth.setMonth(startOfPreviousMonth.getMonth() - 1)
 
   // Query pemeriksaan directly via balita → warga (posyanduUtamaId) under this puskesmas.
   // Seed massal creates pemeriksaan without antrian (antrianId: null), so traversing
   // through antrian chain would always return 0. Instead, query by tanggalPemeriksaan
   // and posyandu membership.
-  const posyanduIds = await prisma.posyandu
-    .findMany({ where: { puskesmasId }, select: { id: true } })
-    .then((rows) => rows.map((r) => r.id))
+  const posyanduRows = await prisma.posyandu.findMany({
+    where: { puskesmasId },
+    select: { id: true, namaPosyandu: true, kelurahan: true },
+  })
+  const posyanduIds = posyanduRows.map((r) => r.id)
 
   if (posyanduIds.length === 0) {
     return {
       totalPemeriksaan: 0,
       totalBalita: 0,
+      totalBalitaSasaran: 0,
       breakdown: {},
+      partisipasiDS: { ditimbang: 0, sasaran: 0, persen: 0, status: 'rendah' },
+      redFlagsPosyandu: [],
       distribusiRingkasanGiziBulanIni: createRingkasanGiziBucket(),
       trenRingkasanGizi: [],
       trenGiziBulanan: [],
@@ -188,6 +220,35 @@ export async function getDashboardStats(
       balitaId: true,
       statusGizi: true,
       statusGiziOverride: true,
+    },
+  })
+  const pemeriksaanPartisipasiBulanIni = await prisma.pemeriksaan.findMany({
+    where: {
+      tanggalPemeriksaan: { gte: startOfMonth, lt: startOfNextMonth },
+      balita: {
+        warga: { posyanduUtamaId: { in: posyanduIds } },
+      },
+    },
+    select: { balitaId: true },
+  })
+  const totalBalitaSasaran = await prisma.balita.count({
+    where: {
+      warga: { posyanduUtamaId: { in: posyanduIds } },
+    },
+  })
+  const pemeriksaanKritisDuaBulan = await prisma.pemeriksaan.findMany({
+    where: {
+      tanggalPemeriksaan: { gte: startOfPreviousMonth, lt: startOfNextMonth },
+      balita: {
+        warga: { posyanduUtamaId: { in: posyanduIds } },
+      },
+      OR: [{ zScoreTbU: { not: null } }, { zScoreBbTb: { not: null } }],
+    },
+    select: {
+      tanggalPemeriksaan: true,
+      zScoreTbU: true,
+      zScoreBbTb: true,
+      balita: { select: { warga: { select: { posyanduUtamaId: true } } } },
     },
   })
   const pemeriksaanRingkasanBulanIni = await prisma.pemeriksaan.findMany({
@@ -220,6 +281,43 @@ export async function getDashboardStats(
     },
   })
 
+  const kasusKritisBulanIniMap = new Map<string, number>()
+  const kasusKritisBulanLaluMap = new Map<string, number>()
+  for (const pm of pemeriksaanKritisDuaBulan) {
+    const posyanduId = pm.balita.warga.posyanduUtamaId
+    if (!posyanduId) continue
+    const tbU = pm.zScoreTbU === null ? null : Number(pm.zScoreTbU)
+    const bbTb = pm.zScoreBbTb === null ? null : Number(pm.zScoreBbTb)
+    if (!isKasusKritis(tbU, bbTb)) continue
+
+    const targetMap = pm.tanggalPemeriksaan >= startOfMonth
+      ? kasusKritisBulanIniMap
+      : kasusKritisBulanLaluMap
+    targetMap.set(posyanduId, (targetMap.get(posyanduId) ?? 0) + 1)
+  }
+
+  const redFlagCandidates = posyanduRows.map((p) => {
+    const kasusKritisBulanIni = kasusKritisBulanIniMap.get(p.id) ?? 0
+    const kasusKritisBulanLalu = kasusKritisBulanLaluMap.get(p.id) ?? 0
+    return {
+      posyanduId: p.id,
+      namaPosyandu: p.namaPosyandu,
+      wilayah: p.kelurahan,
+      kasusKritisBulanIni,
+      kasusKritisBulanLalu,
+      lonjakan: kasusKritisBulanIni - kasusKritisBulanLalu,
+    }
+  })
+  const hasPositiveLonjakan = redFlagCandidates.some((item) => item.lonjakan > 0)
+  const redFlagsPosyandu = redFlagCandidates
+    .filter((item) => hasPositiveLonjakan ? item.lonjakan > 0 : item.kasusKritisBulanIni > 0)
+    .sort((a, b) => {
+      if (hasPositiveLonjakan) {
+        return b.lonjakan - a.lonjakan || b.kasusKritisBulanIni - a.kasusKritisBulanIni
+      }
+      return b.kasusKritisBulanIni - a.kasusKritisBulanIni || b.lonjakan - a.lonjakan
+    })
+    .slice(0, 5)
   const breakdown = allPemeriksaan.reduce(
     (acc, pm) => {
       const status = pm.statusGiziOverride ?? pm.statusGizi
@@ -305,13 +403,27 @@ export async function getDashboardStats(
     a.bulan.localeCompare(b.bulan)
   )
 
-  const uniqueBalitaIds = new Set(allPemeriksaan.map((pm) => pm.balitaId))
+  const uniqueBalitaIds = new Set(pemeriksaanPartisipasiBulanIni.map((pm) => pm.balitaId))
+  const partisipasiPersen = totalBalitaSasaran === 0
+    ? 0
+    : Math.round((uniqueBalitaIds.size / totalBalitaSasaran) * 1000) / 10
   return {
     totalPemeriksaan: allPemeriksaan.length,
     totalBalita: uniqueBalitaIds.size,
+    totalBalitaSasaran,
     breakdown,
+    partisipasiDS: {
+      ditimbang: uniqueBalitaIds.size,
+      sasaran: totalBalitaSasaran,
+      persen: partisipasiPersen,
+      status: getPartisipasiStatus(partisipasiPersen),
+    },
+    redFlagsPosyandu,
     distribusiRingkasanGiziBulanIni,
     trenRingkasanGizi,
     trenGiziBulanan,
   }
 }
+
+
+

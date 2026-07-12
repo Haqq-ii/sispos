@@ -6,7 +6,7 @@ import {
   ClipboardList, TrendingUp, TrendingDown,
 } from 'lucide-react'
 import {
-  BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid,
+  Cell, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, PieChart, Pie, LineChart, Line, Legend,
 } from 'recharts'
 import apiClient from '@/lib/axios'
@@ -18,7 +18,22 @@ import { MonthYearPicker } from '@/components/ui/MonthYearPicker'
 interface DashboardStats {
   totalPemeriksaan: number
   totalBalita: number
+  totalBalitaSasaran: number
   breakdown: Record<string, number>
+  partisipasiDS: {
+    ditimbang: number
+    sasaran: number
+    persen: number
+    status: 'baik' | 'cukup' | 'rendah'
+  }
+  redFlagsPosyandu: Array<{
+    posyanduId: string
+    namaPosyandu: string
+    wilayah?: string
+    kasusKritisBulanIni: number
+    kasusKritisBulanLalu: number
+    lonjakan: number
+  }>
   distribusiRingkasanGiziBulanIni: {
     normal: number
     kurangPendek: number
@@ -158,11 +173,25 @@ export default function PuskesmasDashboardPage() {
     value: distribusiRingkasan[item.key],
   })).filter((d) => d.value > 0)
 
-  const barData = RINGKASAN_GIZI_ITEMS.map((item) => ({
-    name: item.name,
-    nilai: distribusiRingkasan[item.key],
-    color: item.color,
-  }))
+
+  const partisipasiDS = stats?.partisipasiDS ?? {
+    ditimbang: 0,
+    sasaran: 0,
+    persen: 0,
+    status: 'rendah' as const,
+  }
+  const dsPercent = Math.min(100, Math.max(0, partisipasiDS.persen))
+  const dsStatusLabel: Record<typeof partisipasiDS.status, string> = {
+    baik: 'Baik',
+    cukup: 'Cukup',
+    rendah: 'Perlu ditingkatkan',
+  }
+  const dsStatusClass: Record<typeof partisipasiDS.status, string> = {
+    baik: 'bg-green-100 text-green-700',
+    cukup: 'bg-amber-100 text-amber-700',
+    rendah: 'bg-red-100 text-red-700',
+  }
+  const redFlags = stats?.redFlagsPosyandu ?? []
   const trendLines = RINGKASAN_GIZI_ITEMS
   const trendData = (stats?.trenRingkasanGizi ?? []).map((row) => {
     const total =
@@ -272,56 +301,23 @@ export default function PuskesmasDashboardPage() {
             </div>
           )}
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {/* BarChart distribusi */}
-          <div className="md:col-span-2 bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          {/* Proporsi ringkasan */}
+          <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm min-w-0">
             <div className="mb-4">
-              <p className="text-gray-800 text-sm font-bold">Distribusi Ringkasan Risiko Gizi</p>
+              <p className="text-gray-800 text-sm font-bold">Proporsi Ringkasan Risiko Gizi</p>
               <p className="text-gray-400 text-xs">{formatBulanLabel(bulan)}</p>
             </div>
-            {barData.some((item) => item.nilai > 0) ? (
-              <ResponsiveContainer width="100%" height={190}>
-                <BarChart data={barData} margin={{ top: 0, right: 10, bottom: 0, left: -10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fontSize: 10, fill: '#9ca3af' }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 10, fill: '#9ca3af' }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <Tooltip />
-                  <Bar dataKey="nilai" radius={[4, 4, 0, 0]} name="Balita">
-                    {barData.map((entry, idx) => (
-                      <Cell key={idx} fill={entry.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[190px] flex items-center justify-center text-gray-400 text-sm">
-                {isLoading ? 'Memuat...' : 'Belum ada data pemeriksaan bulan ini'}
-              </div>
-            )}
-          </div>
-
-          {/* PieChart status gizi */}
-          <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-            <p className="text-gray-800 text-sm font-bold mb-3">Proporsi Ringkasan Risiko Gizi</p>
             {pieData.length > 0 ? (
               <>
-                <div className="flex justify-center mb-3">
-                  <PieChart width={140} height={140}>
+                <div className="flex justify-center mb-4">
+                  <PieChart width={150} height={150}>
                     <Pie
                       data={pieData}
-                      cx={65}
-                      cy={65}
-                      innerRadius={42}
-                      outerRadius={62}
+                      cx={75}
+                      cy={75}
+                      innerRadius={46}
+                      outerRadius={66}
                       paddingAngle={3}
                       dataKey="value"
                     >
@@ -332,30 +328,103 @@ export default function PuskesmasDashboardPage() {
                     <Tooltip />
                   </PieChart>
                 </div>
-                <div className="space-y-1.5">
-                  {pieData.map((item) => (
-                    <div key={item.name} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
+                <div className="space-y-2">
+                  {RINGKASAN_GIZI_ITEMS.map((item) => (
+                    <div key={item.name} className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         <div
                           className="w-2.5 h-2.5 rounded-sm flex-shrink-0"
                           style={{ backgroundColor: item.color }}
                         />
-                        <span className="text-gray-500 text-xs">{item.name}</span>
+                        <span className="text-gray-500 text-xs truncate">{item.name}</span>
                       </div>
-                      <span className="text-gray-800 text-xs font-bold">{item.value}</span>
+                      <span className="text-gray-800 text-xs font-bold flex-shrink-0">
+                        {distribusiRingkasan[item.key].toLocaleString('id-ID')}
+                      </span>
                     </div>
                   ))}
                 </div>
               </>
             ) : (
-              <div className="flex items-center justify-center h-32 text-gray-400 text-sm">
+              <div className="flex items-center justify-center h-40 text-gray-400 text-sm">
                 {isLoading ? 'Memuat...' : 'Tidak ada data'}
               </div>
             )}
           </div>
-        </div>
 
-        {/* ── Quick Actions ────────────────────────────────────────────────── */}
+          {/* Partisipasi D/S */}
+          <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm min-w-0">
+            <div className="flex items-start justify-between gap-3 mb-5">
+              <div className="min-w-0">
+                <p className="text-gray-800 text-sm font-bold">Tingkat Partisipasi D/S</p>
+                <p className="text-gray-400 text-xs">Balita diperiksa dari total sasaran</p>
+              </div>
+              <span className={`px-2 py-1 rounded-full text-[10px] font-semibold flex-shrink-0 ${dsStatusClass[partisipasiDS.status]}`}>
+                {dsStatusLabel[partisipasiDS.status]}
+              </span>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-1">Kehadiran</p>
+                <p className="text-3xl font-bold text-gray-800 leading-none">
+                  {partisipasiDS.persen.toLocaleString('id-ID', { maximumFractionDigits: 1 })}%
+                </p>
+              </div>
+              <div>
+                <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-green-600 rounded-full transition-all"
+                    style={{ width: `${dsPercent}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between gap-2 mt-2 text-xs">
+                  <span className="text-gray-500">{partisipasiDS.ditimbang.toLocaleString('id-ID')} / {partisipasiDS.sasaran.toLocaleString('id-ID')} balita</span>
+                  <span className="text-gray-400 flex-shrink-0">Target 80%</span>
+                </div>
+              </div>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                Dihitung dari balita unik yang memiliki pemeriksaan pada bulan terpilih.
+              </p>
+            </div>
+          </div>
+
+          {/* Red flags */}
+          <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm min-w-0">
+            <div className="mb-4">
+              <p className="text-gray-800 text-sm font-bold">Tindak Lanjut Segera</p>
+              <p className="text-gray-400 text-xs">Posyandu dengan lonjakan kasus kritis</p>
+            </div>
+            {redFlags.length > 0 ? (
+              <div className="space-y-3">
+                {redFlags.map((item) => (
+                  <div key={item.posyanduId} className="rounded-xl border border-gray-100 p-3 bg-gray-50 min-w-0">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-800 truncate">{item.namaPosyandu}</p>
+                        {item.wilayah && <p className="text-[11px] text-gray-400 truncate">{item.wilayah}</p>}
+                      </div>
+                      <span className="text-xs font-bold text-red-600 flex-shrink-0">
+                        {item.lonjakan > 0 ? `+${item.lonjakan}` : item.lonjakan}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      {item.lonjakan > 0
+                        ? `+${item.lonjakan} kasus kritis dari bulan lalu`
+                        : `${item.lonjakan} kasus kritis dari bulan lalu`}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Total kritis bulan ini: {item.kasusKritisBulanIni.toLocaleString('id-ID')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="h-40 flex items-center justify-center text-center text-gray-400 text-sm px-4">
+                {isLoading ? 'Memuat...' : 'Tidak ada lonjakan kasus kritis bulan ini.'}
+              </div>
+            )}
+          </div>
+        </div>
         <div>
           <p className="text-gray-400 text-xs font-semibold tracking-wider mb-3">AKSI CEPAT</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -410,6 +479,9 @@ export default function PuskesmasDashboardPage() {
     </div>
   )
 }
+
+
+
 
 
 
