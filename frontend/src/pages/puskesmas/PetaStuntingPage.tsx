@@ -3,10 +3,6 @@ import { useState, useMemo, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import L from 'leaflet'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer,
-} from 'recharts'
 import apiClient from '@/lib/axios'
 import { MonthYearPicker } from '@/components/ui/MonthYearPicker'
 
@@ -121,15 +117,6 @@ export default function PetaStuntingPage() {
     [stuntingData],
   )
 
-  const barData = useMemo(
-    () =>
-      ranked.map((p) => ({
-        name: p.namaPosyandu.replace('Posyandu ', '').slice(0, 12),
-        total: p.total,
-        risiko: getRisikoCount(p.breakdown),
-      })),
-    [ranked],
-  )
 
   return (
     <div className="min-h-full bg-gray-50">
@@ -310,31 +297,7 @@ export default function PetaStuntingPage() {
           </div>
         </div>
 
-        {/* ── BarChart comparison ──────────────────────────────────────────── */}
-        {barData.length > 0 && (
-          <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-            <p className="text-gray-800 font-bold mb-4">
-              Perbandingan Stunting Antar Posyandu
-            </p>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={barData} margin={{ top: 0, right: 10, bottom: 0, left: -10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip
-                  formatter={(val, name) => [
-                    val,
-                    name === 'risiko' ? 'Kasus Stunting' : 'Total Balita',
-                  ]}
-                />
-                <Bar dataKey="total" fill="#bfdbfe" name="total" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="risiko" fill="#ef4444" name="risiko" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-
-        {/* ── Empty state ────────────────────────────────────────────────── */}
+        {/* Empty state ────────────────────────────────────────────────── */}
         {!isLoading && (!stuntingData || stuntingData.length === 0) && (
           <div className="py-8 bg-white rounded-2xl border border-gray-100 text-center">
             <p className="text-sm text-gray-400">
