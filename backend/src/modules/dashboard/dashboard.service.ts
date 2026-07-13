@@ -265,7 +265,7 @@ export async function getDashboardStats(
     },
   })
   const trendStart = new Date(startOfMonth)
-  trendStart.setMonth(trendStart.getMonth() - 11)
+  trendStart.setMonth(trendStart.getMonth() - 5)
   const trendPemeriksaan = await prisma.pemeriksaan.findMany({
     where: {
       tanggalPemeriksaan: { gte: trendStart, lt: startOfNextMonth },

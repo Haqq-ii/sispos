@@ -188,7 +188,7 @@ export async function getKaderDashboardStats(kaderId: string): Promise<{
         AND latest."statusGizi" IN ('kurang', 'buruk', 'pendek', 'sangat_pendek')
     `,
 
-    // E: trenGiziBulanan - 12 bulan terakhir berdasarkan indikator zScoreTbU dan zScoreBbTb.
+    // E: trenGiziBulanan - 6 bulan terakhir berdasarkan indikator zScoreTbU dan zScoreBbTb.
     prisma.$queryRaw<Array<{ bulan: string; zScoreTbU: number | null; zScoreBbTb: number | null }>>`
       SELECT
         TO_CHAR(p."tanggalPemeriksaan", 'YYYY-MM') AS bulan,
@@ -198,7 +198,7 @@ export async function getKaderDashboardStats(kaderId: string): Promise<{
       JOIN balita b ON p."balitaId" = b.id
       JOIN warga w ON b."wargaId" = w.id
       WHERE w."posyanduUtamaId" = ${posyanduId}
-        AND p."tanggalPemeriksaan" >= (NOW() AT TIME ZONE 'Asia/Jakarta' - INTERVAL '11 months')::date
+        AND p."tanggalPemeriksaan" >= (NOW() AT TIME ZONE 'Asia/Jakarta' - INTERVAL '5 months')::date
         AND (p."zScoreTbU" IS NOT NULL OR p."zScoreBbTb" IS NOT NULL)
       ORDER BY bulan
     `,

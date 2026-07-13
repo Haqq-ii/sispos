@@ -130,15 +130,30 @@ export default function TumbuhKembangPage() {
         }
       : {}
 
-  // Sort ascending for chart
+  const getRecordDate = (record: RiwayatRecord) => new Date(record.tanggalPemeriksaan ?? record.createdAt ?? '')
+
+  // Sort ascending for chart; keep the Riwayat tab using the full API data.
   const sortedData = [...(riwayatData ?? [])].sort((a, b) => {
-    const tA = new Date(a.tanggalPemeriksaan ?? a.createdAt).getTime()
-    const tB = new Date(b.tanggalPemeriksaan ?? b.createdAt).getTime()
+    const tA = getRecordDate(a).getTime()
+    const tB = getRecordDate(b).getTime()
     return tA - tB
   })
 
+  const chartStartDate = (() => {
+    const latestChartRecord = sortedData[sortedData.length - 1]
+    if (!latestChartRecord) return null
+    const date = getRecordDate(latestChartRecord)
+    date.setDate(1)
+    date.setHours(0, 0, 0, 0)
+    date.setMonth(date.getMonth() - 5)
+    return date
+  })()
+  const chartDataSource = chartStartDate
+    ? sortedData.filter((record) => getRecordDate(record) >= chartStartDate)
+    : sortedData
+
   // Grafik data for Z-Score chart
-  const grafikData: ZScoreDataPoint[] = sortedData.map((record) => {
+  const grafikData: ZScoreDataPoint[] = chartDataSource.map((record) => {
     const dateStr = record.tanggalPemeriksaan ?? record.createdAt
     const tanggal = new Date(dateStr).toLocaleDateString('id-ID', {
       day: '2-digit',
@@ -155,7 +170,7 @@ export default function TumbuhKembangPage() {
 
   // Grafik data for BB/TB line charts
   interface SimpleDataPoint { tanggal: string; value: number }
-  const bbData: SimpleDataPoint[] = sortedData.map((record) => ({
+  const bbData: SimpleDataPoint[] = chartDataSource.map((record) => ({
     tanggal: new Date(record.tanggalPemeriksaan ?? record.createdAt).toLocaleDateString('id-ID', {
       day: '2-digit',
       month: '2-digit',
@@ -163,7 +178,7 @@ export default function TumbuhKembangPage() {
     }),
     value: record.beratBadan,
   }))
-  const tbData: SimpleDataPoint[] = sortedData.map((record) => ({
+  const tbData: SimpleDataPoint[] = chartDataSource.map((record) => ({
     tanggal: new Date(record.tanggalPemeriksaan ?? record.createdAt).toLocaleDateString('id-ID', {
       day: '2-digit',
       month: '2-digit',
@@ -275,7 +290,7 @@ export default function TumbuhKembangPage() {
               </p>
             )}
 
-            {!isLoading && sortedData.length > 0 && (
+            {!isLoading && chartDataSource.length > 0 && (
               <>
                 {/* Chart type pills */}
                 <div className="flex gap-2">

@@ -272,7 +272,7 @@ export default function PuskesmasDashboardPage() {
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
           <div className="mb-4">
             <p className="text-gray-800 text-sm font-bold">Tren Ringkasan Risiko Gizi (%)</p>
-            <p className="text-gray-400 text-xs">Persentase dari balita yang diperiksa tiap bulan</p>
+            <p className="text-gray-400 text-xs">6 bulan terakhir berdasarkan z-score</p>
           </div>
           {trendData.length > 0 ? (
             <ResponsiveContainer width="100%" height={230}>

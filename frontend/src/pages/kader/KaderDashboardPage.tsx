@@ -443,7 +443,7 @@ export default function KaderDashboardPage() {
                     Tren Status Gizi (%)
                   </p>
                   <p className="text-gray-400 text-[10px] mt-0.5">
-                    Persentase dari balita yang diperiksa tiap bulan
+                    6 bulan terakhir berdasarkan z-score
                   </p>
                 </div>
                 <div className="flex flex-wrap rounded-lg border border-gray-200 bg-gray-50 p-0.5">
