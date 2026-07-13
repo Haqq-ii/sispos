@@ -2,14 +2,21 @@ import { Prisma, StatusJadwal } from '@prisma/client'
 import { prisma } from '../../config/db'
 import type { CreateJadwalInput } from '../../shared/schemas/jadwal.schema'
 
-// ── Konfigurasi 3 sesi per hari (08:00 - 11:00) ──────────────────
+// Konfigurasi legacy 3 sesi per hari (08:00 - 11:00). Tetap dipakai untuk payload lama.
 const SESI_CONFIG = [
   { nomorSesi: 1, labelSesi: 'Sesi 1 (08:00 - 09:00)', jamMulaiHour: 8, jamSelesaiHour: 9 },
   { nomorSesi: 2, labelSesi: 'Sesi 2 (09:00 - 10:00)', jamMulaiHour: 9, jamSelesaiHour: 10 },
   { nomorSesi: 3, labelSesi: 'Sesi 3 (10:00 - 11:00)', jamMulaiHour: 10, jamSelesaiHour: 11 },
 ]
 
-// ── Buat jadwal + 3 SlotSesi secara atomik ────────────────────────
+function timeStringToDate(value: string): Date {
+  const [hour, minute] = value.split(':').map(Number)
+  const date = new Date(0)
+  date.setUTCHours(hour, minute, 0, 0)
+  return date
+}
+
+// Buat jadwal + SlotSesi secara atomik.
 export async function createJadwal(data: CreateJadwalInput, puskesmasId: string) {
   // T-02-04 Mitigation: Verifikasi posyandu milik puskesmas yang login
   const posyandu = await prisma.posyandu.findFirst({
@@ -21,8 +28,8 @@ export async function createJadwal(data: CreateJadwalInput, puskesmasId: string)
     throw err
   }
 
-  // kuota per sesi = floor(60 / estimasiDurasiMenit) — CLAUDE.md §Antrian
-  const kuota = Math.floor(60 / data.estimasiDurasiMenit)
+  const usesCustomSessions = Boolean(data.sessions?.length)
+  const estimasiDurasiMenit = data.estimasiDurasiMenit ?? 7
 
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -32,31 +39,41 @@ export async function createJadwal(data: CreateJadwalInput, puskesmasId: string)
           posyanduId: data.posyanduId,
           puskesmasId,
           tanggalPelaksanaan: new Date(data.tanggalPelaksanaan),
-          estimasiDurasiMenit: data.estimasiDurasiMenit,
+          estimasiDurasiMenit,
           statusJadwal: StatusJadwal.aktif,
         },
       })
 
-      // b. Build SlotSesi — gunakan UTC hours untuk menghindari timezone pitfall (@db.Time)
-      const slots = SESI_CONFIG.map((sesi) => {
-        const jamMulai = new Date(0)
-        jamMulai.setUTCHours(sesi.jamMulaiHour, 0, 0, 0)
+      const slots = usesCustomSessions
+        ? data.sessions!.map((sesi, index) => ({
+            jadwalId: newJadwal.id,
+            nomorSesi: index + 1,
+            labelSesi: `Sesi ${index + 1} (${sesi.jamMulai} - ${sesi.jamSelesai})`,
+            jamMulai: timeStringToDate(sesi.jamMulai),
+            jamSelesai: timeStringToDate(sesi.jamSelesai),
+            kuota: sesi.kuota,
+            terisi: 0,
+          }))
+        : SESI_CONFIG.map((sesi) => {
+            const kuota = Math.floor(60 / estimasiDurasiMenit)
+            const jamMulai = new Date(0)
+            jamMulai.setUTCHours(sesi.jamMulaiHour, 0, 0, 0)
 
-        const jamSelesai = new Date(0)
-        jamSelesai.setUTCHours(sesi.jamSelesaiHour, 0, 0, 0)
+            const jamSelesai = new Date(0)
+            jamSelesai.setUTCHours(sesi.jamSelesaiHour, 0, 0, 0)
 
-        return {
-          jadwalId: newJadwal.id,
-          nomorSesi: sesi.nomorSesi,
-          labelSesi: sesi.labelSesi,
-          jamMulai,
-          jamSelesai,
-          kuota,
-          terisi: 0,
-        }
-      })
+            return {
+              jadwalId: newJadwal.id,
+              nomorSesi: sesi.nomorSesi,
+              labelSesi: sesi.labelSesi,
+              jamMulai,
+              jamSelesai,
+              kuota,
+              terisi: 0,
+            }
+          })
 
-      // c. Buat 3 SlotSesi sekaligus
+      // b. Buat SlotSesi sekaligus
       await tx.slotSesi.createMany({ data: slots })
 
       // Kembalikan jadwal lengkap dengan slot
@@ -102,7 +119,7 @@ export async function getJadwalList(puskesmasId: string, page: number, limit: nu
   return { data, total }
 }
 
-// ── Jadwal tersedia untuk citizen (berdasarkan posyanduId) ────────
+// ── Jadwal tersedia untuk citizen (berdasarkan posyanduId) ─────────
 export async function getJadwalTersedia(posyanduId: string, bulan: string) {
   // bulan format: 'YYYY-MM'
   const startDate = new Date(bulan + '-01')
@@ -152,7 +169,7 @@ export async function getCitizenPosyanduId(wargaId: string): Promise<string | nu
   return warga?.posyanduUtamaId ?? null
 }
 
-// ── Detail SlotSesi untuk satu Jadwal ────────────────────────────
+// ── Detail SlotSesi untuk satu Jadwal ─────────────────────────────
 export async function getSesiList(jadwalId: string) {
   return prisma.slotSesi.findMany({
     where: { jadwalId },
