@@ -28,13 +28,28 @@ interface ZScoreChartProps {
   data: ZScoreDataPoint[]
 }
 
+function formatZScoreTick(value: unknown): string {
+  return typeof value === 'number' ? String(value) : ''
+}
+
+function formatZScoreTooltip(value: unknown): string {
+  return typeof value === 'number' ? value.toFixed(2) : '-'
+}
+
 export function ZScoreChart({ data }: ZScoreChartProps) {
   return (
     <ResponsiveContainer width="100%" height={260}>
       <LineChart data={data} margin={{ top: 8, right: 16, left: -16, bottom: 0 }}>
         <XAxis dataKey="tanggal" tick={{ fontSize: 11 }} />
-        <YAxis domain={[-4, 4]} tick={{ fontSize: 11 }} />
-        <Tooltip formatter={(v) => (typeof v === 'number' ? v.toFixed(2) : String(v))} />
+        <YAxis
+          type="number"
+          domain={[-5, 5]}
+          ticks={[-5, -4, -3, -2, 0, 2, 3, 4, 5]}
+          tick={{ fontSize: 11 }}
+          tickFormatter={formatZScoreTick}
+          allowDecimals={false}
+        />
+        <Tooltip formatter={formatZScoreTooltip} />
         <Legend />
         {/* Reference lines untuk zona status gizi */}
         <ReferenceLine

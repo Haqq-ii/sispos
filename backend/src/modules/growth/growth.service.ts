@@ -16,11 +16,21 @@ import type { IncomingHttpHeaders } from 'http'
 import { Prisma } from '@prisma/client'
 import { prisma } from '../../config/db'
 import { env } from '../../config/env'
-import { encrypt } from '../../shared/utils/encrypt'
+import { encrypt, decrypt } from '../../shared/utils/encrypt'
 import { computeZScore, ageInMonths, determineStatusGizi } from '../../shared/utils/zscore'
 import { broadcastQueueUpdate } from '../antrian/antrian.service'
 
 const logger = pino({ level: env.NODE_ENV === 'production' ? 'info' : 'debug' })
+
+function decryptNullable(value: string | null): string | null {
+  if (!value) return null
+  try {
+    return decrypt(value)
+  } catch (err) {
+    logger.warn({ err }, 'Gagal decrypt field konsultasi pemeriksaan')
+    return null
+  }
+}
 
 // ── Input types ───────────────────────────────────────────────────────────
 
@@ -355,7 +365,7 @@ export async function getPemeriksaanHistory(balitaId: string) {
  * (citizen login) dengan semua field Z-Score (BB/U, TB/U, BB/TB) untuk grafik.
  *
  * IDOR-safe: filter via wargaId dari JWT, bukan dari client-supplied balitaId.
- * catatanKonsultasi / rekomendasiAi: TIDAK dikembalikan (encrypted, bukan untuk citizen).
+ * catatanKonsultasi / rekomendasiAi dikembalikan terdekripsi untuk riwayat warga.
  */
 export async function getCitizenGrowthRiwayat(wargaId: string, balitaId?: string): Promise<
   {
@@ -367,6 +377,8 @@ export async function getCitizenGrowthRiwayat(wargaId: string, balitaId?: string
     zScoreTbU: number | null
     zScoreBbTb: number | null
     statusGizi: string
+    catatanKonsultasi: string | null
+    rekomendasiAi: string | null
   }[]
 > {
   // Jika balitaId disuplai, verifikasi kepemilikan via wargaId (IDOR guard)
@@ -395,6 +407,8 @@ export async function getCitizenGrowthRiwayat(wargaId: string, balitaId?: string
       zScoreBbTb: true,
       statusGizi: true,
       statusGiziOverride: true,
+      catatanKonsultasi: true,
+      rekomendasiAi: true,
     },
   })
 
@@ -407,6 +421,8 @@ export async function getCitizenGrowthRiwayat(wargaId: string, balitaId?: string
     zScoreTbU: r.zScoreTbU ?? null,
     zScoreBbTb: r.zScoreBbTb ?? null,
     statusGizi: (r.statusGiziOverride ?? r.statusGizi ?? 'normal') as string,
+    catatanKonsultasi: decryptNullable(r.catatanKonsultasi),
+    rekomendasiAi: decryptNullable(r.rekomendasiAi),
   }))
 }
 
@@ -417,7 +433,7 @@ export async function getCitizenGrowthRiwayat(wargaId: string, balitaId?: string
  * milik warga yang sedang login (citizen role).
  *
  * Digunakan oleh GET /api/growth/riwayat.
- * Tidak mengekspos catatanKonsultasi/rekomendasiAi (encrypted, bukan untuk citizen).
+ * Mengekspos catatanKonsultasi/rekomendasiAi terdekripsi untuk riwayat konsultasi warga.
  */
 export async function getRiwayatForCitizen(wargaId: string): Promise<
   {
@@ -431,6 +447,8 @@ export async function getRiwayatForCitizen(wargaId: string): Promise<
     zScoreTbU: number | null
     zScoreBbTb: number | null
     statusGizi: string
+    catatanKonsultasi: string | null
+    rekomendasiAi: string | null
   }[]
 > {
   const records = await prisma.pemeriksaan.findMany({
@@ -446,6 +464,8 @@ export async function getRiwayatForCitizen(wargaId: string): Promise<
       zScoreBbTb: true,
       statusGizi: true,
       statusGiziOverride: true,
+      catatanKonsultasi: true,
+      rekomendasiAi: true,
     },
     orderBy: { tanggalPemeriksaan: 'desc' },
   })
@@ -461,5 +481,7 @@ export async function getRiwayatForCitizen(wargaId: string): Promise<
     zScoreTbU: r.zScoreTbU ?? null,
     zScoreBbTb: r.zScoreBbTb ?? null,
     statusGizi: (r.statusGiziOverride ?? r.statusGizi ?? 'normal') as string,
+    catatanKonsultasi: decryptNullable(r.catatanKonsultasi),
+    rekomendasiAi: decryptNullable(r.rekomendasiAi),
   }))
 }

@@ -4,6 +4,8 @@ import type { OtpJobData } from './otp.job'
 import { OTP_JOB_NAME } from './otp.job'
 import type { AntrianJobData } from './antrian.job'
 import { ANTRIAN_WA_JOB_NAME } from './antrian.job'
+import type { KonsultasiJobData } from './konsultasi.job'
+import { KONSULTASI_WA_JOB_NAME } from './konsultasi.job'
 
 /**
  * Parse Redis URL ke BullMQ ConnectionOptions.
@@ -51,6 +53,20 @@ export async function enqueueOtpJob(nomorPonsel: string, kodeOtp: string): Promi
  */
 export async function enqueueAntrianWaJob(data: AntrianJobData): Promise<void> {
   await notificationQueue.add(ANTRIAN_WA_JOB_NAME, data, {
+    attempts: 3,
+    backoff: {
+      type: 'exponential',
+      delay: 1000,
+    },
+  })
+}
+
+/**
+ * Enqueue WhatsApp ringkasan konsultasi Meja 4.
+ * Nomor ponsel harus berasal dari DB, bukan request body.
+ */
+export async function enqueueKonsultasiWaJob(data: KonsultasiJobData): Promise<void> {
+  await notificationQueue.add(KONSULTASI_WA_JOB_NAME, data, {
     attempts: 3,
     backoff: {
       type: 'exponential',

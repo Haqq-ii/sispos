@@ -13,7 +13,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, CheckCircle2, Syringe } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Syringe, ChevronDown, ChevronUp } from 'lucide-react'
 import {
   LineChart,
   Line,
@@ -43,6 +43,8 @@ interface RiwayatRecord {
   zScoreTbU?: number | null
   zScoreBbTb?: number | null
   statusGizi: string
+  catatanKonsultasi?: string | null
+  rekomendasiAi?: string | null
 }
 
 interface LatestStats {
@@ -77,12 +79,100 @@ function getStatusStyle(status: string): string {
   return 'bg-gray-100 text-gray-600'
 }
 
+function hasConsultation(record: RiwayatRecord): boolean {
+  return Boolean(record.catatanKonsultasi?.trim() || record.rekomendasiAi?.trim())
+}
+
+function ConsultationText({ title, value }: { title: string; value?: string | null }) {
+  if (!value?.trim()) return null
+  return (
+    <div className="rounded-xl border border-green-100 bg-green-50/60 p-3">
+      <p className="text-green-800 text-xs font-semibold mb-1">{title}</p>
+      <p className="text-gray-700 text-xs leading-relaxed whitespace-pre-line">{value}</p>
+    </div>
+  )
+}
+function extractLabeledSection(source: string, label: string, allLabels: string[]): string | null {
+  const startToken = `${label}:`
+  const start = source.indexOf(startToken)
+  if (start < 0) return null
+  const contentStart = start + startToken.length
+  const next = allLabels
+    .filter((item) => item !== label)
+    .map((item) => source.indexOf(`${item}:`, contentStart))
+    .filter((idx) => idx >= 0)
+    .sort((a, b) => a - b)[0]
+  return source.slice(contentStart, next ?? source.length).trim() || null
+}
+
+function ConsultationDetail({ record }: { record: RiwayatRecord }) {
+  const consultationLabels = ['Transkrip Asli Konsultasi', 'Rangkuman Konsultasi']
+  const transcript = record.catatanKonsultasi
+    ? extractLabeledSection(record.catatanKonsultasi, 'Transkrip Asli Konsultasi', consultationLabels)
+    : null
+  const summary = record.catatanKonsultasi
+    ? extractLabeledSection(record.catatanKonsultasi, 'Rangkuman Konsultasi', consultationLabels)
+    : null
+  const hasParsedConsultation = Boolean(transcript || summary)
+
+  const aiLabels = [
+    'Status Risiko',
+    'Ringkasan',
+    'Interpretasi Indikator',
+    'Hal yang Perlu Dikonfirmasi ke Ibu',
+    'Rekomendasi Konseling',
+    'Tindak Lanjut',
+    'Kalimat Sederhana untuk Ibu',
+  ]
+  const statusRisiko = record.rekomendasiAi ? extractLabeledSection(record.rekomendasiAi, 'Status Risiko', aiLabels) : null
+  const ringkasan = record.rekomendasiAi ? extractLabeledSection(record.rekomendasiAi, 'Ringkasan', aiLabels) : null
+  const interpretasi = record.rekomendasiAi ? extractLabeledSection(record.rekomendasiAi, 'Interpretasi Indikator', aiLabels) : null
+  const rekomendasi = record.rekomendasiAi ? extractLabeledSection(record.rekomendasiAi, 'Rekomendasi Konseling', aiLabels) : null
+  const tindakLanjut = record.rekomendasiAi ? extractLabeledSection(record.rekomendasiAi, 'Tindak Lanjut', aiLabels) : null
+  const hasParsedAi = Boolean(statusRisiko || ringkasan || interpretasi || rekomendasi || tindakLanjut)
+
+  return (
+    <div className="mt-3 rounded-2xl border border-green-100 bg-green-50/40 p-3 space-y-3 max-h-96 overflow-y-auto">
+      {record.catatanKonsultasi && (
+        <div className="space-y-2">
+          <p className="text-green-800 text-xs font-bold uppercase tracking-wide">Catatan Konsultasi</p>
+          {hasParsedConsultation ? (
+            <>
+              <ConsultationText title="Transkrip Asli" value={transcript} />
+              <ConsultationText title="Rangkuman" value={summary} />
+            </>
+          ) : (
+            <ConsultationText title="Catatan Konsultasi" value={record.catatanKonsultasi} />
+          )}
+        </div>
+      )}
+
+      {record.rekomendasiAi && (
+        <div className="space-y-2">
+          <p className="text-green-800 text-xs font-bold uppercase tracking-wide">Rekomendasi AI</p>
+          {hasParsedAi ? (
+            <>
+              <ConsultationText title="Status Risiko" value={statusRisiko} />
+              <ConsultationText title="Ringkasan" value={ringkasan} />
+              <ConsultationText title="Interpretasi" value={interpretasi} />
+              <ConsultationText title="Rekomendasi" value={rekomendasi} />
+              <ConsultationText title="Tindak Lanjut" value={tindakLanjut} />
+            </>
+          ) : (
+            <ConsultationText title="Rekomendasi AI" value={record.rekomendasiAi} />
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export default function TumbuhKembangPage() {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<'grafik' | 'riwayat' | 'imunisasi'>('riwayat')
   const [chartType, setChartType] = useState<'zscore' | 'bb' | 'tb'>('zscore')
+  const [expandedConsultationId, setExpandedConsultationId] = useState<string | null>(null)
 
   const { selectedBalitaId } = useBalitaStore()
 
@@ -463,6 +553,33 @@ export default function TumbuhKembangPage() {
                       )
                     })}
                   </div>
+                  {hasConsultation(record) && (
+                    <div className="mt-3 space-y-2">
+                      <div className="flex flex-wrap gap-1.5">
+                        {record.catatanKonsultasi?.trim() && (
+                          <span className="rounded-full bg-green-50 px-2 py-1 text-[11px] font-semibold text-green-700 border border-green-100">
+                            Ada catatan konsultasi
+                          </span>
+                        )}
+                        {record.rekomendasiAi?.trim() && (
+                          <span className="rounded-full bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700 border border-blue-100">
+                            Ada rekomendasi AI
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedConsultationId((current) => (current === record.id ? null : record.id))}
+                        className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 flex items-center justify-center gap-2 active:bg-gray-50"
+                      >
+                        {expandedConsultationId === record.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        {expandedConsultationId === record.id ? 'Tutup Catatan' : 'Lihat Catatan'}
+                      </button>
+                      <div className={`transition-all duration-200 ${expandedConsultationId === record.id ? 'opacity-100' : 'hidden opacity-0'}`}>
+                        {expandedConsultationId === record.id && <ConsultationDetail record={record} />}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
           </>

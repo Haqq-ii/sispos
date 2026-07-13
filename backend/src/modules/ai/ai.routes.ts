@@ -24,11 +24,12 @@ import { authMiddleware } from '../../shared/middleware/auth.middleware'
 import { requireRole } from '../../shared/middleware/require-role.middleware'
 import type { AuthRequest } from '../../shared/middleware/auth.middleware'
 import { prisma } from '../../config/db'
-import { generateEarlyWarning } from './ai.service'
+import { generateEarlyWarning, summarizeConsultation } from './ai.service'
 import { updatePemeriksaan } from '../growth/growth.service'
 import { chatGizi } from './ai-gizi.service'
 import { chatPendaftaran } from './ai-pendaftaran.service'
 import { chatAssistant } from './ai-assistant.service'
+import { enqueueKonsultasiWaJob } from '../notification/notification.queue'
 
 export const aiRouter = Router()
 
@@ -177,6 +178,7 @@ async function earlyWarningHandler(req: AuthRequest, res: Response): Promise<voi
       namaBalita: pemeriksaan.balita.namaBalita,
       usiaBulan,
       jenisKelamin: pemeriksaan.balita.jenisKelamin as 'laki_laki' | 'perempuan',
+      tanggalPemeriksaan: pemeriksaan.tanggalPemeriksaan.toLocaleDateString('id-ID'),
       beratBadan: pemeriksaan.beratBadan,
       tinggiBadan: pemeriksaan.tinggiBadan,
       zScoreBbU: pemeriksaan.zScoreBbU,
@@ -204,6 +206,10 @@ async function earlyWarningHandler(req: AuthRequest, res: Response): Promise<voi
         level: result.level,
         ringkasan: result.ringkasan,
         rekomendasi: result.rekomendasi,
+      detailAnalisis: result.detailAnalisis,
+        halPerluDikonfirmasi: result.halPerluDikonfirmasi,
+        tindakLanjut: result.tindakLanjut,
+        kalimatUntukIbu: result.kalimatUntukIbu,
       },
       message: 'Early warning berhasil di-generate.',
     })
@@ -233,6 +239,199 @@ aiRouter.post(
 
 // ── Schema: chatGizi ──────────────────────────────────────────────────────
 
+const SummarizeConsultationSchema = z.object({
+  pemeriksaanId: z.string().uuid({ message: 'pemeriksaanId harus berupa UUID yang valid' }).optional(),
+  transcript: z.string().trim().min(1, 'Transkrip tidak boleh kosong').max(8000, 'Transkrip terlalu panjang'),
+})
+
+const SendConsultationWhatsappSchema = z.object({
+  pemeriksaanId: z.string().uuid({ message: 'pemeriksaanId harus berupa UUID yang valid' }),
+  summary: z.string().trim().min(1, 'Ringkasan tidak boleh kosong').max(4000, 'Ringkasan terlalu panjang'),
+})
+
+function formatTanggalIndonesia(date: Date): string {
+  return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
+}
+
+function extractSaranUtama(summary: string): string {
+  const lines = summary
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^[-*\d.\s]+/, '').trim())
+    .filter(Boolean)
+  const saranLine = lines.find((line) => /saran|gizi|tindak lanjut|kontrol/i.test(line))
+  return (saranLine ?? lines[0] ?? 'Mohon lakukan pemantauan rutin di Posyandu.').slice(0, 500)
+}
+
+async function assertKaderCanAccessPemeriksaan(
+  kaderId: string,
+  pemeriksaan: { antrian: { slotSesi: { jadwal: { posyanduId: string } | null } | null } | null }
+): Promise<boolean> {
+  if (!pemeriksaan.antrian) return true
+  const kader = await prisma.kader.findUnique({ where: { id: kaderId }, select: { posyanduId: true } })
+  const pemPosyanduId = pemeriksaan.antrian.slotSesi?.jadwal?.posyanduId
+  return Boolean(!kader || !pemPosyanduId || kader.posyanduId === pemPosyanduId)
+}
+
+async function summarizeConsultationHandler(req: AuthRequest, res: Response): Promise<void> {
+  const parsed = SummarizeConsultationSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({
+      success: false,
+      error: 'VALIDASI_GAGAL',
+      message: parsed.error.errors.map((e) => e.message).join('; '),
+    })
+    return
+  }
+
+  const kaderId = req.user!.userId
+  const { pemeriksaanId, transcript } = parsed.data
+
+  try {
+    const summaryInput = { transcript }
+
+    if (pemeriksaanId) {
+      const pemeriksaan = await prisma.pemeriksaan.findUnique({
+        where: { id: pemeriksaanId },
+        include: {
+          balita: { select: { namaBalita: true } },
+          antrian: { include: { slotSesi: { include: { jadwal: { select: { posyanduId: true } } } } } },
+        },
+      })
+
+      if (!pemeriksaan) {
+        res.status(404).json({
+          success: false,
+          error: 'PEMERIKSAAN_TIDAK_DITEMUKAN',
+          message: 'Data pemeriksaan tidak ditemukan.',
+        })
+        return
+      }
+
+      const allowed = await assertKaderCanAccessPemeriksaan(kaderId, pemeriksaan)
+      if (!allowed) {
+        res.status(403).json({
+          success: false,
+          error: 'AKSES_DITOLAK',
+          message: 'Akses ditolak - pemeriksaan ini bukan milik posyandu Anda.',
+        })
+        return
+      }
+
+      Object.assign(summaryInput, {
+        namaBalita: pemeriksaan.balita.namaBalita,
+        tanggalPemeriksaan: formatTanggalIndonesia(pemeriksaan.tanggalPemeriksaan),
+        beratBadan: pemeriksaan.beratBadan,
+        tinggiBadan: pemeriksaan.tinggiBadan,
+        zScoreTbU: pemeriksaan.zScoreTbU,
+        zScoreBbTb: pemeriksaan.zScoreBbTb,
+      })
+    }
+
+    const summary = await summarizeConsultation(summaryInput)
+    res.status(200).json({ success: true, data: { summary }, message: 'Rangkuman konsultasi berhasil dibuat.' })
+  } catch {
+    res.status(500).json({
+      success: false,
+      error: 'INTERNAL_ERROR',
+      message: 'Gagal membuat rangkuman konsultasi. Coba lagi beberapa saat.',
+    })
+  }
+}
+
+async function sendConsultationWhatsappHandler(req: AuthRequest, res: Response): Promise<void> {
+  const parsed = SendConsultationWhatsappSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({
+      success: false,
+      error: 'VALIDASI_GAGAL',
+      message: parsed.error.errors.map((e) => e.message).join('; '),
+    })
+    return
+  }
+
+  const kaderId = req.user!.userId
+  const { pemeriksaanId, summary } = parsed.data
+
+  try {
+    const pemeriksaan = await prisma.pemeriksaan.findUnique({
+      where: { id: pemeriksaanId },
+      include: {
+        balita: {
+          select: {
+            namaBalita: true,
+            warga: { select: { nomorPonsel: true } },
+          },
+        },
+        antrian: { include: { slotSesi: { include: { jadwal: { select: { posyanduId: true } } } } } },
+      },
+    })
+
+    if (!pemeriksaan) {
+      res.status(404).json({
+        success: false,
+        error: 'PEMERIKSAAN_TIDAK_DITEMUKAN',
+        message: 'Data pemeriksaan tidak ditemukan.',
+      })
+      return
+    }
+
+    const allowed = await assertKaderCanAccessPemeriksaan(kaderId, pemeriksaan)
+    if (!allowed) {
+      res.status(403).json({
+        success: false,
+        error: 'AKSES_DITOLAK',
+        message: 'Akses ditolak - pemeriksaan ini bukan milik posyandu Anda.',
+      })
+      return
+    }
+
+    const nomorPonsel = pemeriksaan.balita.warga?.nomorPonsel
+    if (!nomorPonsel) {
+      res.status(422).json({
+        success: false,
+        error: 'NOMOR_WA_TIDAK_ADA',
+        message: 'Nomor WhatsApp orang tua belum tersedia.',
+      })
+      return
+    }
+
+    await enqueueKonsultasiWaJob({
+      nomorPonsel,
+      namaBalita: pemeriksaan.balita.namaBalita,
+      tanggalPemeriksaan: formatTanggalIndonesia(pemeriksaan.tanggalPemeriksaan),
+      ringkasan: summary.slice(0, 900),
+      saranUtama: extractSaranUtama(summary),
+    })
+
+    res.status(202).json({
+      success: true,
+      data: { queued: true },
+      message: 'Ringkasan konsultasi masuk antrean WhatsApp.',
+    })
+  } catch {
+    res.status(500).json({
+      success: false,
+      error: 'INTERNAL_ERROR',
+      message: 'Gagal mengirim ringkasan ke WhatsApp. Data konsultasi tetap tersimpan.',
+    })
+  }
+}
+
+aiRouter.post(
+  '/summarize-consultation',
+  authMiddleware,
+  requireRole('kader', 'ketua_kader'),
+  summarizeConsultationHandler
+)
+
+aiRouter.post(
+  '/send-consultation-whatsapp',
+  authMiddleware,
+  requireRole('kader', 'ketua_kader'),
+  sendConsultationWhatsappHandler
+)
+
+// Schema: chatGizi
 const ChatGiziSchema = z.object({
   message: z
     .string()

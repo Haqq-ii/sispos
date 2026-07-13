@@ -5,6 +5,8 @@ import type { OtpJobData } from './otp.job'
 import { OTP_JOB_NAME } from './otp.job'
 import type { AntrianJobData } from './antrian.job'
 import { ANTRIAN_WA_JOB_NAME } from './antrian.job'
+import type { KonsultasiJobData } from './konsultasi.job'
+import { KONSULTASI_WA_JOB_NAME } from './konsultasi.job'
 
 const logger = pino({ level: env.NODE_ENV === 'production' ? 'info' : 'debug' })
 function maskPhoneNumber(nomorPonsel: string): string {
@@ -128,6 +130,22 @@ export const notificationWorker = new Worker(
       logger.info(
         { nomorPonsel: maskPhoneNumber(nomorPonsel), jobId: job.id, nomorUrut },
         'Antrian WA berhasil dikirim via Fonnte'
+      )
+    } else if (job.name === KONSULTASI_WA_JOB_NAME) {
+      const data = job.data as KonsultasiJobData
+      const message =
+        `SISPOS - Ringkasan Konsultasi\n\n` +
+        `Balita: ${data.namaBalita}\n` +
+        `Tanggal: ${data.tanggalPemeriksaan}\n\n` +
+        `Ringkasan:\n${data.ringkasan}\n\n` +
+        `Saran:\n${data.saranUtama}\n\n` +
+        `Mohon lakukan pemantauan rutin di Posyandu.`
+
+      await sendFonnteMessage(data.nomorPonsel, message)
+
+      logger.info(
+        { nomorPonsel: maskPhoneNumber(data.nomorPonsel), jobId: job.id, namaBalita: data.namaBalita },
+        'Konsultasi WA berhasil dikirim via Fonnte'
       )
     }
   },

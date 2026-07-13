@@ -12,7 +12,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import {
-  Mic, MicOff, Loader2, Sparkles, Save, ChevronRight, ChevronDown,
+  Mic, MicOff, Loader2, Sparkles, Save, ChevronRight, ChevronDown, Copy, Send,
 } from 'lucide-react'
 
 import { useToast } from '@/hooks/use-toast'
@@ -52,6 +52,10 @@ interface EarlyWarningData {
   level: 'normal' | 'waspada' | 'kritis'
   ringkasan: string
   rekomendasi: string
+  detailAnalisis?: string
+  halPerluDikonfirmasi?: string
+  tindakLanjut?: string
+  kalimatUntukIbu?: string
 }
 
 // ── Level badge ────────────────────────────────────────────────────────────
@@ -70,6 +74,44 @@ function LevelBadge({ level }: { level: 'normal' | 'waspada' | 'kritis' }) {
   )
 }
 
+function buildConsultationNote(transcript: string, summary: string): string {
+  return [
+    'Transkrip Asli Konsultasi:',
+    transcript.trim(),
+    '',
+    'Rangkuman Konsultasi:',
+    summary.trim() || 'Belum dibuat.',
+  ].join('\n')
+}
+
+function buildEarlyWarningStorage(data: EarlyWarningData): string {
+  return [
+    `Status Risiko: ${data.level.toUpperCase()}`,
+    '',
+    'Ringkasan:',
+    data.ringkasan,
+    '',
+    'Interpretasi Indikator:',
+    data.detailAnalisis ?? '-',
+    '',
+    'Hal yang Perlu Dikonfirmasi ke Ibu:',
+    data.halPerluDikonfirmasi ?? '-',
+    '',
+    'Rekomendasi Konseling:',
+    data.rekomendasi,
+    '',
+    'Tindak Lanjut:',
+    data.tindakLanjut ?? '-',
+    '',
+    'Kalimat Sederhana untuk Ibu:',
+    data.kalimatUntukIbu ?? '-',
+  ].join('\n')
+}
+
+function renderTextBlock(value?: string) {
+  if (!value) return null
+  return <p className="text-sm text-[#1e2939] whitespace-pre-line leading-relaxed">{value}</p>
+}
 // ── Main component ─────────────────────────────────────────────────────────
 
 export default function Meja4Page() {
@@ -105,6 +147,8 @@ export default function Meja4Page() {
   const [showAI, setShowAI] = useState(false)
   const [earlyWarningData, setEarlyWarningData] = useState<EarlyWarningData | null>(null)
   const [catatanValue, setCatatanValue] = useState('')
+  const [summaryValue, setSummaryValue] = useState('')
+  const [sendWhatsapp, setSendWhatsapp] = useState(false)
 
   // Guard: require activeSlotId
   useEffect(() => {
@@ -137,7 +181,7 @@ export default function Meja4Page() {
 
   useEffect(() => {
     if (transcribeMutation.data) {
-      setCatatanValue((prev) => (!prev ? transcribeMutation.data! : prev))
+      setCatatanValue((prev) => (prev ? prev + '\n' + transcribeMutation.data! : transcribeMutation.data!))
     }
   }, [transcribeMutation.data])
 
@@ -165,18 +209,47 @@ export default function Meja4Page() {
     },
   })
 
+  const summarizeMutation = useMutation<string, Error>({
+    mutationFn: async () => {
+      const response = await apiClient.post('/ai/summarize-consultation', {
+        pemeriksaanId: selectedPemeriksaanId ?? undefined,
+        transcript: catatanValue,
+      })
+      return (response.data as { data: { summary: string } }).data.summary
+    },
+    onSuccess: (summary) => {
+      setSummaryValue(summary)
+      toast({ description: 'Rangkuman konsultasi berhasil dibuat.' })
+    },
+    onError: () => {
+      toast({ description: 'Gagal membuat rangkuman. Coba lagi atau simpan transkrip saja.', variant: 'destructive' })
+    },
+  })
+
+  const sendWaMutation = useMutation<void, Error, { pemeriksaanId: string; summary: string }>({
+    mutationFn: async (payload) => {
+      await apiClient.post('/ai/send-consultation-whatsapp', payload)
+    },
+  })
   // Save catatan mutation
   const saveCatatanMutation = usePatchPemeriksaan()
 
   async function handleSimpanCatatan() {
     if (!catatanValue.trim()) {
-      toast({ description: 'Catatan konsultasi kosong.', variant: 'destructive' })
+      toast({ description: 'Transkrip konsultasi kosong.', variant: 'destructive' })
       return
     }
     if (!selectedPemeriksaanId) {
       toast({ description: 'Pemeriksaan tidak tersedia. Lakukan timbang di Meja 2 terlebih dahulu.', variant: 'destructive' })
       return
     }
+    if (sendWhatsapp && !summaryValue.trim()) {
+      toast({ description: 'Buat rangkuman terlebih dahulu sebelum mengirim WhatsApp.', variant: 'destructive' })
+      return
+    }
+
+    const catatanKonsultasi = buildConsultationNote(catatanValue, summaryValue)
+    const rekomendasiAi = earlyWarningData ? buildEarlyWarningStorage(earlyWarningData) : undefined
 
     if (!isOnline) {
       try {
@@ -184,30 +257,43 @@ export default function Meja4Page() {
           id: generateTempId(),
           tempPemeriksaanId: selectedPemeriksaanId,
           type: 'patch-catatan' as const,
-          data: { catatanKonsultasi: catatanValue, rekomendasiAi: null, catatanSTT: null },
+          data: { catatanKonsultasi, rekomendasiAi: rekomendasiAi ?? null, catatanSTT: null },
           timestamp: Date.now(),
         })
         toast({ description: 'Tersimpan lokal, akan sync saat online' })
       } catch {
-        toast({ description: 'Gagal simpan offline — coba lagi', variant: 'destructive' })
+        toast({ description: 'Gagal simpan offline - coba lagi', variant: 'destructive' })
       }
       return
     }
 
-    saveCatatanMutation.mutate(
-      { id: selectedPemeriksaanId, catatanKonsultasi: catatanValue },
-      {
-        onSuccess: () => {
-          toast({ description: 'Catatan konsultasi berhasil disimpan.' })
-          setSelectedBalitaId(null)
-          setSelectedNama('')
-          setCatatanValue('')
-        },
-        onError: () => toast({ description: 'Gagal menyimpan catatan. Coba lagi.', variant: 'destructive' }),
-      }
-    )
-  }
+    try {
+      await saveCatatanMutation.mutateAsync({
+        id: selectedPemeriksaanId,
+        catatanKonsultasi,
+        ...(rekomendasiAi && { rekomendasiAi }),
+      })
 
+      if (sendWhatsapp) {
+        await sendWaMutation.mutateAsync({ pemeriksaanId: selectedPemeriksaanId, summary: summaryValue })
+        toast({ description: 'Konsultasi tersimpan dan ringkasan masuk antrean WhatsApp.' })
+      } else {
+        toast({ description: 'Konsultasi berhasil disimpan ke riwayat tumbuh kembang.' })
+      }
+
+      setSelectedBalitaId(null)
+      setSelectedNama('')
+      setCatatanValue('')
+      setSummaryValue('')
+      setSendWhatsapp(false)
+    } catch (err) {
+      const axiosErr = err as unknown as { response?: { data?: { message?: string } } }
+      toast({
+        description: axiosErr.response?.data?.message ?? 'Gagal menyimpan konsultasi. Coba lagi.',
+        variant: 'destructive',
+      })
+    }
+  }
   const handleKeluarMeja = () => {
     clearActiveMejaMutation.mutate(undefined, {
       onSuccess: () => {
@@ -360,22 +446,35 @@ export default function Meja4Page() {
                 <p className="text-xs text-amber-600 text-center">Lakukan timbang di Meja 2 untuk AI Early Warning</p>
               )}
               {earlyWarningData && (
-                <div className="bg-white border border-[#f3f4f6] rounded-2xl p-4 space-y-3">
-                  <LevelBadge level={earlyWarningData.level} />
-                  <div><p className="text-xs font-semibold text-[#99a1af] mb-1">Ringkasan:</p><p className="text-sm text-[#1e2939]">{earlyWarningData.ringkasan}</p></div>
-                  <div><p className="text-xs font-semibold text-[#99a1af] mb-1">Rekomendasi:</p><p className="text-sm text-[#1e2939]">{earlyWarningData.rekomendasi}</p></div>
+                <div className="bg-white border border-[#f3f4f6] rounded-2xl p-4 space-y-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-semibold text-[#99a1af] uppercase tracking-wide">Status Risiko</p>
+                    <LevelBadge level={earlyWarningData.level} />
+                  </div>
+                  <div><p className="text-xs font-semibold text-[#99a1af] mb-1">Ringkasan Data Hari Ini</p>{renderTextBlock(earlyWarningData.ringkasan)}</div>
+                  <div><p className="text-xs font-semibold text-[#99a1af] mb-1">Interpretasi Indikator</p>{renderTextBlock(earlyWarningData.detailAnalisis)}</div>
+                  <div><p className="text-xs font-semibold text-[#99a1af] mb-1">Hal yang Perlu Dikonfirmasi ke Ibu</p>{renderTextBlock(earlyWarningData.halPerluDikonfirmasi)}</div>
+                  <div><p className="text-xs font-semibold text-[#99a1af] mb-1">Rekomendasi Konseling</p>{renderTextBlock(earlyWarningData.rekomendasi)}</div>
+                  <div><p className="text-xs font-semibold text-[#99a1af] mb-1">Tindak Lanjut</p>{renderTextBlock(earlyWarningData.tindakLanjut)}</div>
+                  <div><p className="text-xs font-semibold text-[#99a1af] mb-1">Kalimat Sederhana untuk Ibu</p>{renderTextBlock(earlyWarningData.kalimatUntukIbu)}</div>
                 </div>
               )}
             </div>
           )}
         </div>
 
-        {/* Voice-to-Text + Catatan */}
-        <div className="bg-white rounded-2xl border border-[#f3f4f6] shadow-sm p-4">
-          <p className="text-xs font-semibold text-[#99a1af] uppercase tracking-wide mb-4">
-            Catatan Konsultasi
-          </p>
-          <div className="flex flex-col items-center gap-2 mb-4">
+        {/* Voice-to-Text + Transkrip */}
+        <div className="bg-white rounded-2xl border border-[#f3f4f6] shadow-sm p-4 space-y-4">
+          <div>
+            <p className="text-xs font-semibold text-[#99a1af] uppercase tracking-wide">
+              Transkrip Asli Konsultasi
+            </p>
+            <p className="text-xs text-[#99a1af] mt-1">
+              STT saat ini muncul setelah rekaman dihentikan. Transkrip asli tidak otomatis diganti oleh rangkuman.
+            </p>
+          </div>
+
+          <div className="flex flex-col items-center gap-2">
             {!isRecording ? (
               <TooltipProvider>
                 <Tooltip>
@@ -403,33 +502,94 @@ export default function Meja4Page() {
                 : 'Ketuk untuk rekam suara'}
             </p>
           </div>
+
           {transcribeMutation.isPending && (
-            <div className="flex items-center justify-center gap-2 text-[#99a1af] text-sm mb-3">
+            <div className="flex items-center justify-center gap-2 text-[#99a1af] text-sm">
               <Loader2 className="h-4 w-4 animate-spin" />Memproses audio...
             </div>
           )}
+
           <textarea
-            placeholder="Ketik catatan konsultasi atau gunakan perekam suara di atas..."
+            placeholder="Transkrip asli konsultasi atau catatan manual..."
             value={catatanValue}
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setCatatanValue(e.target.value)}
-            className="w-full min-h-[100px] text-sm border border-gray-200 rounded-xl px-3 py-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-[#008236]"
+            className="w-full min-h-[130px] text-sm border border-gray-200 rounded-xl px-3 py-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-[#008236]"
           />
-          <button
-            type="button"
-            className="mt-3 w-full border border-[#e5e7eb] rounded-xl py-2.5 text-sm font-semibold text-gray-600 flex items-center justify-center gap-2 disabled:opacity-40"
-            onClick={handleSimpanCatatan}
-            disabled={saveCatatanMutation.isPending || !catatanValue.trim()}
-          >
-            {saveCatatanMutation.isPending
-              ? <><Loader2 className="h-4 w-4 animate-spin" />Menyimpan...</>
-              : <><Save className="h-4 w-4" />Simpan Catatan</>
-            }
-          </button>
-          {saveCatatanMutation.isSuccess && (
-            <p className="text-xs text-[#008236] text-center mt-2">Catatan tersimpan.</p>
-          )}
         </div>
 
+        {/* Rangkuman Konsultasi */}
+        <div className="bg-white rounded-2xl border border-[#f3f4f6] shadow-sm p-4 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold text-[#99a1af] uppercase tracking-wide">
+                Rangkuman Konsultasi
+              </p>
+              <p className="text-xs text-[#99a1af] mt-1">Buat manual jika percakapan terlalu panjang atau perlu dirapikan.</p>
+            </div>
+            {summaryValue && (
+              <button
+                type="button"
+                className="text-xs border border-gray-200 rounded-lg px-2 py-1 text-gray-600 flex items-center gap-1"
+                onClick={() => {
+                  void navigator.clipboard.writeText(summaryValue)
+                  toast({ description: 'Rangkuman disalin.' })
+                }}
+              >
+                <Copy className="h-3.5 w-3.5" /> Salin
+              </button>
+            )}
+          </div>
+
+          <button
+            type="button"
+            className="w-full border border-[#008236] text-[#008236] rounded-xl py-2.5 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-40"
+            onClick={() => summarizeMutation.mutate()}
+            disabled={!isOnline || summarizeMutation.isPending || !catatanValue.trim()}
+          >
+            {summarizeMutation.isPending
+              ? <><Loader2 className="h-4 w-4 animate-spin" />Membuat rangkuman...</>
+              : <><Sparkles className="h-4 w-4" />Buat Rangkuman</>
+            }
+          </button>
+
+          <div className="min-h-[96px] rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5 text-sm text-[#1e2939] whitespace-pre-line leading-relaxed">
+            {summaryValue || 'Rangkuman belum dibuat.'}
+          </div>
+
+          <label className={`flex items-start gap-2 text-sm ${summaryValue ? 'text-gray-700' : 'text-gray-400'}`}>
+            <input
+              type="checkbox"
+              className="mt-1 rounded border-gray-300 text-[#008236] focus:ring-[#008236]"
+              checked={sendWhatsapp}
+              onChange={(e) => setSendWhatsapp(e.target.checked)}
+              disabled={!summaryValue.trim() || !isOnline}
+            />
+            <span>Kirim ringkasan ke WhatsApp orang tua setelah konsultasi disimpan</span>
+          </label>
+        </div>
+
+        {/* Aksi Simpan */}
+        <div className="bg-white rounded-2xl border border-[#f3f4f6] shadow-sm p-4">
+          <button
+            type="button"
+            className="w-full bg-[#008236] text-white rounded-xl py-3 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-40"
+            onClick={handleSimpanCatatan}
+            disabled={saveCatatanMutation.isPending || sendWaMutation.isPending || !catatanValue.trim()}
+          >
+            {saveCatatanMutation.isPending || sendWaMutation.isPending
+              ? <><Loader2 className="h-4 w-4 animate-spin" />Menyimpan...</>
+              : <><Save className="h-4 w-4" />Simpan Konsultasi</>
+            }
+          </button>
+          <p className="text-xs text-[#99a1af] text-center mt-2">
+            Konsultasi disimpan ke riwayat tumbuh kembang anak.
+          </p>
+          {sendWhatsapp && summaryValue && (
+            <p className="text-xs text-[#008236] text-center mt-1 flex items-center justify-center gap-1">
+              <Send className="h-3.5 w-3.5" /> WhatsApp akan dikirim via antrean notifikasi.
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Selesai Meja 4 */}
