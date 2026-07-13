@@ -1,7 +1,7 @@
 import type { Response } from 'express'
 import type { AuthRequest } from '../../shared/middleware/auth.middleware'
 import bcrypt from 'bcrypt'
-import { getKaderList, unlockKader, resetKaderPin, getProfilCitizen } from './users.service'
+import { getKaderList, unlockKader, resetKaderPin, getProfilCitizen, getPrivacyDataCitizen } from './users.service'
 
 // ── getKaderListHandler ───────────────────────────────────────────────────────
 // T-04-02-04: puskesmasId dari JWT (req.user!.userId), BUKAN dari query params
@@ -112,5 +112,19 @@ export async function getProfilCitizenHandler(req: AuthRequest, res: Response): 
     res.status(200).json({ success: true, data: profil })
   } catch {
     res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: 'Gagal memuat profil.' })
+  }
+}
+
+export async function getPrivacyDataCitizenHandler(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const wargaId = req.user!.userId
+    const data = await getPrivacyDataCitizen(wargaId)
+    if (!data) {
+      res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Data warga tidak ditemukan.' })
+      return
+    }
+    res.status(200).json({ success: true, data })
+  } catch {
+    res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: 'Gagal memuat data privasi.' })
   }
 }

@@ -6,6 +6,7 @@ import {
   unlockKaderHandler,
   resetKaderPinHandler,
   getProfilCitizenHandler,
+  getPrivacyDataCitizenHandler,
 } from './users.controller'
 
 export const usersRouter = Router()
@@ -21,3 +22,4 @@ usersRouter.patch('/kader/:id/reset-pin', authMiddleware, requireRole('puskesmas
 
 // GET /api/users/profil — profil warga (citizen) dari JWT
 usersRouter.get('/profil', authMiddleware, requireRole('citizen'), getProfilCitizenHandler)
+usersRouter.get('/privacy-data', authMiddleware, requireRole('citizen'), getPrivacyDataCitizenHandler)

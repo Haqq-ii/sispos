@@ -308,6 +308,38 @@ export async function login(
   }
 }
 
+export async function changeCitizenPassword(
+  wargaId: string,
+  currentPassword: string,
+  newPassword: string
+): Promise<void> {
+  const warga = await prisma.warga.findUnique({
+    where: { id: wargaId },
+    select: { id: true, passwordHash: true },
+  })
+  if (!warga) {
+    const err = Object.assign(new Error('Warga tidak ditemukan'), { code: 'WARGA_TIDAK_DITEMUKAN' }) as AuthError
+    throw err
+  }
+
+  const valid = await bcrypt.compare(currentPassword, warga.passwordHash)
+  if (!valid) {
+    const err = Object.assign(new Error('Kata sandi lama salah'), { code: 'PASSWORD_LAMA_SALAH' }) as AuthError
+    throw err
+  }
+
+  const samePassword = await bcrypt.compare(newPassword, warga.passwordHash)
+  if (samePassword) {
+    const err = Object.assign(new Error('Kata sandi baru tidak boleh sama dengan kata sandi lama'), { code: 'PASSWORD_BARU_SAMA' }) as AuthError
+    throw err
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, env.BCRYPT_ROUNDS)
+  await prisma.warga.update({
+    where: { id: wargaId },
+    data: { passwordHash },
+  })
+}
 // ── refreshAccessToken ────────────────────────────────────────────
 export async function refreshAccessToken(refreshToken: string): Promise<{ accessToken: string }> {
   const decoded = jwt.verify(refreshToken, env.JWT_REFRESH_SECRET) as { userId: string; role: string }

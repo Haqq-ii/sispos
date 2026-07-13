@@ -1,4 +1,6 @@
 import { Router } from 'express'
+import { authMiddleware } from '../../shared/middleware/auth.middleware'
+import { requireRole } from '../../shared/middleware/require-role.middleware'
 import {
   registerHandler,
   otpSendHandler,
@@ -7,6 +9,7 @@ import {
   loginHandler,
   refreshHandler,
   logoutHandler,
+  changePasswordHandler,
 } from './auth.controller'
 
 export const authRouter = Router()
@@ -20,3 +23,4 @@ authRouter.patch('/lokasi', updateLokasiHandler)
 authRouter.post('/login', loginHandler)
 authRouter.post('/refresh', refreshHandler)
 authRouter.post('/logout', logoutHandler)
+authRouter.patch('/change-password', authMiddleware, requireRole('citizen'), changePasswordHandler)

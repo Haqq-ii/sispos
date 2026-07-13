@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express'
+import type { AuthRequest } from '../../shared/middleware/auth.middleware'
 import jwt from 'jsonwebtoken'
 import { env } from '../../config/env'
 import {
@@ -14,6 +15,7 @@ import {
   updateLokasi,
   login,
   refreshAccessToken,
+  changeCitizenPassword,
 } from './auth.service'
 
 // ── POST /api/auth/register ───────────────────────────────────────
@@ -218,6 +220,49 @@ export async function loginHandler(req: Request, res: Response): Promise<void> {
   }
 }
 
+// PATCH /api/auth/change-password
+export async function changePasswordHandler(req: AuthRequest, res: Response): Promise<void> {
+  const { currentPassword, newPassword, confirmPassword } = req.body as {
+    currentPassword?: unknown
+    newPassword?: unknown
+    confirmPassword?: unknown
+  }
+
+  if (typeof currentPassword !== 'string' || typeof newPassword !== 'string' || typeof confirmPassword !== 'string') {
+    res.status(400).json({ success: false, error: 'VALIDASI_GAGAL', message: 'Semua field wajib diisi.' })
+    return
+  }
+
+  if (newPassword.length < 6) {
+    res.status(400).json({ success: false, error: 'PASSWORD_TERLALU_PENDEK', message: 'Kata sandi/PIN baru minimal 6 karakter.' })
+    return
+  }
+
+  if (newPassword !== confirmPassword) {
+    res.status(400).json({ success: false, error: 'KONFIRMASI_TIDAK_SAMA', message: 'Konfirmasi kata sandi/PIN baru tidak sama.' })
+    return
+  }
+
+  try {
+    await changeCitizenPassword(req.user!.userId, currentPassword, newPassword)
+    res.status(200).json({ success: true, data: null, message: 'Kata sandi/PIN berhasil diubah.' })
+  } catch (err) {
+    const code = (err as { code?: string }).code
+    if (code === 'PASSWORD_LAMA_SALAH') {
+      res.status(400).json({ success: false, error: code, message: 'Kata sandi/PIN lama salah.' })
+      return
+    }
+    if (code === 'PASSWORD_BARU_SAMA') {
+      res.status(400).json({ success: false, error: code, message: 'Kata sandi/PIN baru tidak boleh sama dengan yang lama.' })
+      return
+    }
+    if (code === 'WARGA_TIDAK_DITEMUKAN') {
+      res.status(404).json({ success: false, error: code, message: 'Akun warga tidak ditemukan.' })
+      return
+    }
+    res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: 'Gagal mengubah kata sandi/PIN.' })
+  }
+}
 // ── POST /api/auth/refresh ────────────────────────────────────────
 export async function refreshHandler(req: Request, res: Response): Promise<void> {
   const refreshToken = req.cookies?.refresh_token as string | undefined

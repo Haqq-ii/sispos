@@ -178,3 +178,107 @@ export async function getProfilCitizen(wargaId: string): Promise<ProfilCitizenRe
     },
   })
 }
+
+export async function getPrivacyDataCitizen(wargaId: string) {
+  const warga = await prisma.warga.findUnique({
+    where: { id: wargaId },
+    select: {
+      id: true,
+      namaLengkap: true,
+      nikIbu: true,
+      nomorPonsel: true,
+      statusVerifikasi: true,
+      provinsi: true,
+      kabupaten: true,
+      kecamatan: true,
+      kelurahan: true,
+      rw: true,
+      rt: true,
+      createdAt: true,
+      posyanduUtama: { select: { id: true, namaPosyandu: true } },
+      balita: {
+        orderBy: { createdAt: 'asc' },
+        select: {
+          id: true,
+          namaBalita: true,
+          nikBalita: true,
+          tanggalLahir: true,
+          jenisKelamin: true,
+          createdAt: true,
+          _count: { select: { pemeriksaan: true, imunisasi: true } },
+          pemeriksaan: {
+            orderBy: { tanggalPemeriksaan: 'desc' },
+            take: 1,
+            select: {
+              id: true,
+              tanggalPemeriksaan: true,
+              beratBadan: true,
+              tinggiBadan: true,
+              zScoreBbU: true,
+              zScoreTbU: true,
+              zScoreBbTb: true,
+              statusGizi: true,
+              statusGiziOverride: true,
+              catatanKonsultasi: true,
+              rekomendasiAi: true,
+            },
+          },
+        },
+      },
+    },
+  })
+
+  if (!warga) return null
+
+  const totalRiwayatPemeriksaan = await prisma.pemeriksaan.count({ where: { balita: { wargaId } } })
+  const totalCatatanKonsultasi = await prisma.pemeriksaan.count({
+    where: { balita: { wargaId }, OR: [{ catatanKonsultasi: { not: null } }, { rekomendasiAi: { not: null } }] },
+  })
+
+  return {
+    profil: {
+      namaLengkap: warga.namaLengkap,
+      nikIbu: warga.nikIbu,
+      statusVerifikasi: warga.statusVerifikasi,
+      dibuatPada: warga.createdAt.toISOString(),
+    },
+    kontak: {
+      nomorPonsel: warga.nomorPonsel,
+      notifikasiWhatsApp: Boolean(warga.nomorPonsel),
+    },
+    wilayah: {
+      provinsi: warga.provinsi,
+      kabupaten: warga.kabupaten,
+      kecamatan: warga.kecamatan,
+      kelurahan: warga.kelurahan,
+      rw: warga.rw,
+      rt: warga.rt,
+    },
+    posyandu: warga.posyanduUtama,
+    balita: warga.balita.map((anak) => ({
+      id: anak.id,
+      namaBalita: anak.namaBalita,
+      nikBalita: anak.nikBalita,
+      tanggalLahir: anak.tanggalLahir.toISOString(),
+      jenisKelamin: anak.jenisKelamin,
+      jumlahPemeriksaan: anak._count.pemeriksaan,
+      jumlahImunisasi: anak._count.imunisasi,
+    })),
+    pemeriksaanTerakhir: warga.balita.flatMap((anak) => anak.pemeriksaan.map((p) => ({
+      balitaId: anak.id,
+      namaBalita: anak.namaBalita,
+      pemeriksaanId: p.id,
+      tanggalPemeriksaan: p.tanggalPemeriksaan.toISOString(),
+      beratBadan: p.beratBadan,
+      tinggiBadan: p.tinggiBadan,
+      zScoreBbU: p.zScoreBbU,
+      zScoreTbU: p.zScoreTbU,
+      zScoreBbTb: p.zScoreBbTb,
+      statusGizi: p.statusGiziOverride ?? p.statusGizi,
+      adaCatatanKonsultasi: Boolean(p.catatanKonsultasi),
+      adaRekomendasiAi: Boolean(p.rekomendasiAi),
+    }))),
+    totalRiwayatPemeriksaan,
+    totalCatatanKonsultasi,
+  }
+}
