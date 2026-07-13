@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
-import { ArrowLeft, ShieldCheck, MapPin } from 'lucide-react'
+import { ArrowLeft, MapPin } from 'lucide-react'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { SisposLogo } from '@/components/brand/SisposLogo'
 import { LoginForm } from '@/components/auth/LoginForm'
 import { KaderLockScreen } from '@/components/auth/KaderLockScreen'
 import { detectRole } from '@/components/auth/RoleBadge'
@@ -147,9 +148,7 @@ export default function LoginPage() {
           {/* ── Logo + wordmark ─────────────────────────────────────────────── */}
           <div className="flex flex-col items-center">
             {/* Green rounded-square icon block */}
-            <div className="w-16 h-16 bg-[#008236] rounded-2xl flex items-center justify-center mb-3">
-              <ShieldCheck size={36} className="text-white" />
-            </div>
+            <SisposLogo size={64} variant="whiteGreen" className="mb-3 rounded-2xl" />
             <h1 className="text-[#008236] font-bold text-2xl">SISPOS</h1>
             <p className="text-[#99a1af] text-sm mt-0.5">Sistem Informasi Posyandu</p>
             <div className="flex items-center gap-1 justify-center mt-1">

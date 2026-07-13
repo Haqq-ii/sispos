@@ -8,11 +8,11 @@ import {
   Users,
   User,
   LogOut,
-  Activity,
   ChevronLeft,
   ChevronRight,
   Menu,
 } from 'lucide-react'
+import { SisposLogo } from '@/components/brand/SisposLogo'
 import { useAuthStore } from '@/stores/useAuthStore'
 import apiClient from '@/lib/axios'
 
@@ -110,9 +110,7 @@ export default function CitizenLayout() {
           <Menu size={22} className="text-gray-700" />
         </button>
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-green-600 rounded-lg flex items-center justify-center">
-            <Activity size={14} className="text-white" />
-          </div>
+          <SisposLogo size={28} variant="black" className="rounded-lg" />
           <span className="font-bold text-gray-900 text-sm">SISPOS</span>
         </div>
       </div>
@@ -150,9 +148,7 @@ export default function CitizenLayout() {
             collapsed ? 'justify-center' : 'gap-3'
           }`}
         >
-          <div className="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center flex-shrink-0">
-            <Activity size={18} className="text-white" />
-          </div>
+          <SisposLogo size={40} variant="black" />
           {!collapsed && (
             <div>
               <p className="font-extrabold text-gray-900 text-base leading-tight">SISPOS</p>

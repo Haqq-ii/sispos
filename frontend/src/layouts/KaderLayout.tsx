@@ -5,13 +5,13 @@ import {
   User,
   LogOut,
   MapPin,
-  Activity,
   PlayCircle,
   ChevronLeft,
   ChevronRight,
   Menu,
   X,
 } from 'lucide-react'
+import { SisposLogo } from '@/components/brand/SisposLogo'
 import { useAuthStore } from '@/stores/useAuthStore'
 import apiClient from '@/lib/axios'
 
@@ -108,9 +108,7 @@ export default function KaderLayout() {
         {/* Branding */}
         <div className={`pt-5 pb-4 flex-shrink-0 ${collapsed ? 'px-3' : 'px-4'}`}>
           <div className="flex items-center gap-3">
-            <div className="bg-green-700 rounded-xl w-10 h-10 flex items-center justify-center flex-shrink-0">
-              <Activity size={18} className="text-white" />
-            </div>
+            <SisposLogo size={40} variant="black" />
             {!collapsed && (
               <div className="min-w-0 overflow-hidden">
                 <p className="text-[#1e2939] font-extrabold text-base leading-tight">SISPOS</p>
@@ -191,9 +189,7 @@ export default function KaderLayout() {
           {mobileOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
         <div className="flex items-center gap-2">
-          <div className="bg-green-700 rounded-lg w-7 h-7 flex items-center justify-center">
-            <Activity size={14} className="text-white" />
-          </div>
+          <SisposLogo size={28} variant="black" className="rounded-lg" />
           <span className="font-bold text-[#1e2939] text-sm">SISPOS</span>
         </div>
       </div>

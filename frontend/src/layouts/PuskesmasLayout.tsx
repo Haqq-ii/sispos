@@ -7,8 +7,8 @@ import {
   FileText,
   Shield,
   LogOut,
-  Activity,
 } from 'lucide-react'
+import { SisposLogo } from '@/components/brand/SisposLogo'
 import { useAuthStore } from '@/stores/useAuthStore'
 import apiClient from '@/lib/axios'
 
@@ -48,9 +48,7 @@ export default function PuskesmasLayout() {
         {/* Header */}
         <div className="px-5 py-5 border-b border-[#f3f4f6]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#008236] rounded-[14px] flex items-center justify-center flex-shrink-0">
-              <Activity size={20} className="text-white" />
-            </div>
+            <SisposLogo size={40} variant="black" />
             <div>
               <p className="text-sm font-bold text-[#1e2939] leading-tight">SISPOS</p>
               <p className="text-xs text-[#6a7282]">Portal Puskesmas</p>

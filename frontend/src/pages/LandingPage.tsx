@@ -19,6 +19,7 @@ import {
   Users,
   WifiOff,
 } from 'lucide-react'
+import { SisposLogo } from '@/components/brand/SisposLogo'
 import { useAuthStore } from '@/stores/useAuthStore'
 
 const impactStats = [
@@ -140,7 +141,8 @@ export default function LandingPage() {
     <div className="min-h-screen overflow-x-hidden bg-white text-[#101828]">
       <header className="fixed inset-x-0 top-0 z-50 border-b border-[#f3f4f6] bg-white/90 shadow-sm backdrop-blur">
         <div className="mx-auto flex h-[57px] w-full max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link to="/" className="flex items-baseline gap-2" aria-label="SISPOS landing page">
+          <Link to="/" className="flex items-center gap-2" aria-label="SISPOS landing page">
+            <SisposLogo size={34} variant="black" className="rounded-xl" />
             <span className="text-lg font-extrabold tracking-normal text-[#016630]">SISPOS</span>
             <span className="hidden text-xs text-[#99a1af] sm:inline">Kota Cimahi</span>
           </Link>
@@ -484,7 +486,10 @@ export default function LandingPage() {
       <footer className="bg-[#111827] py-10 text-white">
         <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr_1fr] lg:px-8">
           <div>
-            <p className="text-sm font-extrabold">SISPOS</p>
+            <div className="flex items-center gap-2">
+              <SisposLogo size={34} variant="whiteBlack" className="rounded-xl" />
+              <p className="text-sm font-extrabold">SISPOS</p>
+            </div>
             <p className="mt-3 max-w-xs text-xs leading-5 text-[#99a1af]">
               Sistem informasi posyandu untuk antrian online, pencatatan kesehatan,
               pemantauan tumbuh kembang, dan laporan terintegrasi.
