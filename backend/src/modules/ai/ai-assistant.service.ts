@@ -20,6 +20,7 @@ import { redis } from '../../config/redis'
 import { prisma } from '../../config/db'
 import { ambilAntrian, batalkanAntrian, rescheduleAntrian } from '../antrian/antrian.service'
 import { env } from '../../config/env'
+import { ageInMonths, classifyBbTb, classifyTbU } from '../../shared/utils/zscore'
 
 const logger = pino({ level: env.NODE_ENV === 'production' ? 'info' : 'debug' })
 
@@ -80,7 +81,7 @@ type AssistantRegistrationState = {
   lastBalitaNama?: string
   lastSlotId?: string
   lastTicketSummary?: TicketSummary
-  pendingAction?: 'create' | 'read' | 'update' | 'delete'
+  pendingAction?: 'create' | 'read' | 'update' | 'delete' | 'nutrition_consultation'
   pendingUpdate?: {
     antrianId?: string
     oldSlotId?: string
@@ -362,6 +363,13 @@ function isUpdateIntent(message: string): boolean {
   return /\b(ubah|ganti|pindah|pindahkan|reschedule)\b/.test(normalizeText(message))
 }
 
+function isNutritionIntent(message: string): boolean {
+  const normalized = normalizeText(message)
+  return (
+    /\b(gizi|status gizi|stunting|pendek|normal tidak|normal nggak|normal gak|perkembangan|tumbuh kembang|cek gizi|konsultasi gizi)\b/.test(normalized) &&
+    /\b(anak|balita|bayi|budi|sari|saya|ku|nya)\b/.test(normalized)
+  )
+}
 function parseNumberChoice(message: string): number | null {
   const normalized = normalizeText(message)
   const match = normalized.match(/(?:sesi\s*)?(\d+)/)
@@ -738,6 +746,237 @@ function formatTicket(summary: TicketSummary, estimasiMenit?: number): string {
   ].join('\n')
 }
 
+function formatAgeFromMonths(months: number): string {
+  if (months < 12) return `${months} bulan`
+  const years = Math.floor(months / 12)
+  const rest = months % 12
+  return rest > 0 ? `${years} tahun ${rest} bulan` : `${years} tahun`
+}
+
+function formatNullableNumber(value: number | null | undefined, suffix = ''): string {
+  if (value === null || value === undefined) return 'belum tersedia'
+  return `${Number(value.toFixed(2))}${suffix}`
+}
+
+function tbULabel(zScoreTbU: number | null | undefined): string {
+  if (zScoreTbU === null || zScoreTbU === undefined) return 'Z-score belum tersedia'
+  const category = classifyTbU(zScoreTbU)
+  switch (category?.kode) {
+    case 'sangat_pendek': return 'Sangat Pendek'
+    case 'pendek': return 'Pendek'
+    case 'normal': return 'Normal'
+    case 'tinggi': return 'Tinggi'
+    default: return 'Z-score belum tersedia'
+  }
+}
+
+function bbTbLabel(zScoreBbTb: number | null | undefined): string {
+  if (zScoreBbTb === null || zScoreBbTb === undefined) return 'Z-score belum tersedia'
+  if (zScoreBbTb < -3) return 'Gizi Buruk / Wasting berat'
+  const category = classifyBbTb(zScoreBbTb)
+  switch (category?.kode) {
+    case 'kurang': return 'Gizi Kurang / Wasting'
+    case 'normal': return 'Gizi Baik / Normal'
+    case 'berisiko_gizi_lebih': return 'Berisiko Gizi Lebih'
+    case 'gizi_lebih': return 'Gizi Lebih'
+    case 'obesitas': return 'Obesitas'
+    default: return 'Z-score belum tersedia'
+  }
+}
+
+function buildNutritionConclusion(nama: string, zScoreTbU: number | null, zScoreBbTb: number | null): string {
+  const tbU = classifyTbU(zScoreTbU)
+  const bbTb = classifyBbTb(zScoreBbTb)
+  if (!tbU && !bbTb) {
+    return `Data z-score ${nama} belum tersedia, jadi status TB/U dan BB/TB belum bisa disimpulkan secara pasti.`
+  }
+
+  const issues: string[] = []
+  if (tbU?.kode === 'sangat_pendek') issues.push('TB/U menunjukkan Sangat Pendek, sehingga perlu dipantau sebagai risiko stunting berat.')
+  else if (tbU?.kode === 'pendek') issues.push('TB/U menunjukkan Pendek, sehingga perlu dipantau sebagai risiko stunting.')
+
+  if (zScoreBbTb !== null) {
+    if (zScoreBbTb < -3) issues.push('BB/TB menunjukkan Gizi Buruk / Wasting berat.')
+    else if (bbTb?.kode === 'kurang') issues.push('BB/TB menunjukkan Gizi Kurang / Wasting.')
+    else if (bbTb?.kode === 'berisiko_gizi_lebih') issues.push('BB/TB menunjukkan Berisiko Gizi Lebih.')
+    else if (bbTb?.kode === 'gizi_lebih') issues.push('BB/TB menunjukkan Gizi Lebih.')
+    else if (bbTb?.kode === 'obesitas') issues.push('BB/TB menunjukkan Obesitas.')
+  }
+
+  if (issues.length === 0) {
+    return `Status TB/U dan BB/TB ${nama} masih dalam kategori normal/gizi baik berdasarkan pemeriksaan terakhir.`
+  }
+  return issues.join(' ')
+}
+
+function buildNutritionSuggestions(zScoreTbU: number | null, zScoreBbTb: number | null): string[] {
+  const suggestions: string[] = []
+  const tbU = classifyTbU(zScoreTbU)
+  const bbTb = classifyBbTb(zScoreBbTb)
+
+  if (tbU?.kode === 'pendek' || tbU?.kode === 'sangat_pendek') {
+    suggestions.push('Pantau berat dan tinggi badan secara rutin di Posyandu setiap bulan.')
+    suggestions.push('Prioritaskan makanan bergizi seimbang, terutama protein hewani seperti telur, ikan, ayam, daging, atau susu sesuai usia anak.')
+    suggestions.push('Jaga kebersihan makanan dan lingkungan, lalu konsultasikan hasil ini dengan kader atau petugas Puskesmas.')
+  }
+
+  if (zScoreBbTb !== null && zScoreBbTb < -2) {
+    suggestions.push('Tingkatkan asupan energi dan protein secara bertahap sesuai kemampuan makan anak.')
+    suggestions.push('Evaluasi pola makan, frekuensi makan, dan kemungkinan anak sedang sakit atau sulit makan bersama petugas kesehatan.')
+  } else if (bbTb && ['berisiko_gizi_lebih', 'gizi_lebih', 'obesitas'].includes(bbTb.kode)) {
+    suggestions.push('Atur pola makan seimbang dan kurangi makanan/minuman tinggi gula serta makanan ultra-proses.')
+    suggestions.push('Ajak anak aktif bergerak sesuai usia dan konsultasikan bila kenaikan berat badan terus berlanjut.')
+  }
+
+  if (suggestions.length === 0) {
+    suggestions.push('Pertahankan pola makan seimbang dengan protein hewani, sayur, buah, dan sumber karbohidrat yang cukup.')
+    suggestions.push('Tetap hadir rutin ke Posyandu agar pertumbuhan anak terus terpantau.')
+  }
+
+  return suggestions.slice(0, 4)
+}
+
+async function buildNutritionReply(wargaId: string, balitaId: string): Promise<string> {
+  const balita = await prisma.balita.findFirst({
+    where: { id: balitaId, wargaId },
+    select: {
+      id: true,
+      namaBalita: true,
+      jenisKelamin: true,
+      tanggalLahir: true,
+      pemeriksaan: {
+        orderBy: [{ tanggalPemeriksaan: 'desc' }, { createdAt: 'desc' }],
+        take: 1,
+        select: {
+          tanggalPemeriksaan: true,
+          beratBadan: true,
+          tinggiBadan: true,
+          zScoreBbU: true,
+          zScoreTbU: true,
+          zScoreBbTb: true,
+          statusGizi: true,
+          statusGiziOverride: true,
+          catatanKlinis: true,
+        },
+      },
+    },
+  })
+
+  if (!balita) return 'Balita tidak valid untuk akun Anda. Silakan pilih balita yang terdaftar pada akun ini.'
+  const latest = balita.pemeriksaan[0]
+  if (!latest) {
+    return `Belum ada data pemeriksaan untuk ${balita.namaBalita}. Silakan lakukan pemeriksaan berat dan tinggi badan terlebih dahulu di Posyandu agar saya bisa memberi analisis gizi yang lebih tepat.`
+  }
+
+  const tanggalISO = latest.tanggalPemeriksaan.toISOString().slice(0, 10)
+  const usiaBulan = ageInMonths(new Date(balita.tanggalLahir), new Date(latest.tanggalPemeriksaan))
+  const tbU = tbULabel(latest.zScoreTbU)
+  const bbTb = bbTbLabel(latest.zScoreBbTb)
+  const conclusion = buildNutritionConclusion(balita.namaBalita, latest.zScoreTbU, latest.zScoreBbTb)
+  const suggestions = buildNutritionSuggestions(latest.zScoreTbU, latest.zScoreBbTb)
+  const zScoreMissing = latest.zScoreTbU === null || latest.zScoreBbTb === null
+
+  return [
+    `Berdasarkan pemeriksaan terakhir ${balita.namaBalita} pada ${formatTanggalWIB(tanggalISO).tanggalTampil}:`,
+    '',
+    `- Umur saat pemeriksaan: ${formatAgeFromMonths(usiaBulan)}`,
+    `- Berat badan: ${formatNullableNumber(latest.beratBadan, ' kg')}`,
+    `- Tinggi badan: ${formatNullableNumber(latest.tinggiBadan, ' cm')}`,
+    `- TB/U: ${tbU}${latest.zScoreTbU !== null ? ` (z-score ${formatNullableNumber(latest.zScoreTbU)})` : ''}`,
+    `- BB/TB: ${bbTb}${latest.zScoreBbTb !== null ? ` (z-score ${formatNullableNumber(latest.zScoreBbTb)})` : ''}`,
+    latest.zScoreBbU !== null ? `- BB/U: z-score ${formatNullableNumber(latest.zScoreBbU)}` : '- BB/U: z-score belum tersedia',
+    latest.catatanKlinis ? `- Catatan klinis: ${latest.catatanKlinis}` : '',
+    '',
+    'Kesimpulan:',
+    conclusion,
+    ...(zScoreMissing ? ['', 'Catatan data:', 'Sebagian z-score belum tersedia, jadi indikator yang kosong belum bisa disimpulkan secara pasti.'] : []),
+    '',
+    'Saran:',
+    ...suggestions.map((item, index) => `${index + 1}. ${item}`),
+    '',
+    'Catatan:',
+    'Hasil ini bukan diagnosis akhir. Jika ada tanda risiko seperti sangat pendek, wasting, obesitas, atau berat badan sulit naik, sebaiknya konsultasi langsung dengan kader atau petugas Puskesmas.',
+  ].filter(Boolean).join('\n')
+}
+
+async function handleNutritionBalitaSelection(
+  wargaId: string,
+  userMessage: string,
+  clientHistory: Array<{ role: string; content: string }>
+): Promise<{ reply: string; messages: Array<{ role: string; content: string }> } | null> {
+  const state = await getRegistrationState(wargaId)
+  if (state.pendingAction !== 'nutrition_consultation' || !state.lastBalita?.length) return null
+
+  const normalized = normalizeText(userMessage)
+  const nomor = parseNumberChoice(userMessage)
+  const selectedBalita = nomor
+    ? state.lastBalita.find((b) => b.nomor === nomor)
+    : state.lastBalita.find((b) => {
+      const name = normalizeText(b.nama)
+      return name.includes(normalized) || name.split(' ').some((part) => part.length > 2 && normalized.includes(part))
+    })
+
+  if (!selectedBalita) {
+    return persistAssistantTurn(wargaId, userMessage, clientHistory, 'Balita tersebut tidak ditemukan dalam daftar. Silakan pilih nomor atau nama balita yang tersedia.')
+  }
+
+  const reply = await buildNutritionReply(wargaId, selectedBalita.balitaId)
+  await saveRegistrationState(wargaId, {
+    pendingAction: undefined,
+    selectedBalitaId: selectedBalita.balitaId,
+    selectedBalitaName: selectedBalita.nama,
+  })
+  return persistAssistantTurn(wargaId, userMessage, clientHistory, reply)
+}
+
+async function handleNutritionIntent(
+  wargaId: string,
+  userMessage: string,
+  clientHistory: Array<{ role: string; content: string }>
+): Promise<{ reply: string; messages: Array<{ role: string; content: string }> } | null> {
+  if (!isNutritionIntent(userMessage)) return null
+
+  const balita = await getProfilBalita(wargaId)
+  if (balita.length === 0) {
+    return persistAssistantTurn(wargaId, userMessage, clientHistory, 'Belum ada data balita yang terdaftar pada akun Anda.')
+  }
+
+  const mentioned = await findBalitaByMention(wargaId, userMessage)
+  if (mentioned) {
+    const reply = await buildNutritionReply(wargaId, mentioned.balitaId)
+    await saveRegistrationState(wargaId, {
+      pendingAction: undefined,
+      selectedBalitaId: mentioned.balitaId,
+      selectedBalitaName: mentioned.nama,
+    })
+    return persistAssistantTurn(wargaId, userMessage, clientHistory, reply)
+  }
+
+  if (balita.length === 1) {
+    const reply = await buildNutritionReply(wargaId, balita[0].balitaId)
+    await saveRegistrationState(wargaId, {
+      pendingAction: undefined,
+      selectedBalitaId: balita[0].balitaId,
+      selectedBalitaName: balita[0].nama,
+    })
+    return persistAssistantTurn(wargaId, userMessage, clientHistory, reply)
+  }
+
+  await saveRegistrationState(wargaId, {
+    pendingAction: 'nutrition_consultation',
+    lastBalita: balita,
+    selectedBalitaId: undefined,
+    selectedBalitaName: undefined,
+    confirmationPending: false,
+  })
+
+  return persistAssistantTurn(
+    wargaId,
+    userMessage,
+    clientHistory,
+    ['Anda memiliki beberapa balita terdaftar:', '', ...balita.map((b) => `${b.nomor}. ${b.nama}`), '', 'Silakan pilih balita yang ingin dikonsultasikan gizinya.'].join('\n')
+  )
+}
 async function handleReadQueueIntent(
   wargaId: string,
   userMessage: string,
@@ -1211,12 +1450,14 @@ export async function chatAssistant(
     (await handleDeleteConfirmation(wargaId, userMessage, clientHistory)) ??
     (await handleUpdateConfirmation(wargaId, userMessage, clientHistory)) ??
     (await handleRegistrationConfirmation(wargaId, userMessage, clientHistory)) ??
+    (await handleNutritionBalitaSelection(wargaId, userMessage, clientHistory)) ??
     (await handleUpdateSlotSelection(wargaId, userMessage, clientHistory)) ??
     (await handleBalitaSelection(wargaId, userMessage, clientHistory)) ??
     (await handleSlotSelection(wargaId, userMessage, clientHistory)) ??
     (await handleDeleteIntent(wargaId, userMessage, clientHistory)) ??
     (await handleUpdateIntent(wargaId, userMessage, clientHistory)) ??
     (await handleReadQueueIntent(wargaId, userMessage, clientHistory)) ??
+    (await handleNutritionIntent(wargaId, userMessage, clientHistory)) ??
     (await handleScheduleRequest(wargaId, userMessage, clientHistory))
 
   if (deterministicReply) return deterministicReply

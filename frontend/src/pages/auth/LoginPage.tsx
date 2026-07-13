@@ -117,12 +117,6 @@ export default function LoginPage() {
     setGagalLogin(0)
   }
 
-  // Demo login helper — calls same mutation as LoginForm
-  const handleDemoLogin = (demoIdentifier: string, password: string) => {
-    setErrorMsg(null)
-    setIdentifier(demoIdentifier)
-    loginMutation.mutate({ identifier: demoIdentifier, password })
-  }
 
   const detectedRole = detectRole(identifier)
   const showRegisterLink = !identifier || detectedRole === 'citizen'
@@ -187,38 +181,6 @@ export default function LoginPage() {
             )}
           </div>
 
-          {/* ── Demo Akun Cepat ─────────────────────────────────────────────── */}
-          <div>
-            <p className="text-[#99a1af] text-xs font-semibold tracking-wider text-center mb-2">
-              Demo Akun Cepat
-            </p>
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('3471012345670001', 'Demo1234!')}
-                disabled={loginMutation.isPending}
-                className="bg-white border border-[#f3f4f6] rounded-[14px] py-2.5 px-4 w-full text-sm font-semibold text-[#364153] shadow-sm hover:bg-[#f0fdf4] transition-colors disabled:opacity-60"
-              >
-                Demo Warga
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('081234560001', '123456')}
-                disabled={loginMutation.isPending}
-                className="bg-white border border-[#f3f4f6] rounded-[14px] py-2.5 px-4 w-full text-sm font-semibold text-[#364153] shadow-sm hover:bg-[#f0fdf4] transition-colors disabled:opacity-60"
-              >
-                Demo Kader
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('demo@puskesmas-mergangsan.go.id', 'Demo1234!')}
-                disabled={loginMutation.isPending}
-                className="bg-white border border-[#f3f4f6] rounded-[14px] py-2.5 px-4 w-full text-sm font-semibold text-[#364153] shadow-sm hover:bg-[#f0fdf4] transition-colors disabled:opacity-60"
-              >
-                Demo Puskesmas
-              </button>
-            </div>
-          </div>
 
           {/* Register link — hanya untuk citizen */}
           {showRegisterLink && (
