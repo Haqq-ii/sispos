@@ -100,9 +100,9 @@ export default function PuskesmasLayout() {
           <Outlet />
         </div>
 
-        {/* ── Mobile Bottom Navigation (4 items) ───────────────────────────── */}
+        {/* ── Mobile Bottom Navigation ───────────────────────────── */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[#f3f4f6] shadow-lg">
-          <div className="grid grid-cols-4 h-16">
+          <div className="grid grid-cols-5 h-16">
             {MOBILE_NAV_ITEMS.map(({ label, to, icon: Icon, end }) => (
               <NavLink
                 key={to}
@@ -125,6 +125,17 @@ export default function PuskesmasLayout() {
                 </span>
               </NavLink>
             ))}
+            <button
+              type="button"
+              onClick={() => void handleLogout()}
+              className="flex flex-col items-center justify-center gap-0.5 text-[#fb2c36] transition-colors"
+              aria-label="Keluar dari akun"
+            >
+              <LogOut size={20} />
+              <span className="text-[10px] text-center leading-tight max-w-[56px] truncate">
+                Keluar
+              </span>
+            </button>
           </div>
         </nav>
       </main>
