@@ -7,6 +7,7 @@ export interface AuthUser {
   id: string
   namaLengkap: string
   role: RolePengguna
+  posyanduUtamaId?: string | null
 }
 
 interface AuthState {
@@ -33,3 +34,4 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 )
+

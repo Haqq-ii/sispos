@@ -13,6 +13,7 @@ export interface AuthUser {
   id: string
   namaLengkap: string
   role: RolePengguna
+  posyanduUtamaId?: string | null
 }
 
 interface AuthError extends Error {
@@ -141,7 +142,7 @@ export async function verifyOtpAndLogin(
   kodeOtp: string
 ): Promise<{
   tokens: { accessToken: string; refreshToken: string }
-  user: { id: string; namaLengkap: string; role: 'citizen' }
+  user: { id: string; namaLengkap: string; role: 'citizen'; posyanduUtamaId: string | null }
 }> {
   // Cari OTP valid yang belum dipakai dan belum kedaluwarsa
   const otp = await prisma.otp.findFirst({
@@ -176,16 +177,60 @@ export async function verifyOtpAndLogin(
 
   return {
     tokens,
-    user: { id: warga.id, namaLengkap: warga.namaLengkap, role: 'citizen' },
+    user: {
+      id: warga.id,
+      namaLengkap: warga.namaLengkap,
+      role: 'citizen',
+      posyanduUtamaId: warga.posyanduUtamaId,
+    },
   }
 }
 
 // ── updateLokasi ──────────────────────────────────────────────────
+async function findPosyanduForLokasi(data: z.infer<typeof UpdateLokasiSchema>): Promise<string | null> {
+  const wilayahWhere = {
+    provinsi: { equals: data.provinsi, mode: 'insensitive' as const },
+    kabupaten: { equals: data.kabupaten, mode: 'insensitive' as const },
+  }
+
+  const exactMatches = await prisma.posyandu.findMany({
+    where: {
+      ...wilayahWhere,
+      kecamatan: { equals: data.kecamatan, mode: 'insensitive' as const },
+      kelurahan: { equals: data.kelurahan, mode: 'insensitive' as const },
+    },
+    select: { id: true, rw: true, namaPosyandu: true },
+    orderBy: [{ rw: 'asc' }, { namaPosyandu: 'asc' }],
+  })
+
+  if (exactMatches.length > 0) {
+    const requestedRw = data.rw?.trim()
+    return exactMatches.find((p) => requestedRw && p.rw === requestedRw)?.id ?? exactMatches[0].id
+  }
+
+  const fallback = await prisma.posyandu.findFirst({
+    where: {
+      ...wilayahWhere,
+      kecamatan: { equals: data.kecamatan, mode: 'insensitive' as const },
+    },
+    select: { id: true },
+    orderBy: { namaPosyandu: 'asc' },
+  })
+
+  return fallback?.id ?? null
+}
 export async function updateLokasi(
   userId: string,
   data: z.infer<typeof UpdateLokasiSchema>
-): Promise<void> {
-  await prisma.warga.update({
+): Promise<AuthUser> {
+  const posyanduUtamaId = await findPosyanduForLokasi(data)
+  if (!posyanduUtamaId) {
+    throw Object.assign(new Error('Posyandu belum tersedia untuk wilayah ini'), {
+      code: 'POSYANDU_TIDAK_TERSEDIA',
+    })
+  }
+
+  const warga = await prisma.warga.update({
     where: { id: userId },
     data: {
       provinsi: data.provinsi,
@@ -194,8 +239,16 @@ export async function updateLokasi(
       kelurahan: data.kelurahan,
       rw: data.rw ?? null,
       rt: data.rt ?? null,
+      posyanduUtamaId,
     },
   })
+
+  return {
+    id: warga.id,
+    namaLengkap: warga.namaLengkap,
+    role: 'citizen',
+    posyanduUtamaId: warga.posyanduUtamaId,
+  }
 }
 
 // ── detectRole ────────────────────────────────────────────────────
@@ -237,7 +290,15 @@ export async function login(
       throw err
     }
     const tokens = issueTokens(warga.id, 'citizen')
-    return { tokens, user: { id: warga.id, namaLengkap: warga.namaLengkap, role: 'citizen' } }
+    return {
+      tokens,
+      user: {
+        id: warga.id,
+        namaLengkap: warga.namaLengkap,
+        role: 'citizen',
+        posyanduUtamaId: warga.posyanduUtamaId,
+      },
+    }
   }
 
   if (role === 'kader') {
@@ -353,3 +414,5 @@ export async function refreshAccessToken(refreshToken: string): Promise<{ access
 export function logout(): void {
   // intentionally empty — clearCookie handled in logoutHandler
 }
+
+

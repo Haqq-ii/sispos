@@ -338,13 +338,23 @@ export async function updateLokasiHandler(req: Request, res: Response): Promise<
   }
 
   try {
-    await updateLokasi(userId, parsed.data)
+    const user = await updateLokasi(userId, parsed.data)
     res.status(200).json({
       success: true,
-      data: null,
+      data: { user },
       message: 'Lokasi berhasil diperbarui.',
     })
-  } catch {
+  } catch (err) {
+    const code = (err as { code?: string }).code
+    if (code === 'POSYANDU_TIDAK_TERSEDIA') {
+      res.status(422).json({
+        success: false,
+        error: code,
+        message: 'Belum ada Posyandu untuk wilayah yang dipilih. Pilih kelurahan/RW lain atau hubungi admin.',
+      })
+      return
+    }
+
     res.status(500).json({
       success: false,
       error: 'INTERNAL_ERROR',
@@ -352,3 +362,5 @@ export async function updateLokasiHandler(req: Request, res: Response): Promise<
     })
   }
 }
+
+

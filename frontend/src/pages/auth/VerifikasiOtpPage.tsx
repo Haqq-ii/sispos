@@ -39,6 +39,7 @@ export default function VerifikasiOtpPage() {
 
   /** Refs array untuk focus management 6 digit OTP */
   const digitRefs = useRef<(HTMLInputElement | null)[]>([])
+  const verifiedRef = useRef(false)
 
   const { seconds, isExpired, reset: resetCountdown } = useOtpCountdown(60)
 
@@ -48,7 +49,7 @@ export default function VerifikasiOtpPage() {
 
   // Redirect ke /register jika sessionStorage kosong (tidak lewat RegisterPage)
   useEffect(() => {
-    if (!nomorPonsel) {
+    if (!nomorPonsel && !verifiedRef.current) {
       navigate('/register', { replace: true })
     }
   }, [nomorPonsel, navigate])
@@ -65,6 +66,7 @@ export default function VerifikasiOtpPage() {
         kodeOtp,
       }),
     onSuccess: (response) => {
+      verifiedRef.current = true
       setUser(response.data.data.user)
       sessionStorage.removeItem('reg_ponsel')
       sessionStorage.removeItem('reg_ponsel_masked')
@@ -258,3 +260,4 @@ export default function VerifikasiOtpPage() {
     </div>
   )
 }
+

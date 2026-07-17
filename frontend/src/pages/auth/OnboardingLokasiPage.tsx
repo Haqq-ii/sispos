@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import apiClient from '@/lib/axios'
+import { useAuthStore, type AuthUser } from '@/stores/useAuthStore'
 
 interface SaveLokasiPayload {
   provinsi: string
@@ -17,6 +18,12 @@ interface SaveLokasiPayload {
   kelurahan: string
   rw: string
   rt: string
+}
+
+interface SaveLokasiResponse {
+  success: boolean
+  data: { user: AuthUser }
+  message: string
 }
 
 interface ApiError {
@@ -31,6 +38,7 @@ interface ApiError {
 
 export default function OnboardingLokasiPage() {
   const navigate = useNavigate()
+  const { setUser } = useAuthStore()
 
   const [wilayah, setWilayah] = useState<Partial<WilayahValue>>({})
   const [rw, setRw] = useState('')
@@ -39,8 +47,9 @@ export default function OnboardingLokasiPage() {
 
   const saveMutation = useMutation({
     mutationFn: (payload: SaveLokasiPayload) =>
-      apiClient.patch('/auth/lokasi', payload),
-    onSuccess: () => {
+      apiClient.patch<SaveLokasiResponse>('/auth/lokasi', payload),
+    onSuccess: (response) => {
+      setUser(response.data.data.user)
       navigate('/register/lokasi-selesai', {
         state: {
           provinsi: wilayah.provinsi,
@@ -50,7 +59,11 @@ export default function OnboardingLokasiPage() {
         },
       })
     },
-    onError: (_err: ApiError) => {
+    onError: (err: ApiError) => {
+      if (err.response?.data?.error === 'POSYANDU_TIDAK_TERSEDIA') {
+        setServerError(err.response.data.message ?? 'Belum ada Posyandu untuk wilayah yang dipilih.')
+        return
+      }
       setServerError('Gagal menyimpan lokasi. Coba lagi.')
     },
   })
@@ -171,3 +184,5 @@ export default function OnboardingLokasiPage() {
     </div>
   )
 }
+
+
